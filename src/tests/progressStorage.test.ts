@@ -35,14 +35,18 @@ describe('progress storage', () => {
   it('saves and loads settings', () => {
     saveSettings({
       highContrast: true,
+      musicEnabled: false,
       reducedMotion: true,
       soundEnabled: false,
+      theme: 'ember-grid',
     });
 
     expect(loadSettings()).toEqual({
       highContrast: true,
+      musicEnabled: false,
       reducedMotion: true,
       soundEnabled: false,
+      theme: 'ember-grid',
     });
   });
 

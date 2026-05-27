@@ -1,10 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { GameScreen } from './components/GameScreen';
 import { LevelSelectScreen } from './components/LevelSelectScreen';
 import { SettingsDialog } from './components/SettingsDialog';
 import { StartScreen } from './components/StartScreen';
 import { LEVELS } from './data/levels';
-import { completeLevel, createInitialSaveData, loadProgress, loadSettings, saveProgress, saveSettings } from './utils/progressStorage';
+import {
+  clearProgressStorage,
+  completeLevel,
+  createInitialSaveData,
+  loadProgress,
+  loadSettings,
+  saveProgress,
+  saveSettings,
+} from './utils/progressStorage';
 import type { AppView, SaveData } from './types/game';
 
 export function App() {
@@ -12,8 +20,15 @@ export function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [save, setSave] = useState<SaveData>(() => loadProgress());
   const [settings, setSettings] = useState(() => loadSettings());
+  const skipNextProgressSaveRef = useRef(false);
 
   useEffect(() => {
+    if (skipNextProgressSaveRef.current) {
+      skipNextProgressSaveRef.current = false;
+
+      return;
+    }
+
     saveProgress(save);
   }, [save]);
 
@@ -21,9 +36,24 @@ export function App() {
     saveSettings(settings);
   }, [settings]);
 
+  useEffect(() => {
+    const root = document.documentElement;
+
+    root.classList.toggle('reduced-motion', settings.reducedMotion);
+    root.classList.remove('theme-rift-dark', 'theme-crystal-blue', 'theme-ember-grid', 'theme-forest-circuit');
+    root.classList.add(`theme-${settings.theme}`);
+  }, [settings.reducedMotion, settings.theme]);
+
   const startNewGame = () => {
     setSave({ ...createInitialSaveData(), hasActiveRun: true });
     setView('game');
+  };
+
+  const resetProgress = () => {
+    clearProgressStorage();
+    skipNextProgressSaveRef.current = true;
+    setSave(createInitialSaveData());
+    setView('start');
   };
 
   return (
@@ -73,6 +103,7 @@ export function App() {
 
       <SettingsDialog
         isOpen={isSettingsOpen}
+        onResetProgress={resetProgress}
         settings={settings}
         onChange={setSettings}
         onClose={() => setIsSettingsOpen(false)}

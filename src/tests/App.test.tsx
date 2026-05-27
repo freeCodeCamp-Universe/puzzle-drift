@@ -45,6 +45,7 @@ async function openLevel6() {
 describe('App', () => {
   beforeEach(() => {
     resetAppStorage();
+    document.documentElement.className = '';
   });
 
   afterEach(() => {
@@ -76,14 +77,108 @@ describe('App', () => {
     expect(screen.getAllByRole('button', { name: /level \d+/i })).toHaveLength(30);
   });
 
-  it('opens the settings placeholder after clicking Settings', async () => {
+  it('opens the settings screen after clicking Settings', async () => {
     const user = userEvent.setup();
     render(<App />);
 
     await user.click(screen.getByRole('button', { name: /settings/i }));
 
     expect(screen.getByRole('dialog', { name: /settings/i })).toBeInTheDocument();
-    expect(screen.getByText(/settings placeholder/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/sound effects/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/music/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/reduced motion/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/theme/i)).toBeInTheDocument();
+  });
+
+  it('toggling sound saves the setting', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /settings/i }));
+    await user.click(screen.getByLabelText(/sound effects/i));
+
+    await waitFor(() => {
+      const savedSettings = JSON.parse(window.localStorage.getItem('puzzle-drift:settings') ?? '{}');
+
+      expect(savedSettings.soundEnabled).toBe(false);
+    });
+  });
+
+  it('toggling music saves the setting', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /settings/i }));
+    await user.click(screen.getByLabelText(/music/i));
+
+    await waitFor(() => {
+      const savedSettings = JSON.parse(window.localStorage.getItem('puzzle-drift:settings') ?? '{}');
+
+      expect(savedSettings.musicEnabled).toBe(false);
+    });
+  });
+
+  it('reduced motion setting applies a global class', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /settings/i }));
+    await user.click(screen.getByLabelText(/reduced motion/i));
+
+    await waitFor(() => {
+      expect(document.documentElement).toHaveClass('reduced-motion');
+    });
+  });
+
+  it('changing theme applies a global class', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /settings/i }));
+    await user.selectOptions(screen.getByLabelText(/theme/i), 'crystal-blue');
+
+    await waitFor(() => {
+      expect(document.documentElement).toHaveClass('theme-crystal-blue');
+      expect(document.documentElement).not.toHaveClass('theme-rift-dark');
+    });
+  });
+
+  it('reset progress clears LocalStorage progress without clearing settings', async () => {
+    const user = userEvent.setup();
+    const progress = completeLevel(createInitialSaveData(), 1, {
+      moves: 6,
+      stars: 3,
+      timeSeconds: 12,
+    });
+
+    window.localStorage.setItem('puzzle-drift:save', JSON.stringify(progress));
+    window.localStorage.setItem(
+      'puzzle-drift:settings',
+      JSON.stringify({
+        highContrast: false,
+        musicEnabled: false,
+        reducedMotion: true,
+        soundEnabled: false,
+        theme: 'forest-circuit',
+      }),
+    );
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /settings/i }));
+    await user.click(screen.getByRole('button', { name: /reset progress/i }));
+    expect(screen.getByRole('alertdialog', { name: /reset progress/i })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /confirm reset/i }));
+
+    await waitFor(() => {
+      expect(window.localStorage.getItem('puzzle-drift:save')).toBeNull();
+    });
+
+    expect(JSON.parse(window.localStorage.getItem('puzzle-drift:settings') ?? '{}')).toMatchObject({
+      musicEnabled: false,
+      reducedMotion: true,
+      soundEnabled: false,
+      theme: 'forest-circuit',
+    });
   });
 
   it('unlocks the first level by default', async () => {

@@ -2,7 +2,7 @@ import { DEFAULT_SETTINGS } from '../data/defaultSettings';
 import { INITIAL_SAVE } from '../data/initialSave';
 import { LEVELS } from '../data/levels';
 import type { GameSettings, SaveData } from '../types/game';
-import { readStorageValue, writeStorageValue } from './storage';
+import { readStorageValue, removeStorageValue, writeStorageValue } from './storage';
 
 const PROGRESS_STORAGE_KEY = 'puzzle-drift:save';
 const SETTINGS_STORAGE_KEY = 'puzzle-drift:settings';
@@ -55,11 +55,20 @@ export function saveProgress(progress: SaveData) {
 }
 
 export function loadSettings(): GameSettings {
-  return readStorageValue<GameSettings>(SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS);
+  const storedSettings = readStorageValue<Partial<GameSettings>>(SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS);
+
+  return {
+    ...DEFAULT_SETTINGS,
+    ...storedSettings,
+  };
 }
 
 export function saveSettings(settings: GameSettings) {
   writeStorageValue(SETTINGS_STORAGE_KEY, settings);
+}
+
+export function clearProgressStorage() {
+  removeStorageValue(PROGRESS_STORAGE_KEY);
 }
 
 export function isLevelUnlocked(progress: SaveData, levelId: number) {

@@ -20,6 +20,49 @@
   background: var(--background);
 }
 
+:root.theme-crystal-blue {
+  --background: #081527;
+  --surface: #10263f;
+  --surface-strong: #19395c;
+  --border: #31577e;
+  --blue: #9ee8ff;
+  --purple: #c2d3ff;
+  --yellow: #f7d66b;
+  --green: #9ff7d4;
+}
+
+:root.theme-ember-grid {
+  --background: #180d12;
+  --surface: #25161d;
+  --surface-strong: #382028;
+  --border: #61414a;
+  --blue: #ffc48f;
+  --purple: #ffd6ad;
+  --yellow: #ffbf5f;
+  --green: #d5e875;
+  --red: #ff9a9a;
+}
+
+:root.theme-forest-circuit {
+  --background: #07170f;
+  --surface: #102319;
+  --surface-strong: #173626;
+  --border: #2f5d45;
+  --blue: #b3f0d3;
+  --purple: #c6e6b5;
+  --yellow: #f1db6b;
+  --green: #98e66e;
+}
+
+:root.reduced-motion *,
+:root.reduced-motion *::before,
+:root.reduced-motion *::after {
+  scroll-behavior: auto !important;
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -166,6 +209,16 @@ h2 {
   border-color: var(--yellow);
   background: var(--yellow);
   color: var(--background);
+}
+
+.menu-button.danger {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.menu-button.danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--red) 16%, var(--surface-strong));
+  color: var(--text);
 }
 
 .menu-button.compact {
@@ -755,10 +808,17 @@ h2 {
 }
 
 .dialog-title,
-.toggle-row span {
+.toggle-row span,
+.select-row span {
   display: flex;
   align-items: center;
   gap: 0.6rem;
+}
+
+.dialog-title h3 {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.1;
 }
 
 .pause-actions {
@@ -766,12 +826,24 @@ h2 {
   gap: 0.75rem;
 }
 
-.toggle-row {
+.settings-group {
+  display: grid;
+  gap: 0.75rem;
+  border-block-start: 1px solid var(--border);
+  padding-block-start: 1rem;
+}
+
+.settings-group + .settings-group,
+.settings-danger-zone {
+  margin-block-start: 1rem;
+}
+
+.toggle-row,
+.select-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-block-start: 1rem;
   color: var(--muted);
 }
 
@@ -779,6 +851,37 @@ h2 {
   width: 1.25rem;
   height: 1.25rem;
   accent-color: var(--yellow);
+}
+
+.select-row select {
+  min-width: 11rem;
+  border: 1px solid var(--border);
+  color: var(--text);
+  background: var(--surface-strong);
+  padding: 0.6rem 0.75rem;
+}
+
+.select-row select:hover {
+  border-color: var(--blue);
+}
+
+.confirm-reset-panel {
+  display: grid;
+  gap: 0.85rem;
+  margin-block-start: 1rem;
+  border: 1px solid var(--red);
+  background: color-mix(in srgb, var(--red) 10%, var(--surface));
+  padding: 1rem;
+}
+
+.confirm-reset-panel p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.confirm-actions {
+  display: grid;
+  gap: 0.65rem;
 }
 
 @media (max-width: 760px) {

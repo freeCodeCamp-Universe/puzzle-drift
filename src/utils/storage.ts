@@ -15,3 +15,11 @@ export function writeStorageValue<T>(key: string, value: T) {
     // Storage can be unavailable in private browsing or embedded test contexts.
   }
 }
+
+export function removeStorageValue(key: string) {
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // Storage can be unavailable in private browsing or embedded test contexts.
+  }
+}
