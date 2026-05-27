@@ -2,15 +2,18 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { GameBoard } from '../components/GameBoard';
 import { LEVELS } from '../data/levels';
+import { createInitialGameState } from '../logic/movement';
 
 const level = LEVELS[0];
 const noop = vi.fn();
+const gameState = createInitialGameState(level);
 
 describe('GameBoard', () => {
   it('renders the correct number of tiles', () => {
     render(
       <GameBoard
         elapsedSeconds={0}
+        gameState={gameState}
         level={level}
         moves={0}
         onLevelSelect={noop}
@@ -28,6 +31,7 @@ describe('GameBoard', () => {
     render(
       <GameBoard
         elapsedSeconds={0}
+        gameState={gameState}
         level={level}
         moves={0}
         onLevelSelect={noop}
@@ -47,6 +51,7 @@ describe('GameBoard', () => {
     render(
       <GameBoard
         elapsedSeconds={75}
+        gameState={gameState}
         level={level}
         moves={8}
         onLevelSelect={noop}

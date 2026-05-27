@@ -131,6 +131,7 @@ export function GameScreen({
 
       <GameBoard
         elapsedSeconds={gameState.elapsedSeconds}
+        gameState={gameState}
         level={level}
         moves={gameState.moves}
         onLevelSelect={onLevelSelect}

@@ -46,6 +46,8 @@ export type GameState = {
   moves: number;
   elapsedSeconds: number;
   collectedKeys: number;
+  collectedKeyPositions: Position[];
+  openedDoorPositions: Position[];
   activatedSwitches: Position[];
   pushBlocks: Position[];
   isComplete: boolean;

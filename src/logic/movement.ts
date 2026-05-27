@@ -9,16 +9,22 @@ const DIRECTION_OFFSETS: Record<Direction, Position> = {
 
 const WALKABLE_TILES = new Set<TileType>(['floor', 'exit']);
 
+function positionsMatch(first: Position, second: Position) {
+  return first.x === second.x && first.y === second.y;
+}
+
 export function createInitialGameState(level: Level): GameState {
   return {
     activatedSwitches: [],
     collectedKeys: 0,
+    collectedKeyPositions: [],
     elapsedSeconds: 0,
     facing: 'down',
     isComplete: false,
     isFailed: false,
     levelId: level.id,
     moves: 0,
+    openedDoorPositions: [],
     playerPosition: { ...level.playerStart },
     pushBlocks: [],
   };
@@ -60,10 +66,28 @@ export function getTileAt(level: Level, position: Position): TileType | null {
   return level.grid[position.y][position.x];
 }
 
-export function canMoveTo(level: Level, position: Position) {
+export function getEffectiveTileAt(level: Level, state: GameState, position: Position): TileType | null {
   const tile = getTileAt(level, position);
 
-  return tile !== null && WALKABLE_TILES.has(tile);
+  if (!tile) {
+    return null;
+  }
+
+  if (tile === 'key' && state.collectedKeyPositions.some((keyPosition) => positionsMatch(keyPosition, position))) {
+    return 'floor';
+  }
+
+  if (tile === 'door' && state.openedDoorPositions.some((doorPosition) => positionsMatch(doorPosition, position))) {
+    return 'floor';
+  }
+
+  return tile;
+}
+
+export function canMoveTo(level: Level, state: GameState, position: Position) {
+  const tile = getEffectiveTileAt(level, state, position);
+
+  return tile !== null && (WALKABLE_TILES.has(tile) || tile === 'key' || (tile === 'door' && state.collectedKeys > 0));
 }
 
 export function movePlayer(level: Level, state: GameState, direction: Direction): GameState {
@@ -72,20 +96,28 @@ export function movePlayer(level: Level, state: GameState, direction: Direction)
   }
 
   const nextPosition = getNextPosition(state.playerPosition, direction);
-  const nextTile = getTileAt(level, nextPosition);
+  const nextTile = getEffectiveTileAt(level, state, nextPosition);
 
-  if (!nextTile || !canMoveTo(level, nextPosition)) {
+  if (!nextTile || !canMoveTo(level, state, nextPosition)) {
     return {
       ...state,
       facing: direction,
     };
   }
 
+  const collectsKey = nextTile === 'key';
+  const opensDoor = nextTile === 'door';
+
   return {
     ...state,
+    collectedKeys: state.collectedKeys + (collectsKey ? 1 : 0) - (opensDoor ? 1 : 0),
+    collectedKeyPositions: collectsKey
+      ? [...state.collectedKeyPositions, nextPosition]
+      : state.collectedKeyPositions,
     facing: direction,
     isComplete: nextTile === 'exit',
     moves: state.moves + 1,
+    openedDoorPositions: opensDoor ? [...state.openedDoorPositions, nextPosition] : state.openedDoorPositions,
     playerPosition: nextPosition,
   };
 }

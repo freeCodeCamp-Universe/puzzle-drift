@@ -3,7 +3,33 @@ import { act } from 'react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
+import { completeLevel, createInitialSaveData } from '../utils/progressStorage';
 import { resetAppStorage } from './testStorage';
+
+function unlockThroughLevel(levelId: number) {
+  let progress = createInitialSaveData();
+
+  for (let currentLevel = 1; currentLevel < levelId; currentLevel += 1) {
+    progress = completeLevel(progress, currentLevel, {
+      moves: 1,
+      stars: 3,
+      timeSeconds: 1,
+    });
+  }
+
+  window.localStorage.setItem('puzzle-drift:save', JSON.stringify(progress));
+}
+
+async function openLevel3() {
+  const user = userEvent.setup();
+  unlockThroughLevel(3);
+  render(<App />);
+
+  await user.click(screen.getByRole('button', { name: /level select/i }));
+  await user.click(screen.getByRole('button', { name: 'Level 3: Keyline' }));
+
+  return user;
+}
 
 describe('App', () => {
   beforeEach(() => {
@@ -126,7 +152,7 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: /reset level/i }));
 
     expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
-    expect(screen.getByText('0')).toBeInTheDocument();
+    expect(screen.getByLabelText('0 moves')).toBeInTheDocument();
   });
 
   it('undo restores previous player position and decrements move count', async () => {
@@ -164,5 +190,72 @@ describe('App', () => {
       vi.advanceTimersByTime(3000);
     });
     expect(screen.getByText('0:02')).toBeInTheDocument();
+  });
+
+  it('collecting a key increases key count and removes the key tile', async () => {
+    await openLevel3();
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+
+    expect(screen.getByLabelText('1 keys')).toBeInTheDocument();
+    expect(screen.getByLabelText('Floor at 3, 1')).toBeInTheDocument();
+  });
+
+  it('a door blocks player without a key', async () => {
+    await openLevel3();
+
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+
+    expect(screen.getByLabelText('Player at 4, 3')).toBeInTheDocument();
+    expect(screen.getByLabelText('Door at 5, 3')).toBeInTheDocument();
+  });
+
+  it('opens a door with a key, consumes the key, and undo restores the door state', async () => {
+    const user = await openLevel3();
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowLeft' });
+
+    expect(screen.getByLabelText('Player at 5, 3')).toBeInTheDocument();
+    expect(screen.getByLabelText('0 keys')).toBeInTheDocument();
+    expect(screen.getByLabelText('Floor at 5, 3')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /undo move/i }));
+
+    expect(screen.getByLabelText('Player at 6, 3')).toBeInTheDocument();
+    expect(screen.getByLabelText('1 keys')).toBeInTheDocument();
+    expect(screen.getByLabelText('Door at 5, 3')).toBeInTheDocument();
+  });
+
+  it('reset restores the original key and door layout', async () => {
+    const user = await openLevel3();
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowLeft' });
+
+    await user.click(screen.getByRole('button', { name: /reset level/i }));
+
+    expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
+    expect(screen.getByLabelText('0 keys')).toBeInTheDocument();
+    expect(screen.getByLabelText('Key at 3, 1')).toBeInTheDocument();
+    expect(screen.getByLabelText('Door at 5, 3')).toBeInTheDocument();
   });
 });

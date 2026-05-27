@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Level } from '../types/game';
-import { createInitialGameState, movePlayer } from '../logic/movement';
+import { createInitialGameState, getEffectiveTileAt, movePlayer } from '../logic/movement';
 
 const movementLevel: Level = {
   description: 'Movement test level.',
@@ -26,6 +26,16 @@ const wallLevel: Level = {
     ['floor', 'floor', 'floor'],
     ['floor', 'floor', 'exit'],
   ],
+};
+
+const keyDoorLevel: Level = {
+  ...movementLevel,
+  grid: [
+    ['floor', 'key', 'door'],
+    ['floor', 'floor', 'exit'],
+    ['floor', 'floor', 'floor'],
+  ],
+  playerStart: { x: 0, y: 0 },
 };
 
 describe('movement logic', () => {
@@ -66,5 +76,58 @@ describe('movement logic', () => {
 
     expect(result.playerPosition).toEqual({ x: 2, y: 2 });
     expect(result.isComplete).toBe(true);
+  });
+
+  it('collecting a key increases key count and removes the key tile', () => {
+    const start = createInitialGameState(keyDoorLevel);
+    const result = movePlayer(keyDoorLevel, start, 'right');
+
+    expect(result.collectedKeys).toBe(1);
+    expect(getEffectiveTileAt(keyDoorLevel, result, { x: 1, y: 0 })).toBe('floor');
+  });
+
+  it('doors block movement without a key', () => {
+    const start = {
+      ...createInitialGameState(keyDoorLevel),
+      playerPosition: { x: 1, y: 0 },
+    };
+    const result = movePlayer(keyDoorLevel, start, 'right');
+
+    expect(result.playerPosition).toEqual({ x: 1, y: 0 });
+    expect(result.moves).toBe(0);
+  });
+
+  it('opens a door with a key and consumes the key', () => {
+    const start = createInitialGameState(keyDoorLevel);
+    const withKey = movePlayer(keyDoorLevel, start, 'right');
+    const result = movePlayer(keyDoorLevel, withKey, 'right');
+
+    expect(result.playerPosition).toEqual({ x: 2, y: 0 });
+    expect(result.collectedKeys).toBe(0);
+    expect(getEffectiveTileAt(keyDoorLevel, result, { x: 2, y: 0 })).toBe('floor');
+  });
+
+  it('undo can restore door and key state from the history snapshot', () => {
+    const start = createInitialGameState(keyDoorLevel);
+    const withKey = movePlayer(keyDoorLevel, start, 'right');
+    const openedDoor = movePlayer(keyDoorLevel, withKey, 'right');
+    const undoSnapshot = withKey;
+
+    expect(openedDoor.openedDoorPositions).toEqual([{ x: 2, y: 0 }]);
+    expect(undoSnapshot.collectedKeys).toBe(1);
+    expect(undoSnapshot.openedDoorPositions).toEqual([]);
+    expect(getEffectiveTileAt(keyDoorLevel, undoSnapshot, { x: 2, y: 0 })).toBe('door');
+  });
+
+  it('reset restores the original key and door layout', () => {
+    const start = createInitialGameState(keyDoorLevel);
+    const withKey = movePlayer(keyDoorLevel, start, 'right');
+    const openedDoor = movePlayer(keyDoorLevel, withKey, 'right');
+    const resetState = createInitialGameState(keyDoorLevel);
+
+    expect(getEffectiveTileAt(keyDoorLevel, openedDoor, { x: 1, y: 0 })).toBe('floor');
+    expect(getEffectiveTileAt(keyDoorLevel, openedDoor, { x: 2, y: 0 })).toBe('floor');
+    expect(getEffectiveTileAt(keyDoorLevel, resetState, { x: 1, y: 0 })).toBe('key');
+    expect(getEffectiveTileAt(keyDoorLevel, resetState, { x: 2, y: 0 })).toBe('door');
   });
 });

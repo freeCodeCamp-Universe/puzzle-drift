@@ -1,10 +1,12 @@
-import { Footprints, ListOrdered, Pause, RotateCcw, Timer, Undo2, UserRound } from 'lucide-react';
-import type { Level, Position, TileType } from '../types/game';
+import { Footprints, KeyRound, ListOrdered, Pause, RotateCcw, Timer, Undo2, UserRound } from 'lucide-react';
+import { getEffectiveTileAt } from '../logic/movement';
+import type { GameState, Level, Position, TileType } from '../types/game';
 
 type GameBoardProps = {
   level: Level;
   moves: number;
   elapsedSeconds: number;
+  gameState: GameState;
   playerPosition: Position;
   onLevelSelect: () => void;
   onPause: () => void;
@@ -43,6 +45,7 @@ export function GameBoard({
   level,
   moves,
   elapsedSeconds,
+  gameState,
   playerPosition,
   onLevelSelect,
   onPause,
@@ -63,14 +66,21 @@ export function GameBoard({
               <Footprints aria-hidden="true" />
               Moves
             </dt>
-            <dd>{moves}</dd>
+            <dd aria-label={`${moves} moves`}>{moves}</dd>
           </div>
           <div>
             <dt>
               <Timer aria-hidden="true" />
               Timer
             </dt>
-            <dd>{formatElapsedTime(elapsedSeconds)}</dd>
+            <dd aria-label={`${formatElapsedTime(elapsedSeconds)} elapsed`}>{formatElapsedTime(elapsedSeconds)}</dd>
+          </div>
+          <div>
+            <dt>
+              <KeyRound aria-hidden="true" />
+              Keys
+            </dt>
+            <dd aria-label={`${gameState.collectedKeys} keys`}>{gameState.collectedKeys}</dd>
           </div>
         </dl>
 
@@ -111,11 +121,12 @@ export function GameBoard({
         {level.grid.map((row, y) =>
           row.map((tile, x) => {
             const hasPlayer = playerPosition.x === x && playerPosition.y === y;
+            const effectiveTile = getEffectiveTileAt(level, gameState, { x, y }) ?? tile;
 
             return (
               <div
-                aria-label={`${TILE_LABELS[tile]} at ${x}, ${y}`}
-                className={`board-tile tile-${tile}`}
+                aria-label={`${TILE_LABELS[effectiveTile]} at ${x}, ${y}`}
+                className={`board-tile tile-${effectiveTile}`}
                 data-testid="board-tile"
                 key={`${x}-${y}`}
                 role="gridcell"
