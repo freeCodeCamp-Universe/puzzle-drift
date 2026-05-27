@@ -191,6 +191,49 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: 'Level 2: Corner Signal locked' })).toBeDisabled();
   });
 
+  it('level card status renders correctly', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /level select/i }));
+
+    expect(within(screen.getByRole('button', { name: 'Level 1: First Drift' })).getByText('Unlocked')).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('button', { name: 'Level 2: Corner Signal locked' })).getByText('Locked'),
+    ).toBeInTheDocument();
+  });
+
+  it('completed levels show stars', async () => {
+    const user = userEvent.setup();
+    const progress = completeLevel(createInitialSaveData(), 1, {
+      moves: 6,
+      stars: 3,
+      timeSeconds: 12,
+    });
+
+    window.localStorage.setItem('puzzle-drift:save', JSON.stringify(progress));
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /level select/i }));
+
+    const levelCard = screen.getByRole('button', { name: 'Level 1: First Drift' });
+
+    expect(within(levelCard).getByText('Completed')).toBeInTheDocument();
+    expect(within(levelCard).getByLabelText('3 stars')).toBeInTheDocument();
+    expect(within(levelCard).getAllByTestId('level-stars')[0].querySelectorAll('.star-filled')).toHaveLength(3);
+  });
+
+  it('locked levels show a lock icon', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /level select/i }));
+
+    expect(
+      within(screen.getByRole('button', { name: 'Level 2: Corner Signal locked' })).getByLabelText('Locked'),
+    ).toBeInTheDocument();
+  });
+
   it('does not open locked levels', async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -220,6 +263,18 @@ describe('App', () => {
 
     expect(screen.getByLabelText('Player at 2, 1')).toBeInTheDocument();
     expect(screen.getByLabelText('1 moves')).toBeInTheDocument();
+  });
+
+  it('HUD remains visible during gameplay', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    await user.click(screen.getByRole('button', { name: /move right/i }));
+
+    expect(screen.getByLabelText('Game heads-up display')).toBeInTheDocument();
+    expect(screen.getByLabelText('Game status')).toBeInTheDocument();
+    expect(screen.getByLabelText('Game controls')).toBeInTheDocument();
   });
 
   it('completing level 1 unlocks level 2', async () => {
@@ -500,5 +555,27 @@ describe('App', () => {
     fireEvent.keyDown(window, { key: 'ArrowDown' });
 
     expect(screen.getByLabelText('3 stars earned', { exact: true })).not.toHaveClass('star-reveal');
+  });
+
+  it('reduced motion prevents movement animation classes', async () => {
+    const user = userEvent.setup();
+
+    window.localStorage.setItem(
+      'puzzle-drift:settings',
+      JSON.stringify({
+        highContrast: false,
+        musicEnabled: true,
+        reducedMotion: true,
+        soundEnabled: true,
+        theme: 'rift-dark',
+      }),
+    );
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    await user.click(screen.getByRole('button', { name: /move right/i }));
+
+    expect(screen.getByTestId('game-board-shell')).not.toHaveClass('player-move');
+    expect(screen.getByTestId('player-avatar')).not.toHaveClass('player-moving');
   });
 });

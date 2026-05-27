@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle2, Footprints, Lock, Star, Timer } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, CircleDot, Footprints, ListOrdered, Lock, Star, Timer } from 'lucide-react';
 import { LEVELS } from '../data/levels';
 import type { Level, SaveData, TileType } from '../types/game';
 import {
@@ -48,7 +48,7 @@ function formatTime(seconds?: number) {
 
 function LevelStars({ count }: { count: number }) {
   return (
-    <span className="level-stars" aria-label={`${count} stars`}>
+    <span className="level-stars" aria-label={`${count} stars`} data-testid="level-stars">
       {Array.from({ length: 3 }, (_, index) => (
         <Star
           aria-hidden="true"
@@ -74,12 +74,14 @@ function LevelCard({
   const bestMoves = getLevelBestMoves(progress, level.id);
   const bestTimeSeconds = getLevelBestTimeSeconds(progress, level.id);
   const stars = getLevelStars(progress, level.id);
+  const statusLabel = completed ? 'Completed' : unlocked ? 'Unlocked' : 'Locked';
 
   return (
     <button
       type="button"
       aria-label={`Level ${level.id}: ${level.name}${unlocked ? '' : ' locked'}`}
       className={`level-card${unlocked ? '' : ' locked'}${completed ? ' completed' : ''}`}
+      data-status={statusLabel.toLowerCase()}
       disabled={!unlocked}
       onClick={() => {
         if (unlocked) {
@@ -92,8 +94,11 @@ function LevelCard({
         <span className="level-state">
           {completed ? <CheckCircle2 aria-label="Completed" /> : null}
           {!unlocked ? <Lock aria-label="Locked" /> : null}
+          {unlocked && !completed ? <PlayState /> : null}
         </span>
       </span>
+
+      <span className="level-status">{statusLabel}</span>
 
       <span className="level-card-title">{level.name}</span>
       <span className="level-card-description">{level.description}</span>
@@ -123,6 +128,10 @@ function LevelCard({
   );
 }
 
+function PlayState() {
+  return <CircleDot className="level-ready" aria-label="Unlocked" />;
+}
+
 export function LevelSelectScreen({ progress, onBack, onSelectLevel }: LevelSelectScreenProps) {
   return (
     <section className="screen level-screen" aria-labelledby="level-select-title">
@@ -136,16 +145,24 @@ export function LevelSelectScreen({ progress, onBack, onSelectLevel }: LevelSele
         </div>
       </header>
 
-      <div className="level-card-grid" aria-label="Available levels">
-        {LEVELS.map((level) => (
-          <LevelCard
-            key={level.id}
-            level={level}
-            progress={progress}
-            onSelectLevel={onSelectLevel}
-          />
-        ))}
-      </div>
+      {LEVELS.length > 0 ? (
+        <div className="level-card-grid" aria-label="Available levels">
+          {LEVELS.map((level) => (
+            <LevelCard
+              key={level.id}
+              level={level}
+              progress={progress}
+              onSelectLevel={onSelectLevel}
+            />
+          ))}
+        </div>
+      ) : (
+        <section className="empty-state" aria-label="No levels available">
+          <ListOrdered aria-hidden="true" />
+          <h3>No levels loaded</h3>
+          <p>Check back after the level pack is available.</p>
+        </section>
+      )}
     </section>
   );
 }

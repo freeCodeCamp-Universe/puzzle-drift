@@ -1,4 +1,4 @@
-import { Gamepad2, ListOrdered, Play, RotateCcw, Settings } from 'lucide-react';
+import { Gamepad2, ListOrdered, Play, RotateCcw, Settings, Sparkles, Star, Timer } from 'lucide-react';
 
 type StartScreenProps = {
   canContinue: boolean;
@@ -21,11 +21,30 @@ export function StartScreen({
         <div className="brand-mark" aria-hidden="true">
           <Gamepad2 />
         </div>
-        <p className="eyebrow">neon logic arcade</p>
-        <h1 id="game-title">Puzzle Drift</h1>
-        <p className="tagline">
-          Slide signal tiles through a shifting grid and keep your combo alive.
-        </p>
+        <div className="title-kicker">
+          <Sparkles aria-hidden="true" />
+          <p className="eyebrow">neon logic arcade</p>
+        </div>
+        <div>
+          <h1 id="game-title">Puzzle Drift</h1>
+          <p className="tagline">
+            Slide through neon mazes, bend portals, unlock gates, and chase perfect routes.
+          </p>
+        </div>
+        <div className="title-stats" aria-label="Game features">
+          <span>
+            <ListOrdered aria-hidden="true" />
+            30 levels
+          </span>
+          <span>
+            <Star aria-hidden="true" />
+            3-star goals
+          </span>
+          <span>
+            <Timer aria-hidden="true" />
+            timed runs
+          </span>
+        </div>
       </div>
 
       <nav className="menu-panel" aria-label="Start menu">

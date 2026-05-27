@@ -21,6 +21,7 @@ type GameBoardProps = {
   elapsedSeconds: number;
   gameState: GameState;
   hazardFlash: boolean;
+  animationClass?: string;
   playerPosition: Position;
   onLevelSelect: () => void;
   onMove: (direction: Direction) => void;
@@ -71,6 +72,7 @@ export function GameBoard({
   elapsedSeconds,
   gameState,
   hazardFlash,
+  animationClass = '',
   playerPosition,
   onLevelSelect,
   onMove,
@@ -80,7 +82,9 @@ export function GameBoard({
 }: GameBoardProps) {
   return (
     <section
-      className={`game-board-shell${hazardFlash ? ' hazard-flash' : ''}`}
+      className={`game-board-shell${hazardFlash ? ' hazard-flash' : ''}${
+        animationClass ? ` ${animationClass}` : ''
+      }`}
       aria-labelledby="game-board-title"
       data-testid="game-board-shell"
     >
@@ -186,7 +190,7 @@ export function GameBoard({
                 {hasPlayer ? (
                   <span
                     aria-label={`Player at ${x}, ${y}`}
-                    className="player-avatar"
+                    className={`player-avatar${animationClass.includes('player-move') ? ' player-moving' : ''}`}
                     data-testid="player-avatar"
                   >
                     <UserRound aria-hidden="true" />

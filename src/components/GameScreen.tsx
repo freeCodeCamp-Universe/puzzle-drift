@@ -80,8 +80,22 @@ export function GameScreen({
   const [gameState, setGameState] = useState<GameState>(() => createInitialGameState(level));
   const [, setHistory] = useState<GameState[]>([]);
   const [hazardFlashCount, setHazardFlashCount] = useState(0);
+  const [boardAnimationClass, setBoardAnimationClass] = useState('');
   const [isPaused, setIsPaused] = useState(false);
   const savedCompletionRef = useRef(false);
+
+  const triggerBoardAnimation = useCallback(
+    (animationClass: string) => {
+      if (reducedMotion) {
+        setBoardAnimationClass('');
+
+        return;
+      }
+
+      setBoardAnimationClass(animationClass);
+    },
+    [reducedMotion],
+  );
 
   const moveInDirection = useCallback(
     (direction: Direction) => {
@@ -104,18 +118,31 @@ export function GameScreen({
           return nextState;
         }
 
+        const collectedKey = nextState.collectedKeyPositions.length > currentState.collectedKeyPositions.length;
+        const teleported =
+          Math.abs(nextState.playerPosition.x - currentState.playerPosition.x) +
+            Math.abs(nextState.playerPosition.y - currentState.playerPosition.y) >
+          1;
+        const animationClass = collectedKey
+          ? 'key-collect'
+          : teleported
+            ? 'portal-teleport'
+            : 'player-move';
+
+        triggerBoardAnimation(animationClass);
         setHistory((currentHistory) => [...currentHistory, currentState]);
 
         return nextState;
       });
     },
-    [isPaused, level],
+    [isPaused, level, triggerBoardAnimation],
   );
 
   useEffect(() => {
     setGameState(createInitialGameState(level));
     setHistory([]);
     setHazardFlashCount(0);
+    setBoardAnimationClass('');
     setIsPaused(false);
     savedCompletionRef.current = false;
   }, [level]);
@@ -169,6 +196,7 @@ export function GameScreen({
     setGameState(createInitialGameState(level));
     setHistory([]);
     setHazardFlashCount(0);
+    setBoardAnimationClass('');
     setIsPaused(false);
     savedCompletionRef.current = false;
   };
@@ -204,6 +232,7 @@ export function GameScreen({
 
       <GameBoard
         elapsedSeconds={gameState.elapsedSeconds}
+        animationClass={boardAnimationClass}
         gameState={gameState}
         hazardFlash={hazardFlashCount > 0 && !reducedMotion}
         level={level}
@@ -250,7 +279,7 @@ export function GameScreen({
 
       {gameState.isComplete ? (
         <section
-          className="completion-panel"
+          className={`completion-panel${reducedMotion ? '' : ' level-complete-pop'}`}
           role="status"
           aria-label={`Level completed. ${starsEarned} stars earned in ${gameState.moves} moves and ${formatTime(
             gameState.elapsedSeconds,

@@ -4,6 +4,7 @@
   --surface: #1b1b32;
   --surface-strong: #2a2a40;
   --border: #3b3b4f;
+  --border-strong: #858591;
   --text: #ffffff;
   --muted: #d0d0d5;
   --dim: #858591;
@@ -86,6 +87,11 @@ select {
 
 button {
   cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
 }
 
 button:disabled {
@@ -111,18 +117,29 @@ select:focus-visible {
 .screen {
   width: min(100%, 48rem);
   min-width: 0;
+  animation: screen-enter 260ms ease-out both;
 }
 
 .start-screen {
   display: grid;
-  gap: 1.5rem;
+  width: min(100%, 62rem);
+  gap: 1.25rem;
   grid-template-columns: minmax(0, 1.2fr) minmax(16rem, 0.8fr);
   align-items: center;
 }
 
 .brand-lockup {
   display: grid;
-  gap: 0.8rem;
+  min-height: 34rem;
+  align-content: center;
+  gap: 1rem;
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--blue) 9%, transparent) 1px, transparent 1px),
+    linear-gradient(color-mix(in srgb, var(--purple) 7%, transparent) 1px, transparent 1px),
+    linear-gradient(135deg, color-mix(in srgb, var(--surface) 88%, transparent), var(--background));
+  background-size: 2rem 2rem, 2rem 2rem, auto;
+  padding: clamp(1.25rem, 4vw, 3rem);
 }
 
 .brand-mark {
@@ -133,11 +150,29 @@ select:focus-visible {
   border: 1px solid var(--blue);
   background: var(--surface);
   color: var(--blue);
+  animation: title-pulse 2200ms ease-in-out infinite;
 }
 
 .brand-mark svg {
   width: 2.25rem;
   height: 2.25rem;
+}
+
+.title-kicker,
+.title-stats,
+.title-stats span {
+  display: flex;
+  align-items: center;
+}
+
+.title-kicker {
+  gap: 0.5rem;
+  color: var(--green);
+}
+
+.title-kicker svg {
+  width: 1rem;
+  height: 1rem;
 }
 
 .eyebrow {
@@ -157,7 +192,8 @@ p {
 
 h1 {
   margin-block-end: 0;
-  font-size: clamp(3rem, 10vw, 6rem);
+  max-width: 9ch;
+  font-size: clamp(3.6rem, 10vw, 7rem);
   line-height: 0.95;
 }
 
@@ -174,6 +210,27 @@ h2 {
   font-size: 1.1rem;
 }
 
+.title-stats {
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.title-stats span {
+  gap: 0.4rem;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--background) 82%, transparent);
+  color: var(--muted);
+  padding: 0.45rem 0.6rem;
+  font-family: "Fira Mono", Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+}
+
+.title-stats svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  color: var(--yellow);
+}
+
 .menu-panel,
 .settings-dialog,
 .placeholder-panel {
@@ -185,6 +242,7 @@ h2 {
   display: grid;
   gap: 0.75rem;
   padding: 1rem;
+  animation: panel-slide 320ms ease-out both;
 }
 
 .menu-button,
@@ -208,11 +266,16 @@ h2 {
 .icon-button:hover {
   border-color: var(--blue);
   color: var(--blue);
+  transform: translateY(-1px);
 }
 
 .menu-button.primary {
   border-color: var(--yellow);
   background: var(--yellow);
+  color: var(--background);
+}
+
+.menu-button.primary:hover:not(:disabled) {
   color: var(--background);
 }
 
@@ -280,6 +343,18 @@ h2 {
   animation: hazard-shake 240ms ease-in-out;
 }
 
+.game-board-shell.key-collect .player-avatar {
+  animation: key-pop 320ms ease-out both;
+}
+
+.game-board-shell.portal-teleport .player-avatar {
+  animation: portal-blink 420ms ease-out both;
+}
+
+.player-avatar.player-moving {
+  animation: player-step 180ms ease-out both;
+}
+
 @keyframes hazard-shake {
   0%,
   100% {
@@ -301,13 +376,16 @@ h2 {
 
 .game-hud {
   display: grid;
-  grid-template-columns: minmax(12rem, 1fr) auto auto;
+  grid-template-columns: minmax(11rem, 0.85fr) minmax(20rem, 1.4fr) auto;
   align-items: center;
   gap: 1rem;
   border: 1px solid var(--border);
   background: color-mix(in srgb, var(--surface) 92%, transparent);
   padding: 0.85rem;
   min-width: 0;
+  position: sticky;
+  top: 0.75rem;
+  z-index: 3;
 }
 
 .game-hud-title {
@@ -318,7 +396,6 @@ h2 {
   overflow-wrap: anywhere;
 }
 
-.hud-stats,
 .hud-stats div,
 .hud-actions {
   display: flex;
@@ -326,12 +403,15 @@ h2 {
 }
 
 .hud-stats {
-  gap: 0.75rem;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.5rem;
   margin: 0;
 }
 
 .hud-stats div {
-  min-width: 5.6rem;
+  min-width: 0;
+  min-height: 3.05rem;
   justify-content: space-between;
   gap: 0.5rem;
   border: 1px solid var(--border);
@@ -351,6 +431,7 @@ h2 {
   color: var(--muted);
   font-family: "Fira Mono", Menlo, Consolas, monospace;
   font-size: 0.72rem;
+  white-space: nowrap;
 }
 
 .hud-stats dd {
@@ -366,6 +447,7 @@ h2 {
 
 .hud-actions {
   gap: 0.45rem;
+  justify-content: end;
 }
 
 .objective-panel {
@@ -385,6 +467,10 @@ h2 {
   border: 1px solid var(--green);
   background: color-mix(in srgb, var(--green) 18%, var(--surface));
   padding: 1rem;
+}
+
+.completion-panel.level-complete-pop {
+  animation: completion-rise 340ms ease-out both;
 }
 
 .sr-only {
@@ -460,7 +546,7 @@ h2 {
 .stat-card svg {
   width: 1rem;
   height: 1rem;
-  color: var(--cyan);
+  color: var(--blue);
 }
 
 .stat-card span {
@@ -502,6 +588,122 @@ h2 {
   }
 }
 
+@keyframes screen-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.35rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes panel-slide {
+  from {
+    opacity: 0;
+    transform: translateX(0.5rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes title-pulse {
+  0%,
+  100% {
+    border-color: var(--blue);
+  }
+
+  50% {
+    border-color: var(--purple);
+  }
+}
+
+@keyframes player-step {
+  0% {
+    transform: scale(0.92);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes key-pop {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.18);
+    border-color: var(--green);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes portal-blink {
+  0% {
+    opacity: 0.35;
+    transform: scale(0.75);
+  }
+
+  60% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes completion-rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes portal-spin {
+  to {
+    filter: hue-rotate(360deg);
+  }
+}
+
+@keyframes key-glow {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+@keyframes exit-breathe {
+  0%,
+  100% {
+    filter: saturate(1);
+  }
+
+  50% {
+    filter: saturate(1.35);
+  }
+}
+
 .game-board {
   display: grid;
   gap: clamp(0.18rem, 0.8vw, 0.4rem);
@@ -512,6 +714,7 @@ h2 {
   border: 1px solid var(--border);
   background: var(--surface);
   padding: clamp(0.45rem, 1.8vw, 0.75rem);
+  transition: border-color 160ms ease;
 }
 
 .board-tile {
@@ -522,6 +725,10 @@ h2 {
   place-items: center;
   border: 1px solid var(--border);
   background: var(--surface-strong);
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    transform 180ms ease;
 }
 
 .direction-controls {
@@ -549,6 +756,7 @@ h2 {
 .direction-button:hover {
   border-color: var(--blue);
   color: var(--blue);
+  transform: translateY(-1px);
 }
 
 .direction-button svg {
@@ -586,11 +794,13 @@ h2 {
 .tile-exit {
   border-color: var(--green);
   background: radial-gradient(circle, rgba(172, 209, 87, 0.75), rgba(24, 63, 46, 0.8));
+  animation: exit-breathe 1800ms ease-in-out infinite;
 }
 
 .tile-key {
   border-color: var(--yellow);
   background: radial-gradient(circle at 60% 35%, var(--yellow), #4d3800);
+  animation: key-glow 1800ms ease-in-out infinite;
 }
 
 .tile-door {
@@ -626,6 +836,7 @@ h2 {
 .tile-portal {
   border-color: var(--purple);
   background: conic-gradient(from 45deg, var(--purple), var(--blue), var(--purple));
+  animation: portal-spin 2400ms linear infinite;
 }
 
 .tile-portal.portal-pair-1 {
@@ -702,6 +913,7 @@ h2 {
   border: 2px solid var(--yellow);
   background: var(--background);
   color: var(--yellow);
+  transition: transform 160ms ease;
 }
 
 .player-avatar svg {
@@ -739,11 +951,17 @@ h2 {
   color: var(--text);
   padding: 0.85rem;
   text-align: left;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
 }
 
 .level-card:hover:not(:disabled) {
   border-color: var(--blue);
   color: var(--text);
+  transform: translateY(-2px);
 }
 
 .level-card.locked {
@@ -753,6 +971,9 @@ h2 {
 
 .level-card.completed {
   border-color: color-mix(in srgb, var(--green) 68%, var(--border));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--green) 10%, transparent), transparent 48%),
+    color-mix(in srgb, var(--surface-strong) 90%, transparent);
 }
 
 .level-card-header,
@@ -791,6 +1012,26 @@ h2 {
   width: 1.1rem;
   height: 1.1rem;
   color: var(--green);
+}
+
+.level-status {
+  width: fit-content;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--muted);
+  padding: 0.1rem 0.35rem;
+  font-family: "Fira Mono", Menlo, Consolas, monospace;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+}
+
+.level-card.completed .level-status {
+  border-color: color-mix(in srgb, var(--green) 60%, var(--border));
+  color: var(--green);
+}
+
+.level-card.locked .level-status {
+  color: var(--dim);
 }
 
 .level-card.locked .level-state svg {
@@ -856,6 +1097,28 @@ h2 {
 .level-stars .star-filled {
   color: var(--yellow);
   fill: currentcolor;
+}
+
+.empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 0.65rem;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  color: var(--muted);
+  padding: 2rem;
+  text-align: center;
+}
+
+.empty-state svg {
+  width: 2rem;
+  height: 2rem;
+  color: var(--blue);
+}
+
+.empty-state h3,
+.empty-state p {
+  margin: 0;
 }
 
 .dialog-backdrop {
@@ -964,8 +1227,13 @@ h2 {
     grid-template-columns: 1fr;
   }
 
+  .brand-lockup {
+    min-height: auto;
+  }
+
   .game-hud {
     grid-template-columns: 1fr;
+    position: static;
   }
 
   .hud-stats,
