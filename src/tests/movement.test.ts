@@ -177,6 +177,17 @@ describe('movement logic', () => {
     expect(result.playerPosition).toEqual(start.playerPosition);
   });
 
+  it('does not move out of bounds', () => {
+    const start = {
+      ...createInitialGameState(movementLevel),
+      playerPosition: { x: 0, y: 0 },
+    };
+    const result = movePlayer(movementLevel, start, 'left');
+
+    expect(result.playerPosition).toEqual({ x: 0, y: 0 });
+    expect(result.moves).toBe(0);
+  });
+
   it('does not increment moves for invalid movement', () => {
     const start = createInitialGameState(wallLevel);
     const result = movePlayer(wallLevel, start, 'up');
@@ -229,6 +240,19 @@ describe('movement logic', () => {
     expect(getEffectiveTileAt(keyDoorLevel, result, { x: 2, y: 0 })).toBe('floor');
   });
 
+  it('linked open doors do not consume keys', () => {
+    const start = {
+      ...createInitialGameState(switchLevel),
+      activeSwitchIds: ['switch-a'],
+      collectedKeys: 1,
+      playerPosition: { x: 1, y: 1 },
+    };
+    const result = movePlayer(switchLevel, start, 'right');
+
+    expect(result.playerPosition).toEqual({ x: 2, y: 1 });
+    expect(result.collectedKeys).toBe(1);
+  });
+
   it('undo can restore door and key state from the history snapshot', () => {
     const start = createInitialGameState(keyDoorLevel);
     const withKey = movePlayer(keyDoorLevel, start, 'right');
@@ -272,6 +296,18 @@ describe('movement logic', () => {
 
     expect(result.playerPosition).toEqual({ x: 1, y: 0 });
     expect(result.pushBlocks).toEqual([{ x: 2, y: 0 }]);
+  });
+
+  it('does not push a block out of bounds', () => {
+    const start = {
+      ...createInitialGameState(pushBlockLevel),
+      playerPosition: { x: 2, y: 2 },
+      pushBlocks: [{ x: 3, y: 2 }],
+    };
+    const result = movePlayer(pushBlockLevel, start, 'right');
+
+    expect(result.playerPosition).toEqual({ x: 2, y: 2 });
+    expect(result.pushBlocks).toEqual([{ x: 3, y: 2 }]);
   });
 
   it('does not push two blocks at once', () => {
@@ -483,6 +519,20 @@ describe('movement logic', () => {
     };
 
     expect(calculateStars(movementLevel, state)).toBe(1);
+  });
+
+  it('completed and failed states ignore further movement', () => {
+    const completeState = {
+      ...createInitialGameState(movementLevel),
+      isComplete: true,
+    };
+    const failedState = {
+      ...createInitialGameState(movementLevel),
+      isFailed: true,
+    };
+
+    expect(movePlayer(movementLevel, completeState, 'right')).toBe(completeState);
+    expect(movePlayer(movementLevel, failedState, 'right')).toBe(failedState);
   });
 
   it('completion under target moves gives two stars', () => {
