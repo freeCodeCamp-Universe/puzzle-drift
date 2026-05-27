@@ -38,6 +38,45 @@ const keyDoorLevel: Level = {
   playerStart: { x: 0, y: 0 },
 };
 
+const pushBlockLevel: Level = {
+  ...movementLevel,
+  grid: [
+    ['floor', 'pushBlock', 'floor', 'wall'],
+    ['floor', 'floor', 'floor', 'floor'],
+    ['floor', 'floor', 'floor', 'floor'],
+  ],
+  height: 3,
+  playerStart: { x: 0, y: 0 },
+  width: 4,
+};
+
+const twoBlockLevel: Level = {
+  ...pushBlockLevel,
+  grid: [
+    ['floor', 'pushBlock', 'pushBlock', 'floor'],
+    ['floor', 'floor', 'floor', 'floor'],
+    ['floor', 'floor', 'floor', 'floor'],
+  ],
+};
+
+const pressurePlateLevel: Level = {
+  ...movementLevel,
+  grid: [
+    ['floor', 'pushBlock', 'pressurePlate', 'door'],
+    ['floor', 'pressurePlate', 'floor', 'floor'],
+    ['floor', 'floor', 'floor', 'floor'],
+  ],
+  height: 3,
+  links: [{ sourceId: 'plate-b', targetId: 'door-a' }],
+  playerStart: { x: 0, y: 0 },
+  tileIds: {
+    '2,0': 'plate-a',
+    '3,0': 'door-a',
+    '1,1': 'plate-b',
+  },
+  width: 4,
+};
+
 describe('movement logic', () => {
   it('moves the player up, down, left, and right', () => {
     const start = createInitialGameState(movementLevel);
@@ -129,5 +168,73 @@ describe('movement logic', () => {
     expect(getEffectiveTileAt(keyDoorLevel, openedDoor, { x: 2, y: 0 })).toBe('floor');
     expect(getEffectiveTileAt(keyDoorLevel, resetState, { x: 1, y: 0 })).toBe('key');
     expect(getEffectiveTileAt(keyDoorLevel, resetState, { x: 2, y: 0 })).toBe('door');
+  });
+
+  it('pushes one block into empty floor', () => {
+    const start = createInitialGameState(pushBlockLevel);
+    const result = movePlayer(pushBlockLevel, start, 'right');
+
+    expect(result.playerPosition).toEqual({ x: 1, y: 0 });
+    expect(result.pushBlocks).toEqual([{ x: 2, y: 0 }]);
+    expect(getEffectiveTileAt(pushBlockLevel, result, { x: 2, y: 0 })).toBe('pushBlock');
+  });
+
+  it('does not push a block into a wall', () => {
+    const start = {
+      ...createInitialGameState(pushBlockLevel),
+      playerPosition: { x: 1, y: 0 },
+      pushBlocks: [{ x: 2, y: 0 }],
+    };
+    const result = movePlayer(pushBlockLevel, start, 'right');
+
+    expect(result.playerPosition).toEqual({ x: 1, y: 0 });
+    expect(result.pushBlocks).toEqual([{ x: 2, y: 0 }]);
+  });
+
+  it('does not push two blocks at once', () => {
+    const start = createInitialGameState(twoBlockLevel);
+    const result = movePlayer(twoBlockLevel, start, 'right');
+
+    expect(result.playerPosition).toEqual({ x: 0, y: 0 });
+    expect(result.pushBlocks).toEqual([
+      { x: 1, y: 0 },
+      { x: 2, y: 0 },
+    ]);
+  });
+
+  it('activates a pressure plate when a block is on it', () => {
+    const start = createInitialGameState(pressurePlateLevel);
+    const result = movePlayer(pressurePlateLevel, start, 'right');
+
+    expect(result.pushBlocks).toEqual([{ x: 2, y: 0 }]);
+    expect(result.activePressurePlateIds).toContain('plate-a');
+  });
+
+  it('activates a pressure plate when the player is on it', () => {
+    const start = createInitialGameState(pressurePlateLevel);
+    const result = movePlayer(pressurePlateLevel, start, 'down');
+
+    expect(result.playerPosition).toEqual({ x: 0, y: 1 });
+    expect(movePlayer(pressurePlateLevel, result, 'right').activePressurePlateIds).toContain('plate-b');
+  });
+
+  it('opens and closes a linked door based on pressure plate activity', () => {
+    const start = createInitialGameState(pressurePlateLevel);
+    const movedDown = movePlayer(pressurePlateLevel, start, 'down');
+    const active = movePlayer(pressurePlateLevel, movedDown, 'right');
+    const inactive = movePlayer(pressurePlateLevel, active, 'right');
+
+    expect(getEffectiveTileAt(pressurePlateLevel, active, { x: 3, y: 0 })).toBe('floor');
+    expect(getEffectiveTileAt(pressurePlateLevel, inactive, { x: 3, y: 0 })).toBe('door');
+  });
+
+  it('undo restores block and pressure plate state from the history snapshot', () => {
+    const start = createInitialGameState(pressurePlateLevel);
+    const active = movePlayer(pressurePlateLevel, start, 'right');
+    const undoSnapshot = start;
+
+    expect(active.activePressurePlateIds).toContain('plate-a');
+    expect(undoSnapshot.pushBlocks).toEqual([{ x: 1, y: 0 }]);
+    expect(undoSnapshot.activePressurePlateIds).toEqual([]);
   });
 });

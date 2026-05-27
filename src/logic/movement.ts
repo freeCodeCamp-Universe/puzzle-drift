@@ -8,13 +8,66 @@ const DIRECTION_OFFSETS: Record<Direction, Position> = {
 };
 
 const WALKABLE_TILES = new Set<TileType>(['floor', 'exit']);
+const BLOCK_PUSH_TARGETS = new Set<TileType>(['floor', 'pressurePlate']);
 
 function positionsMatch(first: Position, second: Position) {
   return first.x === second.x && first.y === second.y;
 }
 
+function positionKey(position: Position) {
+  return `${position.x},${position.y}`;
+}
+
+function getTileId(level: Level, position: Position) {
+  return level.tileIds?.[positionKey(position)];
+}
+
+function hasBlockAt(state: GameState, position: Position) {
+  return state.pushBlocks.some((block) => positionsMatch(block, position));
+}
+
+function getInitialPushBlocks(level: Level) {
+  return level.grid.flatMap((row, y) =>
+    row.flatMap((tile, x) => (tile === 'pushBlock' ? [{ x, y }] : [])),
+  );
+}
+
+export function getActivePressurePlateIds(level: Level, state: GameState) {
+  return level.grid.flatMap((row, y) =>
+    row.flatMap((tile, x) => {
+      if (tile !== 'pressurePlate') {
+        return [];
+      }
+
+      const position = { x, y };
+      const id = getTileId(level, position);
+      const isActive =
+        positionsMatch(state.playerPosition, position) ||
+        state.pushBlocks.some((block) => positionsMatch(block, position));
+
+      return id && isActive ? [id] : [];
+    }),
+  );
+}
+
+function isLinkedDoorOpen(level: Level, state: GameState, position: Position) {
+  const targetId = getTileId(level, position);
+
+  return Boolean(
+    targetId &&
+      level.links?.some(
+        (link) => link.targetId === targetId && getActivePressurePlateIds(level, state).includes(link.sourceId),
+      ),
+  );
+}
+
+function setBlockPosition(state: GameState, from: Position, to: Position) {
+  return state.pushBlocks.map((block) => (positionsMatch(block, from) ? to : block));
+}
+
 export function createInitialGameState(level: Level): GameState {
-  return {
+  const initialState: GameState = {
+    activePressurePlateIds: [],
     activatedSwitches: [],
     collectedKeys: 0,
     collectedKeyPositions: [],
@@ -26,7 +79,12 @@ export function createInitialGameState(level: Level): GameState {
     moves: 0,
     openedDoorPositions: [],
     playerPosition: { ...level.playerStart },
-    pushBlocks: [],
+    pushBlocks: getInitialPushBlocks(level),
+  };
+
+  return {
+    ...initialState,
+    activePressurePlateIds: getActivePressurePlateIds(level, initialState),
   };
 }
 
@@ -73,11 +131,23 @@ export function getEffectiveTileAt(level: Level, state: GameState, position: Pos
     return null;
   }
 
+  if (hasBlockAt(state, position)) {
+    return 'pushBlock';
+  }
+
+  if (tile === 'pushBlock') {
+    return 'floor';
+  }
+
   if (tile === 'key' && state.collectedKeyPositions.some((keyPosition) => positionsMatch(keyPosition, position))) {
     return 'floor';
   }
 
-  if (tile === 'door' && state.openedDoorPositions.some((doorPosition) => positionsMatch(doorPosition, position))) {
+  if (
+    tile === 'door' &&
+    (state.openedDoorPositions.some((doorPosition) => positionsMatch(doorPosition, position)) ||
+      isLinkedDoorOpen(level, state, position))
+  ) {
     return 'floor';
   }
 
@@ -87,7 +157,13 @@ export function getEffectiveTileAt(level: Level, state: GameState, position: Pos
 export function canMoveTo(level: Level, state: GameState, position: Position) {
   const tile = getEffectiveTileAt(level, state, position);
 
-  return tile !== null && (WALKABLE_TILES.has(tile) || tile === 'key' || (tile === 'door' && state.collectedKeys > 0));
+  return (
+    tile !== null &&
+    (WALKABLE_TILES.has(tile) ||
+      tile === 'key' ||
+      tile === 'pressurePlate' ||
+      (tile === 'door' && (state.collectedKeys > 0 || isLinkedDoorOpen(level, state, position))))
+  );
 }
 
 export function movePlayer(level: Level, state: GameState, direction: Direction): GameState {
@@ -98,6 +174,37 @@ export function movePlayer(level: Level, state: GameState, direction: Direction)
   const nextPosition = getNextPosition(state.playerPosition, direction);
   const nextTile = getEffectiveTileAt(level, state, nextPosition);
 
+  if (nextTile === 'pushBlock') {
+    const blockDestination = getNextPosition(nextPosition, direction);
+    const blockDestinationTile = getEffectiveTileAt(level, state, blockDestination);
+    const blockDestinationBaseTile = getTileAt(level, blockDestination);
+
+    if (
+      !blockDestinationTile ||
+      !blockDestinationBaseTile ||
+      !BLOCK_PUSH_TARGETS.has(blockDestinationTile) ||
+      !BLOCK_PUSH_TARGETS.has(blockDestinationBaseTile)
+    ) {
+      return {
+        ...state,
+        facing: direction,
+      };
+    }
+
+    const nextState = {
+      ...state,
+      facing: direction,
+      moves: state.moves + 1,
+      playerPosition: nextPosition,
+      pushBlocks: setBlockPosition(state, nextPosition, blockDestination),
+    };
+
+    return {
+      ...nextState,
+      activePressurePlateIds: getActivePressurePlateIds(level, nextState),
+    };
+  }
+
   if (!nextTile || !canMoveTo(level, state, nextPosition)) {
     return {
       ...state,
@@ -107,18 +214,24 @@ export function movePlayer(level: Level, state: GameState, direction: Direction)
 
   const collectsKey = nextTile === 'key';
   const opensDoor = nextTile === 'door';
+  const opensLinkedDoor = opensDoor && isLinkedDoorOpen(level, state, nextPosition);
 
-  return {
+  const nextState = {
     ...state,
-    collectedKeys: state.collectedKeys + (collectsKey ? 1 : 0) - (opensDoor ? 1 : 0),
+    collectedKeys: state.collectedKeys + (collectsKey ? 1 : 0) - (opensDoor && !opensLinkedDoor ? 1 : 0),
     collectedKeyPositions: collectsKey
       ? [...state.collectedKeyPositions, nextPosition]
       : state.collectedKeyPositions,
     facing: direction,
     isComplete: nextTile === 'exit',
     moves: state.moves + 1,
-    openedDoorPositions: opensDoor ? [...state.openedDoorPositions, nextPosition] : state.openedDoorPositions,
+    openedDoorPositions: opensDoor && !opensLinkedDoor ? [...state.openedDoorPositions, nextPosition] : state.openedDoorPositions,
     playerPosition: nextPosition,
+  };
+
+  return {
+    ...nextState,
+    activePressurePlateIds: getActivePressurePlateIds(level, nextState),
   };
 }
 

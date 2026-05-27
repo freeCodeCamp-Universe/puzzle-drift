@@ -377,6 +377,11 @@ h2 {
   background: linear-gradient(135deg, #3b2357, #17172e);
 }
 
+.tile-pressurePlate.tile-active {
+  border-color: var(--green);
+  background: radial-gradient(circle, rgba(172, 209, 87, 0.65), #23381d);
+}
+
 .tile-pushBlock {
   border-color: var(--muted);
   background: linear-gradient(135deg, #858591, #3b3b4f);

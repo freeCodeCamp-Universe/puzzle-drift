@@ -82,6 +82,12 @@ export function GameBoard({
             </dt>
             <dd aria-label={`${gameState.collectedKeys} keys`}>{gameState.collectedKeys}</dd>
           </div>
+          <div>
+            <dt>Plates</dt>
+            <dd aria-label={`${gameState.activePressurePlateIds.length} active plates`}>
+              {gameState.activePressurePlateIds.length}
+            </dd>
+          </div>
         </dl>
 
         <div className="hud-actions" aria-label="Game controls">
@@ -126,7 +132,12 @@ export function GameBoard({
             return (
               <div
                 aria-label={`${TILE_LABELS[effectiveTile]} at ${x}, ${y}`}
-                className={`board-tile tile-${effectiveTile}`}
+                className={`board-tile tile-${effectiveTile}${
+                  effectiveTile === 'pressurePlate' &&
+                  gameState.activePressurePlateIds.includes(level.tileIds?.[`${x},${y}`] ?? '')
+                    ? ' tile-active'
+                    : ''
+                }`}
                 data-testid="board-tile"
                 key={`${x}-${y}`}
                 role="gridcell"

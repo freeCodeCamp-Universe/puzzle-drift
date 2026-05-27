@@ -33,10 +33,17 @@ export type Level = {
   width: number;
   height: number;
   grid: TileType[][];
+  tileIds?: Record<string, string>;
+  links?: LevelLink[];
   playerStart: Position;
   targetMoves: number;
   targetTimeSeconds: number;
   mechanics: TileType[];
+};
+
+export type LevelLink = {
+  sourceId: string;
+  targetId: string;
 };
 
 export type GameState = {
@@ -49,6 +56,7 @@ export type GameState = {
   collectedKeyPositions: Position[];
   openedDoorPositions: Position[];
   activatedSwitches: Position[];
+  activePressurePlateIds: string[];
   pushBlocks: Position[];
   isComplete: boolean;
   isFailed: boolean;
