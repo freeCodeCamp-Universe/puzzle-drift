@@ -1,9 +1,12 @@
 import { ArrowLeft, CircleCheck, Sparkles } from 'lucide-react';
+import { LEVELS } from '../data/levels';
+import { GameBoard } from './GameBoard';
 
 type GameScreenProps = {
   currentLevel: number;
   onBack: () => void;
   onCompleteLevel: () => void;
+  onLevelSelect: () => void;
   onMarkActive: () => void;
 };
 
@@ -11,8 +14,11 @@ export function GameScreen({
   currentLevel,
   onBack,
   onCompleteLevel,
+  onLevelSelect,
   onMarkActive,
 }: GameScreenProps) {
+  const level = LEVELS.find((candidate) => candidate.id === currentLevel) ?? LEVELS[0];
+
   return (
     <section className="screen game-screen" aria-labelledby="game-screen-title">
       <header className="screen-header">
@@ -21,15 +27,19 @@ export function GameScreen({
         </button>
         <div>
           <p className="eyebrow">current drift</p>
-          <h2 id="game-screen-title">Level {currentLevel}</h2>
+          <h2 id="game-screen-title">Level {level.id}</h2>
         </div>
       </header>
 
-      <div className="game-board-placeholder" role="img" aria-label="Puzzle grid placeholder">
-        {Array.from({ length: 25 }, (_, index) => (
-          <span key={index} className={index % 4 === 0 ? 'tile hot' : 'tile'} />
-        ))}
-      </div>
+      <GameBoard
+        elapsedSeconds={0}
+        level={level}
+        moves={0}
+        onLevelSelect={onLevelSelect}
+        onPause={() => undefined}
+        onReset={() => undefined}
+        onUndo={() => undefined}
+      />
 
       <button type="button" className="menu-button compact" onClick={onMarkActive}>
         <Sparkles aria-hidden="true" />

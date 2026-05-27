@@ -46,6 +46,7 @@ export function App() {
             stars: 3,
             timeSeconds: 24 + save.currentLevel,
           }))}
+          onLevelSelect={() => setView('levels')}
           onMarkActive={() => setSave({ ...save, hasActiveRun: true })}
         />
       )}

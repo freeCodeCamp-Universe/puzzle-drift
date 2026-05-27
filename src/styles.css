@@ -212,27 +212,215 @@ h2 {
   gap: 1rem;
 }
 
-.game-board-placeholder {
+.game-board-shell {
   display: grid;
-  aspect-ratio: 1;
-  width: min(100%, 26rem);
-  grid-template-columns: repeat(5, 1fr);
+  gap: 1rem;
+}
+
+.game-hud {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) auto auto;
+  align-items: center;
+  gap: 1rem;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  padding: 0.85rem;
+}
+
+.game-hud-title {
+  min-width: 0;
+}
+
+.game-hud-title h2 {
+  overflow-wrap: anywhere;
+}
+
+.hud-stats,
+.hud-stats div,
+.hud-actions {
+  display: flex;
+  align-items: center;
+}
+
+.hud-stats {
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.hud-stats div {
+  min-width: 5.6rem;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border: 1px solid var(--border);
+  background: var(--background);
+  padding: 0.45rem 0.55rem;
+}
+
+.hud-stats dt,
+.hud-stats dd {
+  margin: 0;
+}
+
+.hud-stats dt {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--muted);
+  font-family: "Fira Mono", Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+}
+
+.hud-stats dd {
+  color: var(--yellow);
+  font-family: "Fira Mono", Menlo, Consolas, monospace;
+  font-weight: 700;
+}
+
+.hud-stats svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.hud-actions {
   gap: 0.45rem;
+}
+
+.objective-panel {
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-strong) 82%, transparent);
+  padding: 0.85rem;
+}
+
+.objective-panel p:last-child {
+  margin: 0;
+  color: var(--muted);
+}
+
+.game-board {
+  display: grid;
+  gap: clamp(0.18rem, 0.8vw, 0.4rem);
+  width: min(100%, 35rem);
   justify-self: center;
   border: 1px solid var(--border);
   background: var(--surface);
-  padding: 0.75rem;
+  padding: clamp(0.45rem, 1.8vw, 0.75rem);
 }
 
-.tile {
+.board-tile {
+  position: relative;
+  display: grid;
+  aspect-ratio: 1;
   min-width: 0;
+  place-items: center;
   border: 1px solid var(--border);
-  background: linear-gradient(135deg, var(--surface-strong), #10102a);
+  background: var(--surface-strong);
 }
 
-.tile.hot {
+.tile-floor {
+  background: linear-gradient(135deg, #202038, #15152c);
+}
+
+.tile-wall {
+  border-color: #858591;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 45%),
+    #3b3b4f;
+}
+
+.tile-exit {
+  border-color: var(--green);
+  background: radial-gradient(circle, rgba(172, 209, 87, 0.75), rgba(24, 63, 46, 0.8));
+}
+
+.tile-key {
+  border-color: var(--yellow);
+  background: radial-gradient(circle at 60% 35%, var(--yellow), #4d3800);
+}
+
+.tile-door {
+  border-color: var(--yellow);
+  background: linear-gradient(90deg, #4d3800, #8d6a14 48%, #4d3800);
+}
+
+.tile-switch {
+  border-color: var(--blue);
+  background: radial-gradient(circle, var(--blue), #15375c);
+}
+
+.tile-pressurePlate {
   border-color: var(--purple);
-  background: linear-gradient(135deg, rgba(219, 184, 255, 0.8), rgba(153, 201, 255, 0.4));
+  background: linear-gradient(135deg, #3b2357, #17172e);
+}
+
+.tile-pushBlock {
+  border-color: var(--muted);
+  background: linear-gradient(135deg, #858591, #3b3b4f);
+}
+
+.tile-portal {
+  border-color: var(--purple);
+  background: conic-gradient(from 45deg, var(--purple), var(--blue), var(--purple));
+}
+
+.tile-spike {
+  border-color: var(--red);
+  background: linear-gradient(135deg, #5a1f2b, #1b1b32);
+}
+
+.tile-spike::before {
+  width: 58%;
+  height: 58%;
+  background: var(--red);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  content: "";
+}
+
+.tile-ice {
+  border-color: var(--blue);
+  background: linear-gradient(135deg, rgba(153, 201, 255, 0.75), rgba(219, 184, 255, 0.35));
+}
+
+.tile-cracked {
+  background: linear-gradient(135deg, #2a2a40 45%, #858591 48%, #2a2a40 52%);
+}
+
+.tile-fog {
+  background: color-mix(in srgb, var(--dim) 55%, var(--surface));
+}
+
+.tile-oneWay {
+  background: linear-gradient(90deg, var(--surface-strong), #15375c);
+}
+
+.tile-mirror {
+  border-color: var(--blue);
+  background: linear-gradient(135deg, #f5f6f7, #99c9ff 45%, #2a2a40 48%);
+}
+
+.tile-laserEmitter {
+  border-color: var(--red);
+  background: radial-gradient(circle, var(--red), #5a1f2b);
+}
+
+.tile-laserReceiver {
+  border-color: var(--green);
+  background: radial-gradient(circle, var(--green), #263f1b);
+}
+
+.player-avatar {
+  position: absolute;
+  inset: 14%;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--yellow);
+  background: var(--background);
+  color: var(--yellow);
+}
+
+.player-avatar svg {
+  width: 70%;
+  height: 70%;
 }
 
 .placeholder-panel {
@@ -432,6 +620,33 @@ h2 {
 
   .start-screen {
     grid-template-columns: 1fr;
+  }
+
+  .game-hud {
+    grid-template-columns: 1fr;
+  }
+
+  .hud-stats,
+  .hud-actions {
+    justify-content: stretch;
+  }
+
+  .hud-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hud-stats div {
+    min-width: 0;
+  }
+
+  .hud-actions {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .hud-actions .icon-button {
+    width: 100%;
   }
 
   .level-card-grid {
