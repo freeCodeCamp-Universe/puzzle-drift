@@ -14,6 +14,7 @@ describe('GameBoard', () => {
       <GameBoard
         elapsedSeconds={0}
         gameState={gameState}
+        hazardFlash={false}
         level={level}
         moves={0}
         onLevelSelect={noop}
@@ -32,6 +33,7 @@ describe('GameBoard', () => {
       <GameBoard
         elapsedSeconds={0}
         gameState={gameState}
+        hazardFlash={false}
         level={level}
         moves={0}
         onLevelSelect={noop}
@@ -52,6 +54,7 @@ describe('GameBoard', () => {
       <GameBoard
         elapsedSeconds={75}
         gameState={gameState}
+        hazardFlash={false}
         level={level}
         moves={8}
         onLevelSelect={noop}

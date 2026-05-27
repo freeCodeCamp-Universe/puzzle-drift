@@ -7,6 +7,7 @@ type GameBoardProps = {
   moves: number;
   elapsedSeconds: number;
   gameState: GameState;
+  hazardFlash: boolean;
   playerPosition: Position;
   onLevelSelect: () => void;
   onPause: () => void;
@@ -46,6 +47,7 @@ export function GameBoard({
   moves,
   elapsedSeconds,
   gameState,
+  hazardFlash,
   playerPosition,
   onLevelSelect,
   onPause,
@@ -53,7 +55,11 @@ export function GameBoard({
   onUndo,
 }: GameBoardProps) {
   return (
-    <section className="game-board-shell" aria-labelledby="game-board-title">
+    <section
+      className={`game-board-shell${hazardFlash ? ' hazard-flash' : ''}`}
+      aria-labelledby="game-board-title"
+      data-testid="game-board-shell"
+    >
       <header className="game-hud">
         <div className="game-hud-title">
           <p className="eyebrow">level {level.id}</p>

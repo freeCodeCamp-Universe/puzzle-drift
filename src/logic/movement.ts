@@ -170,6 +170,7 @@ export function canMoveTo(level: Level, state: GameState, position: Position) {
     (WALKABLE_TILES.has(tile) ||
       tile === 'key' ||
       tile === 'pressurePlate' ||
+      tile === 'spike' ||
       tile === 'switch' ||
       (tile === 'door' && (state.collectedKeys > 0 || isLinkedDoorOpen(level, state, position))))
   );
@@ -225,6 +226,7 @@ export function movePlayer(level: Level, state: GameState, direction: Direction)
   const opensDoor = nextTile === 'door';
   const opensLinkedDoor = opensDoor && isLinkedDoorOpen(level, state, nextPosition);
   const switchId = nextTile === 'switch' ? getTileId(level, nextPosition) : undefined;
+  const hitsSpike = nextTile === 'spike';
 
   const nextState = {
     ...state,
@@ -239,7 +241,8 @@ export function movePlayer(level: Level, state: GameState, direction: Direction)
       ? [...state.collectedKeyPositions, nextPosition]
       : state.collectedKeyPositions,
     facing: direction,
-    isComplete: nextTile === 'exit',
+    isComplete: nextTile === 'exit' && !hitsSpike,
+    isFailed: hitsSpike,
     moves: state.moves + 1,
     openedDoorPositions: opensDoor && !opensLinkedDoor ? [...state.openedDoorPositions, nextPosition] : state.openedDoorPositions,
     playerPosition: nextPosition,

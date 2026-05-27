@@ -31,6 +31,17 @@ async function openLevel3() {
   return user;
 }
 
+async function openLevel6() {
+  const user = userEvent.setup();
+  unlockThroughLevel(6);
+  render(<App />);
+
+  await user.click(screen.getByRole('button', { name: /level select/i }));
+  await user.click(screen.getByRole('button', { name: 'Level 6: Spike Lane' }));
+
+  return user;
+}
+
 describe('App', () => {
   beforeEach(() => {
     resetAppStorage();
@@ -257,5 +268,62 @@ describe('App', () => {
     expect(screen.getByLabelText('0 keys')).toBeInTheDocument();
     expect(screen.getByLabelText('Key at 3, 1')).toBeInTheDocument();
     expect(screen.getByLabelText('Door at 5, 3')).toBeInTheDocument();
+  });
+
+  it('stepping on a spike resets player position and move count', async () => {
+    await openLevel6();
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+
+    expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
+    expect(screen.getByLabelText('0 moves')).toBeInTheDocument();
+  });
+
+  it('stepping on a spike does not complete the level', async () => {
+    await openLevel6();
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+
+    expect(screen.queryByText(/drift cleared/i)).not.toBeInTheDocument();
+  });
+
+  it('undo history clears after spike reset', async () => {
+    const user = await openLevel6();
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    await user.click(screen.getByRole('button', { name: /undo move/i }));
+
+    expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
+    expect(screen.getByLabelText('0 moves')).toBeInTheDocument();
+  });
+
+  it('shows hazard animation after spike unless reduced motion is enabled', async () => {
+    await openLevel6();
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+
+    expect(screen.getByTestId('game-board-shell')).toHaveClass('hazard-flash');
+  });
+
+  it('reduced motion disables hazard animation class', async () => {
+    window.localStorage.setItem(
+      'puzzle-drift:settings',
+      JSON.stringify({
+        highContrast: false,
+        reducedMotion: true,
+        soundEnabled: true,
+      }),
+    );
+
+    await openLevel6();
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+
+    expect(screen.getByTestId('game-board-shell')).not.toHaveClass('hazard-flash');
   });
 });

@@ -217,6 +217,29 @@ h2 {
   gap: 1rem;
 }
 
+.game-board-shell.hazard-flash {
+  animation: hazard-shake 240ms ease-in-out;
+}
+
+@keyframes hazard-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-0.35rem);
+  }
+
+  50% {
+    transform: translateX(0.35rem);
+  }
+
+  75% {
+    transform: translateX(-0.18rem);
+  }
+}
+
 .game-hud {
   display: grid;
   grid-template-columns: minmax(12rem, 1fr) auto auto;

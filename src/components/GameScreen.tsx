@@ -18,6 +18,7 @@ type GameScreenProps = {
   onLevelSelect: () => void;
   onMarkActive: () => void;
   onSettings: () => void;
+  reducedMotion: boolean;
 };
 
 export function GameScreen({
@@ -27,16 +28,19 @@ export function GameScreen({
   onLevelSelect,
   onMarkActive,
   onSettings,
+  reducedMotion,
 }: GameScreenProps) {
   const level = LEVELS.find((candidate) => candidate.id === currentLevel) ?? LEVELS[0];
   const [gameState, setGameState] = useState<GameState>(() => createInitialGameState(level));
   const [, setHistory] = useState<GameState[]>([]);
+  const [hazardFlashCount, setHazardFlashCount] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const savedCompletionRef = useRef(false);
 
   useEffect(() => {
     setGameState(createInitialGameState(level));
     setHistory([]);
+    setHazardFlashCount(0);
     setIsPaused(false);
     savedCompletionRef.current = false;
   }, [level]);
@@ -81,6 +85,14 @@ export function GameScreen({
       setGameState((currentState) => {
         const nextState = movePlayer(level, currentState, direction);
 
+        if (nextState.isFailed) {
+          setHistory([]);
+          setHazardFlashCount((currentCount) => currentCount + 1);
+          savedCompletionRef.current = false;
+
+          return createInitialGameState(level);
+        }
+
         if (nextState === currentState || nextState.moves === currentState.moves) {
           return nextState;
         }
@@ -99,6 +111,7 @@ export function GameScreen({
   const resetLevel = () => {
     setGameState(createInitialGameState(level));
     setHistory([]);
+    setHazardFlashCount(0);
     setIsPaused(false);
     savedCompletionRef.current = false;
   };
@@ -132,6 +145,7 @@ export function GameScreen({
       <GameBoard
         elapsedSeconds={gameState.elapsedSeconds}
         gameState={gameState}
+        hazardFlash={hazardFlashCount > 0 && !reducedMotion}
         level={level}
         moves={gameState.moves}
         onLevelSelect={onLevelSelect}
