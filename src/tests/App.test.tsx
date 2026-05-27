@@ -31,13 +31,13 @@ async function openLevel3() {
   return user;
 }
 
-async function openLevel6() {
+async function openSpikeLane() {
   const user = userEvent.setup();
-  unlockThroughLevel(6);
+  unlockThroughLevel(11);
   render(<App />);
 
   await user.click(screen.getByRole('button', { name: /level select/i }));
-  await user.click(screen.getByRole('button', { name: 'Level 6: Spike Lane' }));
+  await user.click(screen.getByRole('button', { name: 'Level 11: Spike Lane' }));
 
   return user;
 }
@@ -418,7 +418,7 @@ describe('App', () => {
   });
 
   it('stepping on a spike resets player position and move count', async () => {
-    await openLevel6();
+    await openSpikeLane();
 
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     fireEvent.keyDown(window, { key: 'ArrowDown' });
@@ -428,7 +428,7 @@ describe('App', () => {
   });
 
   it('stepping on a spike does not complete the level', async () => {
-    await openLevel6();
+    await openSpikeLane();
 
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     fireEvent.keyDown(window, { key: 'ArrowDown' });
@@ -437,7 +437,7 @@ describe('App', () => {
   });
 
   it('undo history clears after spike reset', async () => {
-    const user = await openLevel6();
+    const user = await openSpikeLane();
 
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     fireEvent.keyDown(window, { key: 'ArrowDown' });
@@ -448,7 +448,7 @@ describe('App', () => {
   });
 
   it('shows hazard animation after spike unless reduced motion is enabled', async () => {
-    await openLevel6();
+    await openSpikeLane();
 
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     fireEvent.keyDown(window, { key: 'ArrowDown' });
@@ -468,7 +468,7 @@ describe('App', () => {
       }),
     );
 
-    await openLevel6();
+    await openSpikeLane();
 
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     fireEvent.keyDown(window, { key: 'ArrowDown' });
