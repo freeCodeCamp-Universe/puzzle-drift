@@ -606,7 +606,8 @@ h2 {
   background: rgba(10, 10, 35, 0.85);
 }
 
-.settings-dialog {
+.settings-dialog,
+.pause-dialog {
   width: min(100%, 28rem);
   padding: 1rem;
 }
@@ -616,6 +617,11 @@ h2 {
   display: flex;
   align-items: center;
   gap: 0.6rem;
+}
+
+.pause-actions {
+  display: grid;
+  gap: 0.75rem;
 }
 
 .toggle-row {

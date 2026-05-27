@@ -1,12 +1,17 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act } from 'react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import { resetAppStorage } from './testStorage';
 
 describe('App', () => {
   beforeEach(() => {
     resetAppStorage();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('renders the app', () => {
@@ -106,5 +111,58 @@ describe('App', () => {
       expect(savedProgress.completedLevels).toContain(1);
       expect(savedProgress.unlockedLevels).toContain(2);
     });
+  });
+
+  it('reset restores player to the starting position and clears move count', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+
+    expect(screen.getByLabelText('Player at 2, 1')).toBeInTheDocument();
+    expect(screen.getByText('1')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /reset level/i }));
+
+    expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
+    expect(screen.getByText('0')).toBeInTheDocument();
+  });
+
+  it('undo restores previous player position and decrements move count', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+
+    expect(screen.getByLabelText('Player at 3, 1')).toBeInTheDocument();
+    expect(screen.getByText('2')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /undo move/i }));
+
+    expect(screen.getByLabelText('Player at 2, 1')).toBeInTheDocument();
+    expect(screen.getByText('1')).toBeInTheDocument();
+  });
+
+  it('pause stops timer updates', async () => {
+    vi.useFakeTimers();
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /new game/i }));
+
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(screen.getByText('0:02')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /pause game/i }));
+    expect(screen.getByRole('dialog', { name: /paused/i })).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+    expect(screen.getByText('0:02')).toBeInTheDocument();
   });
 });

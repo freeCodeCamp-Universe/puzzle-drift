@@ -44,6 +44,7 @@ export function App() {
           onCompleteLevel={(result) => setSave(completeLevel(save, save.currentLevel, result))}
           onLevelSelect={() => setView('levels')}
           onMarkActive={() => setSave({ ...save, hasActiveRun: true })}
+          onSettings={() => setIsSettingsOpen(true)}
         />
       )}
 

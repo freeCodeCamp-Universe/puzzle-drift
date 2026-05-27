@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, CircleCheck, Sparkles } from 'lucide-react';
+import { ArrowLeft, CircleCheck, ListOrdered, RotateCcw, Settings, Sparkles, Play } from 'lucide-react';
 import { LEVELS } from '../data/levels';
 import { calculateStars, createInitialGameState, getDirectionFromKey, movePlayer } from '../logic/movement';
 import type { GameState } from '../types/game';
@@ -17,6 +17,7 @@ type GameScreenProps = {
   onCompleteLevel: (payload: CompletionPayload) => void;
   onLevelSelect: () => void;
   onMarkActive: () => void;
+  onSettings: () => void;
 };
 
 export function GameScreen({
@@ -25,17 +26,35 @@ export function GameScreen({
   onCompleteLevel,
   onLevelSelect,
   onMarkActive,
+  onSettings,
 }: GameScreenProps) {
   const level = LEVELS.find((candidate) => candidate.id === currentLevel) ?? LEVELS[0];
   const [gameState, setGameState] = useState<GameState>(() => createInitialGameState(level));
   const [, setHistory] = useState<GameState[]>([]);
+  const [isPaused, setIsPaused] = useState(false);
   const savedCompletionRef = useRef(false);
 
   useEffect(() => {
     setGameState(createInitialGameState(level));
     setHistory([]);
+    setIsPaused(false);
     savedCompletionRef.current = false;
   }, [level]);
+
+  useEffect(() => {
+    if (isPaused || gameState.isComplete || gameState.isFailed) {
+      return undefined;
+    }
+
+    const timerId = window.setInterval(() => {
+      setGameState((currentState) => ({
+        ...currentState,
+        elapsedSeconds: currentState.elapsedSeconds + 1,
+      }));
+    }, 1000);
+
+    return () => window.clearInterval(timerId);
+  }, [gameState.isComplete, gameState.isFailed, isPaused]);
 
   useEffect(() => {
     if (!gameState.isComplete || savedCompletionRef.current) {
@@ -54,7 +73,7 @@ export function GameScreen({
     const handleKeyDown = (event: KeyboardEvent) => {
       const direction = getDirectionFromKey(event.key);
 
-      if (!direction) {
+      if (!direction || isPaused) {
         return;
       }
 
@@ -75,11 +94,12 @@ export function GameScreen({
     window.addEventListener('keydown', handleKeyDown);
 
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [level, onCompleteLevel]);
+  }, [isPaused, level]);
 
   const resetLevel = () => {
     setGameState(createInitialGameState(level));
     setHistory([]);
+    setIsPaused(false);
     savedCompletionRef.current = false;
   };
 
@@ -114,11 +134,43 @@ export function GameScreen({
         level={level}
         moves={gameState.moves}
         onLevelSelect={onLevelSelect}
-        onPause={() => undefined}
+        onPause={() => setIsPaused(true)}
         onReset={resetLevel}
         onUndo={undoMove}
         playerPosition={gameState.playerPosition}
       />
+
+      {isPaused ? (
+        <div className="dialog-backdrop" role="presentation">
+          <section className="pause-dialog" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+            <header className="dialog-header">
+              <div className="dialog-title">
+                <Play aria-hidden="true" />
+                <h2 id="pause-title">Paused</h2>
+              </div>
+            </header>
+
+            <div className="pause-actions">
+              <button type="button" className="menu-button primary" onClick={() => setIsPaused(false)}>
+                <Play aria-hidden="true" />
+                <span>Resume</span>
+              </button>
+              <button type="button" className="menu-button" onClick={resetLevel}>
+                <RotateCcw aria-hidden="true" />
+                <span>Restart Level</span>
+              </button>
+              <button type="button" className="menu-button" onClick={onLevelSelect}>
+                <ListOrdered aria-hidden="true" />
+                <span>Level Select</span>
+              </button>
+              <button type="button" className="menu-button" onClick={onSettings}>
+                <Settings aria-hidden="true" />
+                <span>Settings</span>
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       {gameState.isComplete ? (
         <section className="completion-panel" role="status" aria-live="polite">
