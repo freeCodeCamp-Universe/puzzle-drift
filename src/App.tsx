@@ -8,6 +8,7 @@ import { INITIAL_SAVE } from './data/initialSave';
 import type { AppView, GameSettings, SaveState } from './types/game';
 
 const INITIAL_SETTINGS: GameSettings = {
+  highContrast: false,
   reducedMotion: false,
   soundEnabled: true,
 };
