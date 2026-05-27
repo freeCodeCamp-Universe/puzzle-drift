@@ -333,12 +333,8 @@ export function movePlayer(level: Level, state: GameState, direction: Direction)
 }
 
 export function calculateStars(level: Level, state: GameState) {
-  if (state.moves <= level.targetMoves && state.elapsedSeconds <= level.targetTimeSeconds) {
-    return 3;
-  }
-
-  if (state.moves <= level.targetMoves * 1.5) {
-    return 2;
+  if (state.moves <= level.targetMoves) {
+    return state.elapsedSeconds <= level.targetTimeSeconds ? 3 : 2;
   }
 
   return 1;

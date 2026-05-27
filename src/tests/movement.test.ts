@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Level } from '../types/game';
-import { createInitialGameState, getEffectiveTileAt, movePlayer } from '../logic/movement';
+import { calculateStars, createInitialGameState, getEffectiveTileAt, movePlayer } from '../logic/movement';
 
 const movementLevel: Level = {
   description: 'Movement test level.',
@@ -472,5 +472,38 @@ describe('movement logic', () => {
 
     expect(result.playerPosition).toEqual({ x: 0, y: 2 });
     expect(undoSnapshot.playerPosition).toEqual({ x: 0, y: 0 });
+  });
+
+  it('completion gives at least one star', () => {
+    const state = {
+      ...createInitialGameState(movementLevel),
+      elapsedSeconds: 99,
+      isComplete: true,
+      moves: movementLevel.targetMoves + 1,
+    };
+
+    expect(calculateStars(movementLevel, state)).toBe(1);
+  });
+
+  it('completion under target moves gives two stars', () => {
+    const state = {
+      ...createInitialGameState(movementLevel),
+      elapsedSeconds: movementLevel.targetTimeSeconds + 1,
+      isComplete: true,
+      moves: movementLevel.targetMoves,
+    };
+
+    expect(calculateStars(movementLevel, state)).toBe(2);
+  });
+
+  it('completion under target moves and time gives three stars', () => {
+    const state = {
+      ...createInitialGameState(movementLevel),
+      elapsedSeconds: movementLevel.targetTimeSeconds,
+      isComplete: true,
+      moves: movementLevel.targetMoves,
+    };
+
+    expect(calculateStars(movementLevel, state)).toBe(3);
   });
 });

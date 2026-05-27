@@ -1,8 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, CircleCheck, ListOrdered, RotateCcw, Settings, Sparkles, Play } from 'lucide-react';
+import {
+  ArrowLeft,
+  CircleCheck,
+  Footprints,
+  ListOrdered,
+  Play,
+  RotateCcw,
+  Settings,
+  Sparkles,
+  Star,
+  Timer,
+} from 'lucide-react';
 import { LEVELS } from '../data/levels';
 import { calculateStars, createInitialGameState, getDirectionFromKey, movePlayer } from '../logic/movement';
-import type { GameState } from '../types/game';
+import type { GameState, SaveData } from '../types/game';
 import { GameBoard } from './GameBoard';
 
 type CompletionPayload = {
@@ -17,9 +28,42 @@ type GameScreenProps = {
   onCompleteLevel: (payload: CompletionPayload) => void;
   onLevelSelect: () => void;
   onMarkActive: () => void;
+  onNextLevel: () => void;
   onSettings: () => void;
+  progress: SaveData;
   reducedMotion: boolean;
 };
+
+function formatTime(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+
+  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
+
+function CompletionStars({
+  count,
+  reducedMotion,
+}: {
+  count: number;
+  reducedMotion: boolean;
+}) {
+  return (
+    <div
+      className={`completion-stars${reducedMotion ? '' : ' star-reveal'}`}
+      aria-label={`${count} stars earned`}
+    >
+      {[1, 2, 3].map((starNumber) => (
+        <Star
+          key={starNumber}
+          aria-hidden="true"
+          className={starNumber <= count ? 'star-earned' : 'star-empty'}
+          style={{ animationDelay: `${(starNumber - 1) * 140}ms` }}
+        />
+      ))}
+    </div>
+  );
+}
 
 export function GameScreen({
   currentLevel,
@@ -27,7 +71,9 @@ export function GameScreen({
   onCompleteLevel,
   onLevelSelect,
   onMarkActive,
+  onNextLevel,
   onSettings,
+  progress,
   reducedMotion,
 }: GameScreenProps) {
   const level = LEVELS.find((candidate) => candidate.id === currentLevel) ?? LEVELS[0];
@@ -129,6 +175,9 @@ export function GameScreen({
       return currentHistory.slice(0, -1);
     });
   };
+  const starsEarned = calculateStars(level, gameState);
+  const bestMoves = progress.bestMoves[level.id] ?? gameState.moves;
+  const bestTimeSeconds = progress.bestTimeSeconds[level.id] ?? gameState.elapsedSeconds;
 
   return (
     <section className="screen game-screen" aria-labelledby="game-screen-title">
@@ -189,13 +238,64 @@ export function GameScreen({
 
       {gameState.isComplete ? (
         <section className="completion-panel" role="status" aria-live="polite">
-          <CircleCheck aria-hidden="true" />
-          <div>
+          <header className="completion-header">
+            <CircleCheck aria-hidden="true" />
+            <div>
+              <p className="eyebrow">level completed</p>
+              <h2>Drift Cleared</h2>
+              <p>Level {Math.min(level.id + 1, LEVELS.length)} is now unlocked.</p>
+            </div>
+          </header>
+
+          <CompletionStars count={starsEarned} reducedMotion={reducedMotion} />
+
+          <div className="completion-stats">
+            <div className="stat-card">
+              <Timer aria-hidden="true" />
+              <span>Time</span>
+              <strong>{formatTime(gameState.elapsedSeconds)}</strong>
+            </div>
+            <div className="stat-card">
+              <Footprints aria-hidden="true" />
+              <span>Moves</span>
+              <strong>{gameState.moves}</strong>
+            </div>
+            <div className="stat-card">
+              <Star aria-hidden="true" />
+              <span>Stars Earned</span>
+              <strong>{starsEarned}</strong>
+            </div>
+            <div className="stat-card">
+              <Footprints aria-hidden="true" />
+              <span>Best Moves</span>
+              <strong>{bestMoves}</strong>
+            </div>
+            <div className="stat-card">
+              <Timer aria-hidden="true" />
+              <span>Best Time</span>
+              <strong>{formatTime(bestTimeSeconds)}</strong>
+            </div>
+          </div>
+
+          <div className="completion-actions">
+            <button type="button" className="menu-button primary" onClick={onNextLevel}>
+              <Play aria-hidden="true" />
+              <span>Next Level</span>
+            </button>
+            <button type="button" className="menu-button" onClick={resetLevel}>
+              <RotateCcw aria-hidden="true" />
+              <span>Retry</span>
+            </button>
+            <button type="button" className="menu-button" onClick={onLevelSelect}>
+              <ListOrdered aria-hidden="true" />
+              <span>Level Select</span>
+            </button>
+          </div>
+
+          <div className="completion-note">
             <p className="eyebrow">level complete</p>
-            <h2>Drift Cleared</h2>
             <p>
-              Finished in {gameState.moves} moves. Level {Math.min(level.id + 1, LEVELS.length)} is
-              now unlocked.
+              Targets: {level.targetMoves} moves and {formatTime(level.targetTimeSeconds)}.
             </p>
           </div>
         </section>

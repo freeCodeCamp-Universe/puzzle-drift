@@ -3,6 +3,7 @@ import { GameScreen } from './components/GameScreen';
 import { LevelSelectScreen } from './components/LevelSelectScreen';
 import { SettingsDialog } from './components/SettingsDialog';
 import { StartScreen } from './components/StartScreen';
+import { LEVELS } from './data/levels';
 import { completeLevel, createInitialSaveData, loadProgress, loadSettings, saveProgress, saveSettings } from './utils/progressStorage';
 import type { AppView, SaveData } from './types/game';
 
@@ -41,10 +42,20 @@ export function App() {
         <GameScreen
           currentLevel={save.currentLevel}
           onBack={() => setView('start')}
-          onCompleteLevel={(result) => setSave(completeLevel(save, save.currentLevel, result))}
+          onCompleteLevel={(result) =>
+            setSave((currentSave) => completeLevel(currentSave, currentSave.currentLevel, result))
+          }
           onLevelSelect={() => setView('levels')}
           onMarkActive={() => setSave({ ...save, hasActiveRun: true })}
+          onNextLevel={() =>
+            setSave((currentSave) => ({
+              ...currentSave,
+              currentLevel: Math.min(currentSave.currentLevel + 1, LEVELS.length),
+              hasActiveRun: true,
+            }))
+          }
           onSettings={() => setIsSettingsOpen(true)}
+          progress={save}
           reducedMotion={settings.reducedMotion}
         />
       )}

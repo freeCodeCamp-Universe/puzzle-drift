@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { act } from 'react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -148,6 +148,31 @@ describe('App', () => {
       expect(savedProgress.completedLevels).toContain(1);
       expect(savedProgress.unlockedLevels).toContain(2);
     });
+  });
+
+  it('shows completion scoring and actions after clearing a level', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+
+    const completion = screen.getByRole('status');
+
+    expect(within(completion).getByText(/level completed/i)).toBeInTheDocument();
+    expect(within(completion).getByText('Time')).toBeInTheDocument();
+    expect(within(completion).getByText('Moves')).toBeInTheDocument();
+    expect(within(completion).getByText('Stars Earned')).toBeInTheDocument();
+    expect(within(completion).getByText('Best Moves')).toBeInTheDocument();
+    expect(within(completion).getByText('Best Time')).toBeInTheDocument();
+    expect(within(completion).getByRole('button', { name: /next level/i })).toBeInTheDocument();
+    expect(within(completion).getByRole('button', { name: /retry/i })).toBeInTheDocument();
+    expect(within(completion).getByRole('button', { name: /level select/i })).toBeInTheDocument();
   });
 
   it('reset restores player to the starting position and clears move count', async () => {

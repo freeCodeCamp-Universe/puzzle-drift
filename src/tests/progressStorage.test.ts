@@ -45,4 +45,75 @@ describe('progress storage', () => {
       soundEnabled: false,
     });
   });
+
+  it('does not overwrite best moves with a worse move count', () => {
+    const progress = completeLevel(createInitialSaveData(), 1, {
+      moves: 10,
+      stars: 3,
+      timeSeconds: 20,
+    });
+    const result = completeLevel(progress, 1, {
+      moves: 14,
+      stars: 2,
+      timeSeconds: 18,
+    });
+
+    expect(result.bestMoves[1]).toBe(10);
+  });
+
+  it('overwrites best moves with a better move count', () => {
+    const progress = completeLevel(createInitialSaveData(), 1, {
+      moves: 10,
+      stars: 2,
+      timeSeconds: 20,
+    });
+    const result = completeLevel(progress, 1, {
+      moves: 8,
+      stars: 3,
+      timeSeconds: 18,
+    });
+
+    expect(result.bestMoves[1]).toBe(8);
+  });
+
+  it('does not overwrite best time with a worse time', () => {
+    const progress = completeLevel(createInitialSaveData(), 1, {
+      moves: 10,
+      stars: 3,
+      timeSeconds: 20,
+    });
+    const result = completeLevel(progress, 1, {
+      moves: 8,
+      stars: 2,
+      timeSeconds: 30,
+    });
+
+    expect(result.bestTimeSeconds[1]).toBe(20);
+  });
+
+  it('overwrites best time with a better time', () => {
+    const progress = completeLevel(createInitialSaveData(), 1, {
+      moves: 10,
+      stars: 2,
+      timeSeconds: 20,
+    });
+    const result = completeLevel(progress, 1, {
+      moves: 12,
+      stars: 2,
+      timeSeconds: 16,
+    });
+
+    expect(result.bestTimeSeconds[1]).toBe(16);
+  });
+
+  it('unlocks the next level after completion', () => {
+    const result = completeLevel(createInitialSaveData(), 1, {
+      moves: 10,
+      stars: 2,
+      timeSeconds: 20,
+    });
+
+    expect(result.completedLevels).toContain(1);
+    expect(result.unlockedLevels).toContain(2);
+  });
 });
