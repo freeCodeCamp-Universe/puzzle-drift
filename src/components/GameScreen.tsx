@@ -1,12 +1,18 @@
-import { ArrowLeft, Sparkles } from 'lucide-react';
+import { ArrowLeft, CircleCheck, Sparkles } from 'lucide-react';
 
 type GameScreenProps = {
   currentLevel: number;
   onBack: () => void;
+  onCompleteLevel: () => void;
   onMarkActive: () => void;
 };
 
-export function GameScreen({ currentLevel, onBack, onMarkActive }: GameScreenProps) {
+export function GameScreen({
+  currentLevel,
+  onBack,
+  onCompleteLevel,
+  onMarkActive,
+}: GameScreenProps) {
   return (
     <section className="screen game-screen" aria-labelledby="game-screen-title">
       <header className="screen-header">
@@ -28,6 +34,11 @@ export function GameScreen({ currentLevel, onBack, onMarkActive }: GameScreenPro
       <button type="button" className="menu-button compact" onClick={onMarkActive}>
         <Sparkles aria-hidden="true" />
         <span>Placeholder Game Screen</span>
+      </button>
+
+      <button type="button" className="menu-button compact primary" onClick={onCompleteLevel}>
+        <CircleCheck aria-hidden="true" />
+        <span>Complete Level</span>
       </button>
     </section>
   );

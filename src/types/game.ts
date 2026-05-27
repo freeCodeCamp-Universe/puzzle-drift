@@ -57,12 +57,17 @@ export type LevelStats = {
   completed: boolean;
   bestMoves?: number;
   bestTimeSeconds?: number;
+  stars: number;
 };
 
 export type SaveData = {
   currentLevel: number;
   hasActiveRun: boolean;
-  unlockedLevel: number;
+  unlockedLevels: number[];
+  completedLevels: number[];
+  bestMoves: Record<number, number>;
+  bestTimeSeconds: Record<number, number>;
+  stars: Record<number, number>;
   levelStats: LevelStats[];
 };
 

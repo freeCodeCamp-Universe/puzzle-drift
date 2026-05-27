@@ -1,29 +1,27 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { GameScreen } from './components/GameScreen';
 import { LevelSelectScreen } from './components/LevelSelectScreen';
 import { SettingsDialog } from './components/SettingsDialog';
 import { StartScreen } from './components/StartScreen';
-import { useLocalStorage } from './hooks/useLocalStorage';
-import { INITIAL_SAVE } from './data/initialSave';
-import type { AppView, GameSettings, SaveState } from './types/game';
-
-const INITIAL_SETTINGS: GameSettings = {
-  highContrast: false,
-  reducedMotion: false,
-  soundEnabled: true,
-};
+import { completeLevel, createInitialSaveData, loadProgress, loadSettings, saveProgress, saveSettings } from './utils/progressStorage';
+import type { AppView, SaveData } from './types/game';
 
 export function App() {
   const [view, setView] = useState<AppView>('start');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [save, setSave] = useLocalStorage<SaveState>('puzzle-drift:save', INITIAL_SAVE);
-  const [settings, setSettings] = useLocalStorage<GameSettings>(
-    'puzzle-drift:settings',
-    INITIAL_SETTINGS,
-  );
+  const [save, setSave] = useState<SaveData>(() => loadProgress());
+  const [settings, setSettings] = useState(() => loadSettings());
+
+  useEffect(() => {
+    saveProgress(save);
+  }, [save]);
+
+  useEffect(() => {
+    saveSettings(settings);
+  }, [settings]);
 
   const startNewGame = () => {
-    setSave(INITIAL_SAVE);
+    setSave({ ...createInitialSaveData(), hasActiveRun: true });
     setView('game');
   };
 
@@ -43,13 +41,18 @@ export function App() {
         <GameScreen
           currentLevel={save.currentLevel}
           onBack={() => setView('start')}
+          onCompleteLevel={() => setSave(completeLevel(save, save.currentLevel, {
+            moves: 12 + save.currentLevel,
+            stars: 3,
+            timeSeconds: 24 + save.currentLevel,
+          }))}
           onMarkActive={() => setSave({ ...save, hasActiveRun: true })}
         />
       )}
 
       {view === 'levels' && (
         <LevelSelectScreen
-          unlockedLevel={save.unlockedLevel}
+          progress={save}
           onBack={() => setView('start')}
           onSelectLevel={(level) => {
             setSave({ ...save, currentLevel: level, hasActiveRun: true });

@@ -6,7 +6,7 @@ export function unlockNextLevel(save: SaveState): SaveState {
   return {
     ...save,
     currentLevel: nextLevel,
-    unlockedLevel: Math.max(save.unlockedLevel, nextLevel),
+    unlockedLevels: [...new Set([...save.unlockedLevels, nextLevel])].sort((a, b) => a - b),
     hasActiveRun: true,
   };
 }
