@@ -41,11 +41,7 @@ export function App() {
         <GameScreen
           currentLevel={save.currentLevel}
           onBack={() => setView('start')}
-          onCompleteLevel={() => setSave(completeLevel(save, save.currentLevel, {
-            moves: 12 + save.currentLevel,
-            stars: 3,
-            timeSeconds: 24 + save.currentLevel,
-          }))}
+          onCompleteLevel={(result) => setSave(completeLevel(save, save.currentLevel, result))}
           onLevelSelect={() => setView('levels')}
           onMarkActive={() => setSave({ ...save, hasActiveRun: true })}
         />

@@ -115,7 +115,7 @@ export function completeLevel(
       [levelId]: bestTimeSeconds,
     },
     completedLevels,
-    currentLevel: canUnlockNext ? nextLevel : levelId,
+    currentLevel: levelId,
     hasActiveRun: true,
     levelStats: [
       ...otherStats,

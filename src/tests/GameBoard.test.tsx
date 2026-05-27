@@ -17,6 +17,7 @@ describe('GameBoard', () => {
         onPause={noop}
         onReset={noop}
         onUndo={noop}
+        playerPosition={level.playerStart}
       />,
     );
 
@@ -33,6 +34,7 @@ describe('GameBoard', () => {
         onPause={noop}
         onReset={noop}
         onUndo={noop}
+        playerPosition={level.playerStart}
       />,
     );
 
@@ -51,6 +53,7 @@ describe('GameBoard', () => {
         onPause={noop}
         onReset={noop}
         onUndo={noop}
+        playerPosition={level.playerStart}
       />,
     );
 

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { App } from '../App';
@@ -84,5 +84,27 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: /level select/i }));
 
     expect(screen.getByRole('button', { name: 'Level 2: Corner Signal' })).toBeEnabled();
+  });
+
+  it('completing a level by reaching the exit saves progress', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+
+    expect(screen.getByText(/drift cleared/i)).toBeInTheDocument();
+
+    await waitFor(() => {
+      const savedProgress = JSON.parse(window.localStorage.getItem('puzzle-drift:save') ?? '{}');
+
+      expect(savedProgress.completedLevels).toContain(1);
+      expect(savedProgress.unlockedLevels).toContain(2);
+    });
   });
 });

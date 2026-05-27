@@ -1,10 +1,11 @@
 import { Footprints, ListOrdered, Pause, RotateCcw, Timer, Undo2, UserRound } from 'lucide-react';
-import type { Level, TileType } from '../types/game';
+import type { Level, Position, TileType } from '../types/game';
 
 type GameBoardProps = {
   level: Level;
   moves: number;
   elapsedSeconds: number;
+  playerPosition: Position;
   onLevelSelect: () => void;
   onPause: () => void;
   onReset: () => void;
@@ -42,6 +43,7 @@ export function GameBoard({
   level,
   moves,
   elapsedSeconds,
+  playerPosition,
   onLevelSelect,
   onPause,
   onReset,
@@ -108,7 +110,7 @@ export function GameBoard({
       >
         {level.grid.map((row, y) =>
           row.map((tile, x) => {
-            const hasPlayer = level.playerStart.x === x && level.playerStart.y === y;
+            const hasPlayer = playerPosition.x === x && playerPosition.y === y;
 
             return (
               <div
