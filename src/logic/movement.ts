@@ -31,6 +31,40 @@ function getTileId(level: Level, position: Position) {
   return level.tileIds?.[positionKey(position)];
 }
 
+function getPositionByTileId(level: Level, tileId: string): Position | null {
+  const matchingEntry = Object.entries(level.tileIds ?? {}).find(([, id]) => id === tileId);
+
+  if (!matchingEntry) {
+    return null;
+  }
+
+  const [x, y] = matchingEntry[0].split(',').map(Number);
+
+  return { x, y };
+}
+
+function getLinkedPortalPosition(level: Level, position: Position): Position | null {
+  const portalId = getTileId(level, position);
+
+  if (!portalId) {
+    return null;
+  }
+
+  const link = level.links?.find(
+    (candidate) => candidate.sourceId === portalId || candidate.targetId === portalId,
+  );
+  const linkedPortalId =
+    link?.sourceId === portalId ? link.targetId : link?.targetId === portalId ? link.sourceId : undefined;
+
+  if (!linkedPortalId) {
+    return null;
+  }
+
+  const linkedPosition = getPositionByTileId(level, linkedPortalId);
+
+  return linkedPosition && getTileAt(level, linkedPosition) === 'portal' ? linkedPosition : null;
+}
+
 function hasBlockAt(state: GameState, position: Position) {
   return state.pushBlocks.some((block) => positionsMatch(block, position));
 }
@@ -87,6 +121,8 @@ function applyTileArrival(
   position: Position,
   tile: TileType,
 ): GameState {
+  const portalDestination = tile === 'portal' ? getLinkedPortalPosition(level, position) : null;
+  const destinationPosition = portalDestination ?? position;
   const collectsKey = tile === 'key';
   const opensDoor = tile === 'door';
   const opensLinkedDoor = opensDoor && isLinkedDoorOpen(level, state, position);
@@ -107,7 +143,7 @@ function applyTileArrival(
     isFailed: hitsSpike,
     openedDoorPositions:
       opensDoor && !opensLinkedDoor ? [...state.openedDoorPositions, position] : state.openedDoorPositions,
-    playerPosition: position,
+    playerPosition: destinationPosition,
   };
 
   return {

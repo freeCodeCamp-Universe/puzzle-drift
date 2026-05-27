@@ -42,6 +42,15 @@ function formatElapsedTime(seconds: number) {
   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 }
 
+function getPortalPairClass(level: Level, x: number, y: number) {
+  const portalId = level.tileIds?.[`${x},${y}`];
+  const linkIndex = level.links?.findIndex(
+    (link) => link.sourceId === portalId || link.targetId === portalId,
+  );
+
+  return linkIndex !== undefined && linkIndex >= 0 ? ` portal-pair-${(linkIndex % 4) + 1}` : '';
+}
+
 export function GameBoard({
   level,
   moves,
@@ -154,7 +163,7 @@ export function GameBoard({
                   gameState.activeSwitchIds.includes(level.tileIds?.[`${x},${y}`] ?? '')
                     ? ' tile-active'
                     : ''
-                }`}
+                }${effectiveTile === 'portal' ? getPortalPairClass(level, x, y) : ''}`}
                 data-testid="board-tile"
                 key={`${x}-${y}`}
                 role="gridcell"

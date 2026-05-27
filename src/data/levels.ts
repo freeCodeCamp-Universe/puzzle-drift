@@ -145,6 +145,11 @@ export const LEVELS: Level[] = [
     width: 10,
     height: 7,
     grid: ['##########', '#..O.....#', '#.######.#', '#....#..E#', '#.##.#.###', '#....O...#', '##########'],
+    tileIds: {
+      '3,1': 'portal-a',
+      '5,5': 'portal-b',
+    },
+    links: [{ sourceId: 'portal-a', targetId: 'portal-b' }],
     playerStart: position(1, 1),
     targetMoves: 20,
     targetTimeSeconds: 40,
@@ -241,6 +246,11 @@ export const LEVELS: Level[] = [
     width: 11,
     height: 9,
     grid: ['###########', '#O....#..E#', '#.###.#.###', '#...#.#..D#', '###.#.###.#', '#K..#....O#', '#.#######.#', '#.........#', '###########'],
+    tileIds: {
+      '1,1': 'portal-a',
+      '9,5': 'portal-b',
+    },
+    links: [{ sourceId: 'portal-a', targetId: 'portal-b' }],
     playerStart: position(1, 7),
     targetMoves: 38,
     targetTimeSeconds: 70,

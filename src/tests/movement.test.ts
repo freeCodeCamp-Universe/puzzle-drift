@@ -132,6 +132,34 @@ const iceSpikeLevel: Level = {
   width: 3,
 };
 
+const portalLevel: Level = {
+  ...movementLevel,
+  grid: [
+    ['floor', 'portal', 'floor'],
+    ['floor', 'floor', 'floor'],
+    ['portal', 'floor', 'floor'],
+  ],
+  links: [{ sourceId: 'portal-a', targetId: 'portal-b' }],
+  playerStart: { x: 0, y: 0 },
+  tileIds: {
+    '1,0': 'portal-a',
+    '0,2': 'portal-b',
+  },
+};
+
+const icePortalLevel: Level = {
+  ...movementLevel,
+  grid: [['floor', 'ice', 'portal', 'floor', 'portal']],
+  height: 1,
+  links: [{ sourceId: 'portal-a', targetId: 'portal-b' }],
+  playerStart: { x: 0, y: 0 },
+  tileIds: {
+    '2,0': 'portal-a',
+    '4,0': 'portal-b',
+  },
+  width: 5,
+};
+
 describe('movement logic', () => {
   it('moves the player up, down, left, and right', () => {
     const start = createInitialGameState(movementLevel);
@@ -398,6 +426,51 @@ describe('movement logic', () => {
     const undoSnapshot = start;
 
     expect(result.playerPosition).toEqual({ x: 3, y: 0 });
+    expect(undoSnapshot.playerPosition).toEqual({ x: 0, y: 0 });
+  });
+
+  it('entering a portal moves the player to the paired portal', () => {
+    const start = createInitialGameState(portalLevel);
+    const result = movePlayer(portalLevel, start, 'right');
+
+    expect(result.playerPosition).toEqual({ x: 0, y: 2 });
+  });
+
+  it('portal movement increments move count once', () => {
+    const start = createInitialGameState(portalLevel);
+    const result = movePlayer(portalLevel, start, 'right');
+
+    expect(result.moves).toBe(1);
+  });
+
+  it('portals do not create infinite teleport loops', () => {
+    const start = createInitialGameState(portalLevel);
+    const fromFirstPortal = movePlayer(portalLevel, start, 'right');
+    const fromSecondPortal = movePlayer(portalLevel, {
+      ...start,
+      playerPosition: { x: 1, y: 2 },
+    }, 'left');
+
+    expect(fromFirstPortal.playerPosition).toEqual({ x: 0, y: 2 });
+    expect(fromSecondPortal.playerPosition).toEqual({ x: 1, y: 0 });
+    expect(fromFirstPortal.moves).toBe(1);
+    expect(fromSecondPortal.moves).toBe(1);
+  });
+
+  it('ice sliding into a portal works', () => {
+    const start = createInitialGameState(icePortalLevel);
+    const result = movePlayer(icePortalLevel, start, 'right');
+
+    expect(result.playerPosition).toEqual({ x: 4, y: 0 });
+    expect(result.moves).toBe(1);
+  });
+
+  it('undo can restore the pre-portal position from the history snapshot', () => {
+    const start = createInitialGameState(portalLevel);
+    const result = movePlayer(portalLevel, start, 'right');
+    const undoSnapshot = start;
+
+    expect(result.playerPosition).toEqual({ x: 0, y: 2 });
     expect(undoSnapshot.playerPosition).toEqual({ x: 0, y: 0 });
   });
 });

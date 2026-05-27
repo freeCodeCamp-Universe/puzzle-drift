@@ -420,6 +420,26 @@ h2 {
   background: conic-gradient(from 45deg, var(--purple), var(--blue), var(--purple));
 }
 
+.tile-portal.portal-pair-1 {
+  border-color: var(--purple);
+  background: conic-gradient(from 45deg, var(--purple), var(--blue), var(--purple));
+}
+
+.tile-portal.portal-pair-2 {
+  border-color: var(--green);
+  background: conic-gradient(from 45deg, var(--green), var(--blue), var(--green));
+}
+
+.tile-portal.portal-pair-3 {
+  border-color: var(--yellow);
+  background: conic-gradient(from 45deg, var(--yellow), var(--purple), var(--yellow));
+}
+
+.tile-portal.portal-pair-4 {
+  border-color: var(--red);
+  background: conic-gradient(from 45deg, var(--red), var(--blue), var(--red));
+}
+
 .tile-spike {
   border-color: var(--red);
   background: linear-gradient(135deg, #5a1f2b, #1b1b32);
