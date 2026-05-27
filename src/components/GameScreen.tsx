@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft,
   CircleCheck,
@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { LEVELS } from '../data/levels';
 import { calculateStars, createInitialGameState, getDirectionFromKey, movePlayer } from '../logic/movement';
-import type { GameState, SaveData } from '../types/game';
+import type { Direction, GameState, SaveData } from '../types/game';
 import { GameBoard } from './GameBoard';
 
 type CompletionPayload = {
@@ -83,6 +83,35 @@ export function GameScreen({
   const [isPaused, setIsPaused] = useState(false);
   const savedCompletionRef = useRef(false);
 
+  const moveInDirection = useCallback(
+    (direction: Direction) => {
+      if (isPaused) {
+        return;
+      }
+
+      setGameState((currentState) => {
+        const nextState = movePlayer(level, currentState, direction);
+
+        if (nextState.isFailed) {
+          setHistory([]);
+          setHazardFlashCount((currentCount) => currentCount + 1);
+          savedCompletionRef.current = false;
+
+          return createInitialGameState(level);
+        }
+
+        if (nextState === currentState || nextState.moves === currentState.moves) {
+          return nextState;
+        }
+
+        setHistory((currentHistory) => [...currentHistory, currentState]);
+
+        return nextState;
+      });
+    },
+    [isPaused, level],
+  );
+
   useEffect(() => {
     setGameState(createInitialGameState(level));
     setHistory([]);
@@ -128,31 +157,13 @@ export function GameScreen({
       }
 
       event.preventDefault();
-      setGameState((currentState) => {
-        const nextState = movePlayer(level, currentState, direction);
-
-        if (nextState.isFailed) {
-          setHistory([]);
-          setHazardFlashCount((currentCount) => currentCount + 1);
-          savedCompletionRef.current = false;
-
-          return createInitialGameState(level);
-        }
-
-        if (nextState === currentState || nextState.moves === currentState.moves) {
-          return nextState;
-        }
-
-        setHistory((currentHistory) => [...currentHistory, currentState]);
-
-        return nextState;
-      });
+      moveInDirection(direction);
     };
 
     window.addEventListener('keydown', handleKeyDown);
 
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPaused, level]);
+  }, [isPaused, moveInDirection]);
 
   const resetLevel = () => {
     setGameState(createInitialGameState(level));
@@ -198,6 +209,7 @@ export function GameScreen({
         level={level}
         moves={gameState.moves}
         onLevelSelect={onLevelSelect}
+        onMove={moveInDirection}
         onPause={() => setIsPaused(true)}
         onReset={resetLevel}
         onUndo={undoMove}
@@ -237,7 +249,18 @@ export function GameScreen({
       ) : null}
 
       {gameState.isComplete ? (
-        <section className="completion-panel" role="status" aria-live="polite">
+        <section
+          className="completion-panel"
+          role="status"
+          aria-label={`Level completed. ${starsEarned} stars earned in ${gameState.moves} moves and ${formatTime(
+            gameState.elapsedSeconds,
+          )}.`}
+          aria-live="polite"
+        >
+          <p className="sr-only">
+            Level completed with {starsEarned} stars, {gameState.moves} moves, and a time of{' '}
+            {formatTime(gameState.elapsedSeconds)}.
+          </p>
           <header className="completion-header">
             <CircleCheck aria-hidden="true" />
             <div>

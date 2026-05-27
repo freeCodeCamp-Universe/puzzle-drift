@@ -211,6 +211,17 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: /level 1/i })).toBeInTheDocument();
   });
 
+  it('clicking directional buttons moves the player', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    await user.click(screen.getByRole('button', { name: /move right/i }));
+
+    expect(screen.getByLabelText('Player at 2, 1')).toBeInTheDocument();
+    expect(screen.getByLabelText('1 moves')).toBeInTheDocument();
+  });
+
   it('completing level 1 unlocks level 2', async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -257,9 +268,9 @@ describe('App', () => {
     fireEvent.keyDown(window, { key: 'ArrowDown' });
     fireEvent.keyDown(window, { key: 'ArrowDown' });
 
-    const completion = screen.getByRole('status');
+    const completion = screen.getByRole('status', { name: /level completed/i });
 
-    expect(within(completion).getByText(/level completed/i)).toBeInTheDocument();
+    expect(within(completion).getAllByText(/level completed/i).length).toBeGreaterThan(0);
     expect(within(completion).getByText('Time')).toBeInTheDocument();
     expect(within(completion).getByText('Moves')).toBeInTheDocument();
     expect(within(completion).getByText('Stars Earned')).toBeInTheDocument();
@@ -268,6 +279,22 @@ describe('App', () => {
     expect(within(completion).getByRole('button', { name: /next level/i })).toBeInTheDocument();
     expect(within(completion).getByRole('button', { name: /retry/i })).toBeInTheDocument();
     expect(within(completion).getByRole('button', { name: /level select/i })).toBeInTheDocument();
+  });
+
+  it('completion message is accessible', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+
+    expect(screen.getByRole('status', { name: /level completed.*stars earned/i })).toBeInTheDocument();
+    expect(screen.getByText(/level completed with .* stars/i)).toBeInTheDocument();
   });
 
   it('reset restores player to the starting position and clears move count', async () => {
@@ -434,8 +461,10 @@ describe('App', () => {
       'puzzle-drift:settings',
       JSON.stringify({
         highContrast: false,
+        musicEnabled: true,
         reducedMotion: true,
         soundEnabled: true,
+        theme: 'rift-dark',
       }),
     );
 
@@ -445,5 +474,31 @@ describe('App', () => {
     fireEvent.keyDown(window, { key: 'ArrowDown' });
 
     expect(screen.getByTestId('game-board-shell')).not.toHaveClass('hazard-flash');
+  });
+
+  it('reduced motion disables completion animation classes', async () => {
+    const user = userEvent.setup();
+
+    window.localStorage.setItem(
+      'puzzle-drift:settings',
+      JSON.stringify({
+        highContrast: false,
+        musicEnabled: true,
+        reducedMotion: true,
+        soundEnabled: true,
+        theme: 'rift-dark',
+      }),
+    );
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+
+    expect(screen.getByLabelText('3 stars earned', { exact: true })).not.toHaveClass('star-reveal');
   });
 });

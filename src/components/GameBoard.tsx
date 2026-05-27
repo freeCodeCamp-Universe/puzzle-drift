@@ -1,6 +1,19 @@
-import { Footprints, KeyRound, ListOrdered, Pause, RotateCcw, Timer, Undo2, UserRound } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  Footprints,
+  KeyRound,
+  ListOrdered,
+  Pause,
+  RotateCcw,
+  Timer,
+  Undo2,
+  UserRound,
+} from 'lucide-react';
 import { getEffectiveTileAt } from '../logic/movement';
-import type { GameState, Level, Position, TileType } from '../types/game';
+import type { Direction, GameState, Level, Position, TileType } from '../types/game';
 
 type GameBoardProps = {
   level: Level;
@@ -10,6 +23,7 @@ type GameBoardProps = {
   hazardFlash: boolean;
   playerPosition: Position;
   onLevelSelect: () => void;
+  onMove: (direction: Direction) => void;
   onPause: () => void;
   onReset: () => void;
   onUndo: () => void;
@@ -59,6 +73,7 @@ export function GameBoard({
   hazardFlash,
   playerPosition,
   onLevelSelect,
+  onMove,
   onPause,
   onReset,
   onUndo,
@@ -69,13 +84,13 @@ export function GameBoard({
       aria-labelledby="game-board-title"
       data-testid="game-board-shell"
     >
-      <header className="game-hud">
+      <header className="game-hud" aria-label="Game heads-up display">
         <div className="game-hud-title">
           <p className="eyebrow">level {level.id}</p>
           <h2 id="game-board-title">{level.name}</h2>
         </div>
 
-        <dl className="hud-stats" aria-label="Game stats">
+        <dl className="hud-stats" aria-label="Game status">
           <div>
             <dt>
               <Footprints aria-hidden="true" />
@@ -111,7 +126,7 @@ export function GameBoard({
           </div>
         </dl>
 
-        <div className="hud-actions" aria-label="Game controls">
+        <nav className="hud-actions" aria-label="Game controls">
           <button type="button" className="icon-button" onClick={onReset} aria-label="Reset level">
             <RotateCcw aria-hidden="true" />
           </button>
@@ -129,13 +144,13 @@ export function GameBoard({
           >
             <ListOrdered aria-hidden="true" />
           </button>
-        </div>
+        </nav>
       </header>
 
-      <div className="objective-panel">
+      <section className="objective-panel" aria-label="Level objective">
         <p className="eyebrow">objective</p>
         <p>{level.description}</p>
-      </div>
+      </section>
 
       <div
         className="game-board"
@@ -182,6 +197,21 @@ export function GameBoard({
           }),
         )}
       </div>
+
+      <nav className="direction-controls" aria-label="Directional controls">
+        <button type="button" className="direction-button direction-up" onClick={() => onMove('up')} aria-label="Move up">
+          <ArrowUp aria-hidden="true" />
+        </button>
+        <button type="button" className="direction-button direction-left" onClick={() => onMove('left')} aria-label="Move left">
+          <ArrowLeft aria-hidden="true" />
+        </button>
+        <button type="button" className="direction-button direction-right" onClick={() => onMove('right')} aria-label="Move right">
+          <ArrowRight aria-hidden="true" />
+        </button>
+        <button type="button" className="direction-button direction-down" onClick={() => onMove('down')} aria-label="Move down">
+          <ArrowDown aria-hidden="true" />
+        </button>
+      </nav>
     </section>
   );
 }

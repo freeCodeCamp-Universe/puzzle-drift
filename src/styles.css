@@ -68,6 +68,7 @@
 }
 
 body {
+  overflow-x: hidden;
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
@@ -78,7 +79,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -92,13 +94,15 @@ button:disabled {
 }
 
 button:focus-visible,
-input:focus-visible {
-  outline: 2px solid var(--focus);
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--focus);
   outline-offset: 3px;
 }
 
 .app-shell {
   display: grid;
+  width: 100%;
   min-height: 100vh;
   place-items: center;
   padding: 1.5rem;
@@ -106,6 +110,7 @@ input:focus-visible {
 
 .screen {
   width: min(100%, 48rem);
+  min-width: 0;
 }
 
 .start-screen {
@@ -268,6 +273,7 @@ h2 {
 .game-board-shell {
   display: grid;
   gap: 1rem;
+  min-width: 0;
 }
 
 .game-board-shell.hazard-flash {
@@ -301,6 +307,7 @@ h2 {
   border: 1px solid var(--border);
   background: color-mix(in srgb, var(--surface) 92%, transparent);
   padding: 0.85rem;
+  min-width: 0;
 }
 
 .game-hud-title {
@@ -378,6 +385,15 @@ h2 {
   border: 1px solid var(--green);
   background: color-mix(in srgb, var(--green) 18%, var(--surface));
   padding: 1rem;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
 }
 
 .completion-header {
@@ -490,7 +506,9 @@ h2 {
   display: grid;
   gap: clamp(0.18rem, 0.8vw, 0.4rem);
   width: min(100%, 35rem);
+  max-width: calc(100vw - 2rem);
   justify-self: center;
+  overflow: hidden;
   border: 1px solid var(--border);
   background: var(--surface);
   padding: clamp(0.45rem, 1.8vw, 0.75rem);
@@ -504,6 +522,54 @@ h2 {
   place-items: center;
   border: 1px solid var(--border);
   background: var(--surface-strong);
+}
+
+.direction-controls {
+  display: grid;
+  grid-template-areas:
+    ". up ."
+    "left . right"
+    ". down .";
+  grid-template-columns: repeat(3, minmax(3.5rem, 4.5rem));
+  justify-content: center;
+  gap: 0.55rem;
+  touch-action: manipulation;
+}
+
+.direction-button {
+  display: grid;
+  min-width: 3.5rem;
+  min-height: 3.5rem;
+  place-items: center;
+  border: 1px solid var(--border);
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface-strong) 88%, transparent);
+}
+
+.direction-button:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.direction-button svg {
+  width: 1.45rem;
+  height: 1.45rem;
+}
+
+.direction-up {
+  grid-area: up;
+}
+
+.direction-left {
+  grid-area: left;
+}
+
+.direction-right {
+  grid-area: right;
+}
+
+.direction-down {
+  grid-area: down;
 }
 
 .tile-floor {
