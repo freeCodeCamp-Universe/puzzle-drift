@@ -88,6 +88,12 @@ export function GameBoard({
               {gameState.activePressurePlateIds.length}
             </dd>
           </div>
+          <div>
+            <dt>Switches</dt>
+            <dd aria-label={`${gameState.activeSwitchIds.length} active switches`}>
+              {gameState.activeSwitchIds.length}
+            </dd>
+          </div>
         </dl>
 
         <div className="hud-actions" aria-label="Game controls">
@@ -135,6 +141,11 @@ export function GameBoard({
                 className={`board-tile tile-${effectiveTile}${
                   effectiveTile === 'pressurePlate' &&
                   gameState.activePressurePlateIds.includes(level.tileIds?.[`${x},${y}`] ?? '')
+                    ? ' tile-active'
+                    : ''
+                }${
+                  effectiveTile === 'switch' &&
+                  gameState.activeSwitchIds.includes(level.tileIds?.[`${x},${y}`] ?? '')
                     ? ' tile-active'
                     : ''
                 }`}

@@ -77,6 +77,21 @@ const pressurePlateLevel: Level = {
   width: 4,
 };
 
+const switchLevel: Level = {
+  ...movementLevel,
+  grid: [
+    ['floor', 'switch', 'floor'],
+    ['floor', 'floor', 'door'],
+    ['floor', 'floor', 'floor'],
+  ],
+  links: [{ sourceId: 'switch-a', targetId: 'door-a' }],
+  playerStart: { x: 0, y: 0 },
+  tileIds: {
+    '1,0': 'switch-a',
+    '2,1': 'door-a',
+  },
+};
+
 describe('movement logic', () => {
   it('moves the player up, down, left, and right', () => {
     const start = createInitialGameState(movementLevel);
@@ -236,5 +251,57 @@ describe('movement logic', () => {
     expect(active.activePressurePlateIds).toContain('plate-a');
     expect(undoSnapshot.pushBlocks).toEqual([{ x: 1, y: 0 }]);
     expect(undoSnapshot.activePressurePlateIds).toEqual([]);
+  });
+
+  it('stepping on a switch toggles it', () => {
+    const start = createInitialGameState(switchLevel);
+    const active = movePlayer(switchLevel, start, 'right');
+
+    expect(active.activeSwitchIds).toContain('switch-a');
+  });
+
+  it('an active switch opens a linked door', () => {
+    const start = createInitialGameState(switchLevel);
+    const active = movePlayer(switchLevel, start, 'right');
+
+    expect(getEffectiveTileAt(switchLevel, active, { x: 2, y: 1 })).toBe('floor');
+  });
+
+  it('stepping on a switch again toggles it off', () => {
+    const start = createInitialGameState(switchLevel);
+    const active = movePlayer(switchLevel, start, 'right');
+    const movedOffSwitch = movePlayer(switchLevel, active, 'left');
+    const inactive = movePlayer(switchLevel, movedOffSwitch, 'right');
+
+    expect(inactive.activeSwitchIds).not.toContain('switch-a');
+  });
+
+  it('a linked door closes when a switch turns off', () => {
+    const start = createInitialGameState(switchLevel);
+    const active = movePlayer(switchLevel, start, 'right');
+    const movedOffSwitch = movePlayer(switchLevel, active, 'left');
+    const inactive = movePlayer(switchLevel, movedOffSwitch, 'right');
+
+    expect(getEffectiveTileAt(switchLevel, active, { x: 2, y: 1 })).toBe('floor');
+    expect(getEffectiveTileAt(switchLevel, inactive, { x: 2, y: 1 })).toBe('door');
+  });
+
+  it('undo restores previous switch state', () => {
+    const start = createInitialGameState(switchLevel);
+    const active = movePlayer(switchLevel, start, 'right');
+    const undoSnapshot = start;
+
+    expect(active.activeSwitchIds).toEqual(['switch-a']);
+    expect(undoSnapshot.activeSwitchIds).toEqual([]);
+  });
+
+  it('reset restores original switch state', () => {
+    const start = createInitialGameState(switchLevel);
+    const active = movePlayer(switchLevel, start, 'right');
+    const resetState = createInitialGameState(switchLevel);
+
+    expect(active.activeSwitchIds).toEqual(['switch-a']);
+    expect(resetState.activeSwitchIds).toEqual([]);
+    expect(getEffectiveTileAt(switchLevel, resetState, { x: 2, y: 1 })).toBe('door');
   });
 });

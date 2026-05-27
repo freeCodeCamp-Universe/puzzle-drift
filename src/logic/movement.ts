@@ -52,13 +52,20 @@ export function getActivePressurePlateIds(level: Level, state: GameState) {
 
 function isLinkedDoorOpen(level: Level, state: GameState, position: Position) {
   const targetId = getTileId(level, position);
+  const activeSourceIds = [...getActivePressurePlateIds(level, state), ...state.activeSwitchIds];
 
   return Boolean(
     targetId &&
       level.links?.some(
-        (link) => link.targetId === targetId && getActivePressurePlateIds(level, state).includes(link.sourceId),
+        (link) => link.targetId === targetId && activeSourceIds.includes(link.sourceId),
       ),
   );
+}
+
+function toggleSwitchId(activeSwitchIds: string[], switchId: string) {
+  return activeSwitchIds.includes(switchId)
+    ? activeSwitchIds.filter((activeSwitchId) => activeSwitchId !== switchId)
+    : [...activeSwitchIds, switchId];
 }
 
 function setBlockPosition(state: GameState, from: Position, to: Position) {
@@ -68,6 +75,7 @@ function setBlockPosition(state: GameState, from: Position, to: Position) {
 export function createInitialGameState(level: Level): GameState {
   const initialState: GameState = {
     activePressurePlateIds: [],
+    activeSwitchIds: [],
     activatedSwitches: [],
     collectedKeys: 0,
     collectedKeyPositions: [],
@@ -162,6 +170,7 @@ export function canMoveTo(level: Level, state: GameState, position: Position) {
     (WALKABLE_TILES.has(tile) ||
       tile === 'key' ||
       tile === 'pressurePlate' ||
+      tile === 'switch' ||
       (tile === 'door' && (state.collectedKeys > 0 || isLinkedDoorOpen(level, state, position))))
   );
 }
@@ -215,9 +224,16 @@ export function movePlayer(level: Level, state: GameState, direction: Direction)
   const collectsKey = nextTile === 'key';
   const opensDoor = nextTile === 'door';
   const opensLinkedDoor = opensDoor && isLinkedDoorOpen(level, state, nextPosition);
+  const switchId = nextTile === 'switch' ? getTileId(level, nextPosition) : undefined;
 
   const nextState = {
     ...state,
+    activeSwitchIds: switchId ? toggleSwitchId(state.activeSwitchIds, switchId) : state.activeSwitchIds,
+    activatedSwitches: switchId
+      ? state.activatedSwitches.some((switchPosition) => positionsMatch(switchPosition, nextPosition))
+        ? state.activatedSwitches.filter((switchPosition) => !positionsMatch(switchPosition, nextPosition))
+        : [...state.activatedSwitches, nextPosition]
+      : state.activatedSwitches,
     collectedKeys: state.collectedKeys + (collectsKey ? 1 : 0) - (opensDoor && !opensLinkedDoor ? 1 : 0),
     collectedKeyPositions: collectsKey
       ? [...state.collectedKeyPositions, nextPosition]

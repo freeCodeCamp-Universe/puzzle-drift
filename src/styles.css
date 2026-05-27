@@ -372,6 +372,11 @@ h2 {
   background: radial-gradient(circle, var(--blue), #15375c);
 }
 
+.tile-switch.tile-active {
+  border-color: var(--green);
+  background: radial-gradient(circle, var(--green), #15375c 72%);
+}
+
 .tile-pressurePlate {
   border-color: var(--purple);
   background: linear-gradient(135deg, #3b2357, #17172e);

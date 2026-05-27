@@ -57,6 +57,7 @@ export type GameState = {
   openedDoorPositions: Position[];
   activatedSwitches: Position[];
   activePressurePlateIds: string[];
+  activeSwitchIds: string[];
   pushBlocks: Position[];
   isComplete: boolean;
   isFailed: boolean;

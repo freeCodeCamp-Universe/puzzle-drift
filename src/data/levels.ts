@@ -87,6 +87,11 @@ export const LEVELS: Level[] = [
     width: 9,
     height: 7,
     grid: ['#########', '#...S...#', '#.#####.#', '#...D.E.#', '#.#####.#', '#.......#', '#########'],
+    tileIds: {
+      '4,1': 'switch-a',
+      '4,3': 'door-a',
+    },
+    links: [{ sourceId: 'switch-a', targetId: 'door-a' }],
     playerStart: position(1, 5),
     targetMoves: 22,
     targetTimeSeconds: 40,
