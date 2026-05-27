@@ -7,8 +7,17 @@ const DIRECTION_OFFSETS: Record<Direction, Position> = {
   up: { x: 0, y: -1 },
 };
 
-const WALKABLE_TILES = new Set<TileType>(['floor', 'exit']);
+const WALKABLE_TILES = new Set<TileType>(['floor', 'exit', 'portal']);
 const BLOCK_PUSH_TARGETS = new Set<TileType>(['floor', 'pressurePlate']);
+const ICE_SLIDE_TARGETS = new Set<TileType>([
+  'floor',
+  'exit',
+  'ice',
+  'key',
+  'portal',
+  'pressurePlate',
+  'spike',
+]);
 
 function positionsMatch(first: Position, second: Position) {
   return first.x === second.x && first.y === second.y;
@@ -70,6 +79,60 @@ function toggleSwitchId(activeSwitchIds: string[], switchId: string) {
 
 function setBlockPosition(state: GameState, from: Position, to: Position) {
   return state.pushBlocks.map((block) => (positionsMatch(block, from) ? to : block));
+}
+
+function applyTileArrival(
+  level: Level,
+  state: GameState,
+  position: Position,
+  tile: TileType,
+): GameState {
+  const collectsKey = tile === 'key';
+  const opensDoor = tile === 'door';
+  const opensLinkedDoor = opensDoor && isLinkedDoorOpen(level, state, position);
+  const switchId = tile === 'switch' ? getTileId(level, position) : undefined;
+  const hitsSpike = tile === 'spike';
+
+  const nextState = {
+    ...state,
+    activeSwitchIds: switchId ? toggleSwitchId(state.activeSwitchIds, switchId) : state.activeSwitchIds,
+    activatedSwitches: switchId
+      ? state.activatedSwitches.some((switchPosition) => positionsMatch(switchPosition, position))
+        ? state.activatedSwitches.filter((switchPosition) => !positionsMatch(switchPosition, position))
+        : [...state.activatedSwitches, position]
+      : state.activatedSwitches,
+    collectedKeys: state.collectedKeys + (collectsKey ? 1 : 0) - (opensDoor && !opensLinkedDoor ? 1 : 0),
+    collectedKeyPositions: collectsKey ? [...state.collectedKeyPositions, position] : state.collectedKeyPositions,
+    isComplete: tile === 'exit' && !hitsSpike,
+    isFailed: hitsSpike,
+    openedDoorPositions:
+      opensDoor && !opensLinkedDoor ? [...state.openedDoorPositions, position] : state.openedDoorPositions,
+    playerPosition: position,
+  };
+
+  return {
+    ...nextState,
+    activePressurePlateIds: getActivePressurePlateIds(level, nextState),
+  };
+}
+
+function resolveIceSlide(level: Level, state: GameState, direction: Direction) {
+  let currentState = state;
+  let currentTile = getEffectiveTileAt(level, currentState, currentState.playerPosition);
+
+  while (currentTile === 'ice' && !currentState.isComplete && !currentState.isFailed) {
+    const nextPosition = getNextPosition(currentState.playerPosition, direction);
+    const nextTile = getEffectiveTileAt(level, currentState, nextPosition);
+
+    if (!nextTile || !ICE_SLIDE_TARGETS.has(nextTile) || !canMoveTo(level, currentState, nextPosition)) {
+      break;
+    }
+
+    currentState = applyTileArrival(level, currentState, nextPosition, nextTile);
+    currentTile = nextTile;
+  }
+
+  return currentState;
 }
 
 export function createInitialGameState(level: Level): GameState {
@@ -169,6 +232,7 @@ export function canMoveTo(level: Level, state: GameState, position: Position) {
     tile !== null &&
     (WALKABLE_TILES.has(tile) ||
       tile === 'key' ||
+      tile === 'ice' ||
       tile === 'pressurePlate' ||
       tile === 'spike' ||
       tile === 'switch' ||
@@ -222,35 +286,13 @@ export function movePlayer(level: Level, state: GameState, direction: Direction)
     };
   }
 
-  const collectsKey = nextTile === 'key';
-  const opensDoor = nextTile === 'door';
-  const opensLinkedDoor = opensDoor && isLinkedDoorOpen(level, state, nextPosition);
-  const switchId = nextTile === 'switch' ? getTileId(level, nextPosition) : undefined;
-  const hitsSpike = nextTile === 'spike';
-
-  const nextState = {
-    ...state,
-    activeSwitchIds: switchId ? toggleSwitchId(state.activeSwitchIds, switchId) : state.activeSwitchIds,
-    activatedSwitches: switchId
-      ? state.activatedSwitches.some((switchPosition) => positionsMatch(switchPosition, nextPosition))
-        ? state.activatedSwitches.filter((switchPosition) => !positionsMatch(switchPosition, nextPosition))
-        : [...state.activatedSwitches, nextPosition]
-      : state.activatedSwitches,
-    collectedKeys: state.collectedKeys + (collectsKey ? 1 : 0) - (opensDoor && !opensLinkedDoor ? 1 : 0),
-    collectedKeyPositions: collectsKey
-      ? [...state.collectedKeyPositions, nextPosition]
-      : state.collectedKeyPositions,
-    facing: direction,
-    isComplete: nextTile === 'exit' && !hitsSpike,
-    isFailed: hitsSpike,
-    moves: state.moves + 1,
-    openedDoorPositions: opensDoor && !opensLinkedDoor ? [...state.openedDoorPositions, nextPosition] : state.openedDoorPositions,
-    playerPosition: nextPosition,
-  };
+  const nextState = applyTileArrival(level, state, nextPosition, nextTile);
+  const resolvedState = nextTile === 'ice' ? resolveIceSlide(level, nextState, direction) : nextState;
 
   return {
-    ...nextState,
-    activePressurePlateIds: getActivePressurePlateIds(level, nextState),
+    ...resolvedState,
+    facing: direction,
+    moves: state.moves + 1,
   };
 }
 

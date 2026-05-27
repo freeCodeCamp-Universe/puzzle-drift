@@ -92,6 +92,46 @@ const switchLevel: Level = {
   },
 };
 
+const iceLevel: Level = {
+  ...movementLevel,
+  grid: [['floor', 'ice', 'ice', 'floor', 'wall']],
+  height: 1,
+  playerStart: { x: 0, y: 0 },
+  width: 5,
+};
+
+const iceWallLevel: Level = {
+  ...movementLevel,
+  grid: [['floor', 'ice', 'ice', 'wall']],
+  height: 1,
+  playerStart: { x: 0, y: 0 },
+  width: 4,
+};
+
+const iceKeyLevel: Level = {
+  ...movementLevel,
+  grid: [['floor', 'ice', 'key']],
+  height: 1,
+  playerStart: { x: 0, y: 0 },
+  width: 3,
+};
+
+const iceExitLevel: Level = {
+  ...movementLevel,
+  grid: [['floor', 'ice', 'exit']],
+  height: 1,
+  playerStart: { x: 0, y: 0 },
+  width: 3,
+};
+
+const iceSpikeLevel: Level = {
+  ...movementLevel,
+  grid: [['floor', 'ice', 'spike']],
+  height: 1,
+  playerStart: { x: 0, y: 0 },
+  width: 3,
+};
+
 describe('movement logic', () => {
   it('moves the player up, down, left, and right', () => {
     const start = createInitialGameState(movementLevel);
@@ -303,5 +343,61 @@ describe('movement logic', () => {
     expect(active.activeSwitchIds).toEqual(['switch-a']);
     expect(resetState.activeSwitchIds).toEqual([]);
     expect(getEffectiveTileAt(switchLevel, resetState, { x: 2, y: 1 })).toBe('door');
+  });
+
+  it('entering ice causes the player to continue sliding', () => {
+    const start = createInitialGameState(iceLevel);
+    const result = movePlayer(iceLevel, start, 'right');
+
+    expect(result.playerPosition).toEqual({ x: 3, y: 0 });
+  });
+
+  it('sliding stops before a wall', () => {
+    const start = createInitialGameState(iceWallLevel);
+    const result = movePlayer(iceWallLevel, start, 'right');
+
+    expect(result.playerPosition).toEqual({ x: 2, y: 0 });
+  });
+
+  it('sliding across multiple ice tiles counts as one move', () => {
+    const start = createInitialGameState(iceLevel);
+    const result = movePlayer(iceLevel, start, 'right');
+
+    expect(result.moves).toBe(1);
+  });
+
+  it('sliding can collect a key when landing on a key', () => {
+    const start = createInitialGameState(iceKeyLevel);
+    const result = movePlayer(iceKeyLevel, start, 'right');
+
+    expect(result.playerPosition).toEqual({ x: 2, y: 0 });
+    expect(result.collectedKeys).toBe(1);
+    expect(getEffectiveTileAt(iceKeyLevel, result, { x: 2, y: 0 })).toBe('floor');
+  });
+
+  it('sliding into an exit completes the level', () => {
+    const start = createInitialGameState(iceExitLevel);
+    const result = movePlayer(iceExitLevel, start, 'right');
+
+    expect(result.playerPosition).toEqual({ x: 2, y: 0 });
+    expect(result.isComplete).toBe(true);
+  });
+
+  it('sliding into a spike fails the attempt so the screen can reset', () => {
+    const start = createInitialGameState(iceSpikeLevel);
+    const result = movePlayer(iceSpikeLevel, start, 'right');
+
+    expect(result.playerPosition).toEqual({ x: 2, y: 0 });
+    expect(result.isFailed).toBe(true);
+    expect(result.isComplete).toBe(false);
+  });
+
+  it('undo can restore the pre-slide position from the history snapshot', () => {
+    const start = createInitialGameState(iceLevel);
+    const result = movePlayer(iceLevel, start, 'right');
+    const undoSnapshot = start;
+
+    expect(result.playerPosition).toEqual({ x: 3, y: 0 });
+    expect(undoSnapshot.playerPosition).toEqual({ x: 0, y: 0 });
   });
 });
