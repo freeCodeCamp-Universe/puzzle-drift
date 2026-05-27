@@ -12,6 +12,14 @@ describe('level validation', () => {
     expect(validateLevels(LEVELS)).toEqual([]);
   });
 
+  it('defines one to three hints for every level', () => {
+    LEVELS.forEach((level) => {
+      expect(level.hints.length).toBeGreaterThanOrEqual(1);
+      expect(level.hints.length).toBeLessThanOrEqual(3);
+      expect(level.hints.every((hint) => hint.text.trim().length > 0)).toBe(true);
+    });
+  });
+
   it('rejects levels without an in-bounds player start', () => {
     const invalidLevel: Level = {
       ...LEVELS[0],

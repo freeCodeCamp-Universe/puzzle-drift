@@ -10,6 +10,7 @@ const movementLevel: Level = {
     ['floor', 'floor', 'exit'],
   ],
   height: 3,
+  hints: [{ text: 'Test hint.' }],
   id: 999,
   mechanics: ['floor', 'exit'],
   name: 'Movement Lab',

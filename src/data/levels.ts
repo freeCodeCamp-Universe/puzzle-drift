@@ -1,4 +1,4 @@
-import type { Level, Position, TileType } from '../types/game';
+import type { Level, LevelHint, Position, TileType } from '../types/game';
 
 const TILE_BY_SYMBOL = {
   '.': 'floor',
@@ -14,9 +14,11 @@ const TILE_BY_SYMBOL = {
   I: 'ice',
 } as const satisfies Record<string, TileType>;
 
-type LevelInput = Omit<Level, 'grid'> & {
+type LevelInput = Omit<Level, 'grid' | 'hints'> & {
   grid: string[];
 };
+
+type LevelDefinition = Omit<Level, 'hints'>;
 
 function position(x: number, y: number): Position {
   return { x, y };
@@ -36,14 +38,139 @@ function parseGrid(rows: string[]): TileType[][] {
   );
 }
 
-function defineLevel(level: LevelInput): Level {
+function defineLevel(level: LevelInput): LevelDefinition {
   return {
     ...level,
     grid: parseGrid(level.grid),
   };
 }
 
-export const LEVELS: Level[] = [
+const LEVEL_HINTS: Record<number, LevelHint[]> = {
+  1: [
+    { text: 'Follow the open corridor before cutting toward the exit.' },
+    { text: 'The shortest route uses the top hallway first.', unlockAfterFailedResets: 1 },
+    { text: 'Approach the exit from the tile directly to its left.', unlockAfterSeconds: 20 },
+  ],
+  2: [
+    { text: 'Use the outer path to route around the blocked center.' },
+    { text: 'The exit wing opens from the left side.', unlockAfterFailedResets: 1 },
+  ],
+  3: [
+    { text: 'Collect the key before committing to the lower door route.' },
+    { text: 'The key sits on the upper lane; the door waits below it.', unlockAfterFailedResets: 1 },
+  ],
+  4: [
+    { text: 'Loop through the side hall before taking the locked top lane.' },
+    { text: 'The key is isolated, but the route back stays open.', unlockAfterFailedResets: 1 },
+  ],
+  5: [
+    { text: 'Pick up the key first, then unwind toward the exit corridor.' },
+    { text: 'The locked shortcut is only useful after the key is collected.', unlockAfterSeconds: 35 },
+  ],
+  6: [
+    { text: 'Step on the switch before testing the nearby door.' },
+    { text: 'Switch-linked doors do not spend keys.', unlockAfterFailedResets: 1 },
+  ],
+  7: [
+    { text: 'A single push creates the opening you need.' },
+    { text: 'Stand on the block’s left side before pushing.', unlockAfterFailedResets: 1 },
+  ],
+  8: [
+    { text: 'The plate must stay held down after you leave.' },
+    { text: 'Use the block, not the player, to keep the door open.', unlockAfterFailedResets: 1 },
+  ],
+  9: [
+    { text: 'Toggle the switch gate, then route to the key.' },
+    { text: 'The final door still needs a key even after the switch path opens.', unlockAfterSeconds: 40 },
+  ],
+  10: [
+    { text: 'Solve the block and plate before spending the key.' },
+    { text: 'Two different doors are controlled in different ways.', unlockAfterFailedResets: 1 },
+  ],
+  11: [
+    { text: 'Do not trust the shortest-looking lane near the spikes.' },
+    { text: 'A safer bend reaches the exit without touching hazards.', unlockAfterFailedResets: 1 },
+  ],
+  12: [
+    { text: 'The long route is safer than the tempting center route.' },
+    { text: 'Stay below the spike field until the path opens upward.', unlockAfterSeconds: 45 },
+  ],
+  13: [
+    { text: 'Enter the ice lane in the direction you want to keep moving.' },
+    { text: 'Sliding can replace several normal steps with one move.', unlockAfterFailedResets: 1 },
+  ],
+  14: [
+    { text: 'Use the slide to reach the key before the door.' },
+    { text: 'The key and door sit on the same frozen approach.', unlockAfterFailedResets: 1 },
+  ],
+  15: [
+    { text: 'Plan where each ice slide stops before moving.' },
+    { text: 'Safe floor pockets let you change direction between spike lanes.', unlockAfterSeconds: 45 },
+  ],
+  16: [
+    { text: 'Portals are shortcuts, not goals by themselves.' },
+    { text: 'Enter one portal, then continue from its paired exit.', unlockAfterFailedResets: 1 },
+  ],
+  17: [
+    { text: 'Warp to reach the key chamber before opening the lock.' },
+    { text: 'The same portal pair can help both directions of the route.', unlockAfterSeconds: 45 },
+  ],
+  18: [
+    { text: 'Use the portal to get on the useful side of the block.' },
+    { text: 'The block must activate the plate before the door matters.', unlockAfterFailedResets: 1 },
+  ],
+  19: [
+    { text: 'Treat the portal as a relay into the block room.' },
+    { text: 'The plate-linked door opens only while the plate is active.', unlockAfterFailedResets: 1 },
+  ],
+  20: [
+    { text: 'Route through the maze until a portal shortens the crossing.' },
+    { text: 'After warping, check which side of the wall you are on.', unlockAfterSeconds: 50 },
+  ],
+  21: [
+    { text: 'Use ice to reach the switch pocket efficiently.' },
+    { text: 'Once the switch is active, the center door becomes usable.', unlockAfterFailedResets: 1 },
+  ],
+  22: [
+    { text: 'Collect the frozen key before aiming for the locked lane.' },
+    { text: 'Ice changes your stopping point; aim for a floor pocket.', unlockAfterSeconds: 50 },
+  ],
+  23: [
+    { text: 'Circle around until you can push the block toward the plate.' },
+    { text: 'The block needs room behind it before it can move.', unlockAfterFailedResets: 1 },
+  ],
+  24: [
+    { text: 'Reach the switch without crossing the trap lane.' },
+    { text: 'The spikes punish direct routes through the top corridor.', unlockAfterFailedResets: 1 },
+  ],
+  25: [
+    { text: 'Warp around the room to set up the block push.' },
+    { text: 'Keep the remote plate active before heading for the door.', unlockAfterSeconds: 55 },
+  ],
+  26: [
+    { text: 'Set the cargo on its plate before using the ice lane.' },
+    { text: 'The exit route opens only after the plate door is handled.', unlockAfterFailedResets: 1 },
+  ],
+  27: [
+    { text: 'Collect the key, then use the switch network.' },
+    { text: 'Not every door is opened the same way in this level.', unlockAfterSeconds: 60 },
+  ],
+  28: [
+    { text: 'Portals break up the longest ice channels.' },
+    { text: 'Look for a floor stop after each warp before sliding again.', unlockAfterFailedResets: 1 },
+  ],
+  29: [
+    { text: 'Push cargo around the spike lanes instead of through them.' },
+    { text: 'The block path and the player path are not identical.', unlockAfterFailedResets: 1 },
+  ],
+  30: [
+    { text: 'Solve one system at a time: key, switch, cargo, then route.' },
+    { text: 'The switch and pressure plate control different doors.', unlockAfterFailedResets: 1 },
+    { text: 'Use the portal to reduce backtracking after the main locks open.', unlockAfterSeconds: 75 },
+  ],
+};
+
+const LEVEL_DEFINITIONS: Level[] = [
   defineLevel({
     id: 1,
     name: 'First Drift',
@@ -541,4 +668,9 @@ export const LEVELS: Level[] = [
       'portal',
     ],
   }),
-];
+].map((level) => ({
+  ...level,
+  hints: LEVEL_HINTS[level.id],
+}));
+
+export const LEVELS: Level[] = LEVEL_DEFINITIONS;

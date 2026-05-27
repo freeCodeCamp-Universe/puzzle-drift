@@ -5,6 +5,7 @@ import {
   ArrowUp,
   Footprints,
   KeyRound,
+  Lightbulb,
   ListOrdered,
   Pause,
   RotateCcw,
@@ -21,9 +22,12 @@ type GameBoardProps = {
   elapsedSeconds: number;
   gameState: GameState;
   hazardFlash: boolean;
+  isHintPanelOpen: boolean;
   animationClass?: string;
   playerPosition: Position;
+  unlockedHintCount: number;
   onLevelSelect: () => void;
+  onToggleHints: () => void;
   onMove: (direction: Direction) => void;
   onPause: () => void;
   onReset: () => void;
@@ -72,9 +76,12 @@ export function GameBoard({
   elapsedSeconds,
   gameState,
   hazardFlash,
+  isHintPanelOpen,
   animationClass = '',
   playerPosition,
+  unlockedHintCount,
   onLevelSelect,
+  onToggleHints,
   onMove,
   onPause,
   onReset,
@@ -131,6 +138,16 @@ export function GameBoard({
         </dl>
 
         <nav className="hud-actions" aria-label="Game controls">
+          <button
+            type="button"
+            className="icon-button"
+            onClick={onToggleHints}
+            aria-label={isHintPanelOpen ? 'Hide hints' : 'Show hints'}
+            aria-expanded={isHintPanelOpen}
+            aria-controls="hint-panel"
+          >
+            <Lightbulb aria-hidden="true" />
+          </button>
           <button type="button" className="icon-button" onClick={onReset} aria-label="Reset level">
             <RotateCcw aria-hidden="true" />
           </button>
@@ -155,6 +172,29 @@ export function GameBoard({
         <p className="eyebrow">objective</p>
         <p>{level.description}</p>
       </section>
+
+      {isHintPanelOpen ? (
+        <section className="hint-panel" id="hint-panel" aria-label="Level hints">
+          <div className="hint-panel-header">
+            <Lightbulb aria-hidden="true" />
+            <div>
+              <p className="eyebrow">hints</p>
+              <h3>Signal Boost</h3>
+            </div>
+          </div>
+          <ol>
+            {level.hints.slice(0, unlockedHintCount).map((hint) => (
+              <li key={hint.text}>{hint.text}</li>
+            ))}
+          </ol>
+          {unlockedHintCount < level.hints.length ? (
+            <p className="hint-locked" aria-live="polite">
+              {level.hints.length - unlockedHintCount} more{' '}
+              {level.hints.length - unlockedHintCount === 1 ? 'hint' : 'hints'} locked.
+            </p>
+          ) : null}
+        </section>
+      ) : null}
 
       <div
         className="game-board"

@@ -13,14 +13,17 @@ const renderBoard = (overrides = {}) =>
       elapsedSeconds={0}
       gameState={gameState}
       hazardFlash={false}
+      isHintPanelOpen={false}
       level={level}
       moves={0}
       onLevelSelect={noop}
       onMove={noop}
       onPause={noop}
       onReset={noop}
+      onToggleHints={noop}
       onUndo={noop}
       playerPosition={level.playerStart}
+      unlockedHintCount={1}
       {...overrides}
     />,
   );
@@ -64,5 +67,13 @@ describe('GameBoard', () => {
     expect(screen.getByRole('button', { name: /undo move/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /pause game/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /open level select/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /show hints/i })).toBeInTheDocument();
+  });
+
+  it('renders the unlocked level hints when the hint panel is open', () => {
+    renderBoard({ isHintPanelOpen: true, unlockedHintCount: 1 });
+
+    expect(screen.getByRole('region', { name: /level hints/i })).toBeInTheDocument();
+    expect(screen.getByText(level.hints[0].text)).toBeInTheDocument();
   });
 });

@@ -41,6 +41,20 @@ function formatTime(seconds: number) {
   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 }
 
+function getUnlockedHintCount(level: (typeof LEVELS)[number], elapsedSeconds: number, failedResetCount: number) {
+  return level.hints.filter((hint, hintIndex) => {
+    if (hintIndex === 0) {
+      return true;
+    }
+
+    const unlockedByReset =
+      hint.unlockAfterFailedResets !== undefined && failedResetCount >= hint.unlockAfterFailedResets;
+    const unlockedByTime = hint.unlockAfterSeconds !== undefined && elapsedSeconds >= hint.unlockAfterSeconds;
+
+    return unlockedByReset || unlockedByTime;
+  }).length;
+}
+
 function CompletionStars({
   count,
   reducedMotion,
@@ -81,6 +95,8 @@ export function GameScreen({
   const [, setHistory] = useState<GameState[]>([]);
   const [hazardFlashCount, setHazardFlashCount] = useState(0);
   const [boardAnimationClass, setBoardAnimationClass] = useState('');
+  const [failedResetCount, setFailedResetCount] = useState(0);
+  const [isHintPanelOpen, setIsHintPanelOpen] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const savedCompletionRef = useRef(false);
 
@@ -109,6 +125,7 @@ export function GameScreen({
         if (nextState.isFailed) {
           setHistory([]);
           setHazardFlashCount((currentCount) => currentCount + 1);
+          setFailedResetCount((currentCount) => currentCount + 1);
           savedCompletionRef.current = false;
 
           return createInitialGameState(level);
@@ -143,6 +160,8 @@ export function GameScreen({
     setHistory([]);
     setHazardFlashCount(0);
     setBoardAnimationClass('');
+    setFailedResetCount(0);
+    setIsHintPanelOpen(false);
     setIsPaused(false);
     savedCompletionRef.current = false;
   }, [level]);
@@ -193,6 +212,10 @@ export function GameScreen({
   }, [isPaused, moveInDirection]);
 
   const resetLevel = () => {
+    if (!gameState.isComplete && (gameState.moves > 0 || gameState.elapsedSeconds > 0)) {
+      setFailedResetCount((currentCount) => currentCount + 1);
+    }
+
     setGameState(createInitialGameState(level));
     setHistory([]);
     setHazardFlashCount(0);
@@ -217,6 +240,7 @@ export function GameScreen({
   const starsEarned = calculateStars(level, gameState);
   const bestMoves = progress.bestMoves[level.id] ?? gameState.moves;
   const bestTimeSeconds = progress.bestTimeSeconds[level.id] ?? gameState.elapsedSeconds;
+  const unlockedHintCount = getUnlockedHintCount(level, gameState.elapsedSeconds, failedResetCount);
 
   return (
     <section className="screen game-screen" aria-labelledby="game-screen-title">
@@ -235,14 +259,17 @@ export function GameScreen({
         animationClass={boardAnimationClass}
         gameState={gameState}
         hazardFlash={hazardFlashCount > 0 && !reducedMotion}
+        isHintPanelOpen={isHintPanelOpen}
         level={level}
         moves={gameState.moves}
         onLevelSelect={onLevelSelect}
         onMove={moveInDirection}
         onPause={() => setIsPaused(true)}
         onReset={resetLevel}
+        onToggleHints={() => setIsHintPanelOpen((currentValue) => !currentValue)}
         onUndo={undoMove}
         playerPosition={gameState.playerPosition}
+        unlockedHintCount={unlockedHintCount}
       />
 
       {isPaused ? (

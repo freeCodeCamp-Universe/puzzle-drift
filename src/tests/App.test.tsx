@@ -3,6 +3,7 @@ import { act } from 'react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
+import { LEVELS } from '../data/levels';
 import { completeLevel, createInitialSaveData } from '../utils/progressStorage';
 import { resetAppStorage } from './testStorage';
 
@@ -275,6 +276,65 @@ describe('App', () => {
     expect(screen.getByLabelText('Game heads-up display')).toBeInTheDocument();
     expect(screen.getByLabelText('Game status')).toBeInTheDocument();
     expect(screen.getByLabelText('Game controls')).toBeInTheDocument();
+  });
+
+  it('renders a hint button in the HUD', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+
+    expect(screen.getByRole('button', { name: /show hints/i })).toBeInTheDocument();
+  });
+
+  it('displays the first hint for free', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    await user.click(screen.getByRole('button', { name: /show hints/i }));
+
+    expect(screen.getByRole('region', { name: /level hints/i })).toBeInTheDocument();
+    expect(screen.getByText(LEVELS[0].hints[0].text)).toBeInTheDocument();
+    expect(screen.queryByText(LEVELS[0].hints[1].text)).not.toBeInTheDocument();
+  });
+
+  it('unlocks later hints after failed resets and time thresholds', async () => {
+    vi.useFakeTimers();
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /new game/i }));
+    fireEvent.click(screen.getByRole('button', { name: /show hints/i }));
+    expect(screen.queryByText(LEVELS[0].hints[1].text)).not.toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.click(screen.getByRole('button', { name: /reset level/i }));
+    expect(screen.getByText(LEVELS[0].hints[1].text)).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(20000);
+    });
+
+    expect(screen.getByText(LEVELS[0].hints[2].text)).toBeInTheDocument();
+  });
+
+  it('shows level-specific hints', async () => {
+    const user = userEvent.setup();
+    const progress = completeLevel(createInitialSaveData(), 1, {
+      moves: 6,
+      stars: 3,
+      timeSeconds: 12,
+    });
+
+    window.localStorage.setItem('puzzle-drift:save', JSON.stringify(progress));
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /level select/i }));
+    await user.click(screen.getByRole('button', { name: 'Level 2: Corner Signal' }));
+    await user.click(screen.getByRole('button', { name: /show hints/i }));
+
+    expect(screen.getByText(LEVELS[1].hints[0].text)).toBeInTheDocument();
+    expect(screen.queryByText(LEVELS[0].hints[0].text)).not.toBeInTheDocument();
   });
 
   it('completing level 1 unlocks level 2', async () => {

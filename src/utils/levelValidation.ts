@@ -76,6 +76,22 @@ export function validateLevel(level: Level): LevelValidationIssue[] {
     });
   }
 
+  if (!Array.isArray(level.hints) || level.hints.length < 1 || level.hints.length > 3) {
+    issues.push({
+      levelId: level.id,
+      message: 'Level must define between 1 and 3 hints.',
+    });
+  }
+
+  level.hints?.forEach((hint, hintIndex) => {
+    if (!hint.text.trim()) {
+      issues.push({
+        levelId: level.id,
+        message: `Hint ${hintIndex + 1} must include text.`,
+      });
+    }
+  });
+
   return issues;
 }
 

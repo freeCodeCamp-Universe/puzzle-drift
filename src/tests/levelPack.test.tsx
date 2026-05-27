@@ -114,14 +114,17 @@ describe('level pack', () => {
           elapsedSeconds={0}
           gameState={state}
           hazardFlash={false}
+          isHintPanelOpen={false}
           level={level}
           moves={0}
           onLevelSelect={vi.fn()}
           onMove={vi.fn()}
           onPause={vi.fn()}
           onReset={vi.fn()}
+          onToggleHints={vi.fn()}
           onUndo={vi.fn()}
           playerPosition={level.playerStart}
+          unlockedHintCount={1}
         />,
       );
 

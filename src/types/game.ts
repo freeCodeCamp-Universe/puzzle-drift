@@ -33,12 +33,19 @@ export type Level = {
   width: number;
   height: number;
   grid: TileType[][];
+  hints: LevelHint[];
   tileIds?: Record<string, string>;
   links?: LevelLink[];
   playerStart: Position;
   targetMoves: number;
   targetTimeSeconds: number;
   mechanics: TileType[];
+};
+
+export type LevelHint = {
+  text: string;
+  unlockAfterFailedResets?: number;
+  unlockAfterSeconds?: number;
 };
 
 export type LevelLink = {
