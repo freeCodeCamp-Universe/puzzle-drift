@@ -54,6 +54,15 @@ async function openSpikeLane() {
   return user;
 }
 
+function solveFirstDrift() {
+  fireEvent.keyDown(window, { key: 'ArrowRight' });
+  fireEvent.keyDown(window, { key: 'ArrowRight' });
+  fireEvent.keyDown(window, { key: 'ArrowRight' });
+  fireEvent.keyDown(window, { key: 'ArrowRight' });
+  fireEvent.keyDown(window, { key: 'ArrowDown' });
+  fireEvent.keyDown(window, { key: 'ArrowDown' });
+}
+
 describe('App', () => {
   beforeEach(() => {
     resetAppStorage();
@@ -310,6 +319,61 @@ describe('App', () => {
     expect(screen.getByLabelText('1 moves')).toBeInTheDocument();
   });
 
+  it('supports arrow and WASD keyboard movement during gameplay', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    expect(screen.getByLabelText('Player at 2, 1')).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'd' });
+    expect(screen.getByLabelText('Player at 3, 1')).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'a' });
+    expect(screen.getByLabelText('Player at 2, 1')).toBeInTheDocument();
+  });
+
+  it('supports gameplay shortcuts for restart, undo, pause, and hints', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'u' });
+    expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'Backspace' });
+    expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'r' });
+    expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
+    expect(screen.getByLabelText('0 moves')).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'h' });
+    expect(screen.getByRole('region', { name: /level hints/i })).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: 'h' });
+    expect(screen.queryByRole('region', { name: /level hints/i })).not.toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'p' });
+    expect(screen.getByRole('dialog', { name: /paused/i })).toBeInTheDocument();
+  });
+
+  it('uses Escape as gameplay pause and pause resume', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.getByRole('dialog', { name: /paused/i })).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: /paused/i })).not.toBeInTheDocument();
+  });
+
   it('HUD remains visible during gameplay', async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -425,12 +489,7 @@ describe('App', () => {
     render(<App />);
 
     await user.click(screen.getByRole('button', { name: /new game/i }));
-    fireEvent.keyDown(window, { key: 'ArrowRight' });
-    fireEvent.keyDown(window, { key: 'ArrowRight' });
-    fireEvent.keyDown(window, { key: 'ArrowRight' });
-    fireEvent.keyDown(window, { key: 'ArrowRight' });
-    fireEvent.keyDown(window, { key: 'ArrowDown' });
-    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    solveFirstDrift();
 
     const completion = screen.getByRole('status', { name: /level completed/i });
 
@@ -441,10 +500,54 @@ describe('App', () => {
     expect(within(completion).queryByText('Best Moves')).not.toBeInTheDocument();
     expect(within(completion).queryByText('Best Time')).not.toBeInTheDocument();
     expect(within(completion).getAllByText('New Record').length).toBeGreaterThan(0);
-    expect(within(completion).getByRole('button', { name: /next level/i })).toBeInTheDocument();
-    expect(within(completion).getByRole('button', { name: /retry/i })).toBeInTheDocument();
-    expect(within(completion).getByRole('button', { name: /level select/i })).toBeInTheDocument();
+    const nextButton = within(completion).getByRole('button', { name: /next level.*spacebar/i });
+    const retryButton = within(completion).getByRole('button', { name: /retry.*r/i });
+    const levelSelectButton = within(completion).getByRole('button', { name: /level select.*l/i });
+
+    expect(nextButton).toHaveFocus();
+    expect(nextButton).toHaveClass('completion-action');
+    expect(nextButton.querySelector('.action-label')).toHaveTextContent('Next Level');
+    expect(nextButton.querySelector('.action-shortcut')).toHaveTextContent('Spacebar');
+    expect(within(nextButton).queryByText('Space')).not.toBeInTheDocument();
+    expect(retryButton).toHaveClass('completion-action');
+    expect(retryButton.querySelector('.action-label')).toHaveTextContent('Retry');
+    expect(retryButton.querySelector('.action-shortcut')).toHaveTextContent('R');
+    expect(levelSelectButton).toHaveClass('completion-action');
+    expect(levelSelectButton.querySelector('.action-label')).toHaveTextContent('Level Select');
+    expect(levelSelectButton.querySelector('.action-shortcut')).toHaveTextContent('L');
     expect(screen.getByRole('grid', { name: /first drift board/i })).toBeInTheDocument();
+  });
+
+  it('completion overlay shortcuts advance, retry, and open level select', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    solveFirstDrift();
+    fireEvent.keyDown(window, { key: ' ' });
+    expect(screen.getByRole('heading', { name: /level 2/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /back to start/i }));
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    solveFirstDrift();
+    fireEvent.keyDown(window, { key: 'r' });
+    expect(screen.queryByRole('heading', { name: /level complete/i })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
+
+    solveFirstDrift();
+    fireEvent.keyDown(window, { key: 'l' });
+    expect(screen.getByRole('heading', { name: /level select/i })).toBeInTheDocument();
+  });
+
+  it('Enter advances from the completion overlay', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    solveFirstDrift();
+    fireEvent.keyDown(window, { key: 'Enter' });
+
+    expect(screen.getByRole('heading', { name: /level 2/i })).toBeInTheDocument();
   });
 
   it('completion message is accessible', async () => {
@@ -452,12 +555,7 @@ describe('App', () => {
     render(<App />);
 
     await user.click(screen.getByRole('button', { name: /new game/i }));
-    fireEvent.keyDown(window, { key: 'ArrowRight' });
-    fireEvent.keyDown(window, { key: 'ArrowRight' });
-    fireEvent.keyDown(window, { key: 'ArrowRight' });
-    fireEvent.keyDown(window, { key: 'ArrowRight' });
-    fireEvent.keyDown(window, { key: 'ArrowDown' });
-    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    solveFirstDrift();
 
     expect(screen.getByRole('status', { name: /level completed.*stars earned/i })).toBeInTheDocument();
     expect(screen.getByText(/level completed with .* stars/i)).toBeInTheDocument();
@@ -548,6 +646,94 @@ describe('App', () => {
       expect(screen.queryByRole('dialog', { name: /paused/i })).not.toBeInTheDocument();
     });
     await waitFor(() => expect(pauseButton).toHaveFocus());
+  });
+
+  it('pause modal shortcuts resume, restart, and open level select', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'p' });
+
+    expect(screen.getByRole('button', { name: /resume.*spacebar/i })).toHaveFocus();
+    expect(screen.getByText('Arrow Keys / WASD')).toBeInTheDocument();
+    expect(screen.getByText('Undo: U or Backspace')).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'r' });
+    expect(screen.queryByRole('dialog', { name: /paused/i })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'p' });
+    fireEvent.keyDown(window, { key: 'l' });
+    expect(screen.getByRole('heading', { name: /level select/i })).toBeInTheDocument();
+  });
+
+  it('Spacebar and Enter resume from the pause modal', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    fireEvent.keyDown(window, { key: 'p' });
+    const resumeButton = screen.getByRole('button', { name: /resume.*spacebar/i });
+    const restartButton = screen.getByRole('button', { name: /restart level.*r/i });
+    const levelSelectButton = screen.getByRole('button', { name: /level select.*l/i });
+
+    expect(resumeButton).toHaveClass('shortcut-action');
+    expect(resumeButton.querySelector('.action-label')).toHaveTextContent('Resume');
+    expect(resumeButton.querySelector('.action-shortcut')).toHaveTextContent('Spacebar');
+    expect(restartButton).toHaveClass('shortcut-action');
+    expect(levelSelectButton).toHaveClass('shortcut-action');
+
+    fireEvent.keyDown(window, { key: ' ' });
+    expect(screen.queryByRole('dialog', { name: /paused/i })).not.toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'p' });
+    fireEvent.keyDown(window, { key: 'Enter' });
+    expect(screen.queryByRole('dialog', { name: /paused/i })).not.toBeInTheDocument();
+  });
+
+  it('does not run gameplay shortcuts from focused buttons or open settings', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+
+    const resetButton = screen.getByRole('button', { name: /reset level/i });
+    act(() => {
+      resetButton.focus();
+      fireEvent.keyDown(resetButton, { key: 'r' });
+    });
+    expect(screen.getByLabelText('Player at 2, 1')).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'p' });
+    await user.click(screen.getByRole('button', { name: /settings/i }));
+    fireEvent.keyDown(window, { key: 'r' });
+
+    expect(screen.getByRole('dialog', { name: /settings/i })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: /paused/i })).toBeInTheDocument();
+  });
+
+  it('prevents page scroll when Spacebar is used as a shortcut', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    fireEvent.keyDown(window, { key: 'p' });
+
+    const spaceEvent = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: ' ',
+    });
+    const preventDefaultSpy = vi.spyOn(spaceEvent, 'preventDefault');
+
+    act(() => {
+      window.dispatchEvent(spaceEvent);
+    });
+
+    expect(preventDefaultSpy).toHaveBeenCalled();
   });
 
   it('collecting a key increases key count and removes the key tile', async () => {

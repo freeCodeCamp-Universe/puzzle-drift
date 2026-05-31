@@ -15,11 +15,11 @@ import { LEVELS } from '../data/levels';
 import {
   calculateStars,
   createInitialGameState,
-  getDirectionFromKey,
   getEffectiveTileAt,
   getNextPosition,
   movePlayer,
 } from '../logic/movement';
+import { useGameShortcuts } from '../hooks/useGameShortcuts';
 import type { Direction, GameState, Level, SaveData } from '../types/game';
 import { GameBoard } from './GameBoard';
 
@@ -31,6 +31,7 @@ type CompletionPayload = {
 
 type GameScreenProps = {
   currentLevel: number;
+  isSettingsOpen: boolean;
   onBack: () => void;
   onCompleteLevel: (payload: CompletionPayload) => void;
   onLevelSelect: () => void;
@@ -103,6 +104,7 @@ function CompletionStars({
 
 export function GameScreen({
   currentLevel,
+  isSettingsOpen,
   onBack,
   onCompleteLevel,
   onLevelSelect,
@@ -121,6 +123,8 @@ export function GameScreen({
   const [isPaused, setIsPaused] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const lockedDoorTimeoutRef = useRef<number | null>(null);
+  const completionPanelRef = useRef<HTMLElement | null>(null);
+  const completionPrimaryActionRef = useRef<HTMLButtonElement | null>(null);
   const pauseDialogRef = useRef<HTMLElement | null>(null);
   const pauseReturnFocusRef = useRef<HTMLElement | null>(null);
   const savedCompletionRef = useRef(false);
@@ -235,13 +239,17 @@ export function GameScreen({
     [clearFeedbackMessage, isPaused, level, showFeedbackMessage, triggerBoardAnimation],
   );
 
-  const pauseGame = () => {
+  const pauseGame = useCallback(() => {
+    if (gameState.isComplete || gameState.isFailed || isPaused) {
+      return;
+    }
+
     pauseReturnFocusRef.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setBoardAnimationClass('');
     setHazardFlashCount(0);
     setIsPaused(true);
-  };
+  }, [gameState.isComplete, gameState.isFailed, isPaused]);
 
   const resumeGame = useCallback(() => {
     setIsPaused(false);
@@ -294,27 +302,6 @@ export function GameScreen({
   }, [gameState, level, onCompleteLevel]);
 
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (isPaused) {
-        return;
-      }
-
-      const direction = getDirectionFromKey(event.key);
-
-      if (!direction) {
-        return;
-      }
-
-      event.preventDefault();
-      moveInDirection(direction);
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPaused, moveInDirection]);
-
-  useEffect(() => {
     if (!isPaused) {
       return undefined;
     }
@@ -332,13 +319,6 @@ export function GameScreen({
     focusableElements()[0]?.focus();
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        resumeGame();
-
-        return;
-      }
-
       if (event.key !== 'Tab') {
         return;
       }
@@ -369,7 +349,7 @@ export function GameScreen({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isPaused, resumeGame]);
 
-  const resetLevel = () => {
+  const resetLevel = useCallback(() => {
     if (!gameState.isComplete && (gameState.moves > 0 || gameState.elapsedSeconds > 0)) {
       setFailedResetCount((currentCount) => currentCount + 1);
     }
@@ -381,9 +361,9 @@ export function GameScreen({
     clearFeedbackMessage();
     setIsPaused(false);
     savedCompletionRef.current = false;
-  };
+  }, [clearFeedbackMessage, gameState.elapsedSeconds, gameState.isComplete, gameState.moves, level]);
 
-  const undoMove = () => {
+  const undoMove = useCallback(() => {
     setHistory((currentHistory) => {
       const previousState = currentHistory[currentHistory.length - 1];
 
@@ -395,13 +375,92 @@ export function GameScreen({
 
       return currentHistory.slice(0, -1);
     });
-  };
+  }, []);
+
+  const toggleHints = useCallback(() => {
+    setIsHintPanelOpen((currentValue) => !currentValue);
+  }, []);
+
+  const goToCompletionPrimaryAction = useCallback(() => {
+    if (level.id >= LEVELS.length) {
+      onLevelSelect();
+
+      return;
+    }
+
+    onNextLevel();
+  }, [level.id, onLevelSelect, onNextLevel]);
+
+  useGameShortcuts({
+    isComplete: gameState.isComplete,
+    isFailed: gameState.isFailed,
+    isPaused,
+    isSettingsOpen,
+    onLevelSelect,
+    onMove: moveInDirection,
+    onNextLevel: goToCompletionPrimaryAction,
+    onPause: pauseGame,
+    onReset: resetLevel,
+    onResume: resumeGame,
+    onRetry: resetLevel,
+    onToggleHints: toggleHints,
+    onUndo: undoMove,
+  });
+
+  useEffect(() => {
+    if (!gameState.isComplete) {
+      return undefined;
+    }
+
+    completionPrimaryActionRef.current?.focus();
+
+    const panel = completionPanelRef.current;
+    const focusableElements = () =>
+      Array.from(
+        panel?.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      ).filter((element) => !element.hasAttribute('disabled') && element.tabIndex !== -1);
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') {
+        return;
+      }
+
+      const elements = focusableElements();
+      const firstElement = elements[0];
+      const lastElement = elements[elements.length - 1];
+
+      if (!firstElement || !lastElement) {
+        event.preventDefault();
+
+        return;
+      }
+
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      }
+
+      if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [gameState.isComplete]);
+
   const starsEarned = calculateStars(level, gameState);
   const bestMoves = progress.bestMoves[level.id] ?? gameState.moves;
   const bestTimeSeconds = progress.bestTimeSeconds[level.id] ?? gameState.elapsedSeconds;
   const isMoveRecord = gameState.isComplete && gameState.moves <= bestMoves;
   const isTimeRecord = gameState.isComplete && gameState.elapsedSeconds <= bestTimeSeconds;
   const unlockedHintCount = getUnlockedHintCount(level, gameState.elapsedSeconds, failedResetCount);
+  const isFinalLevel = level.id >= LEVELS.length;
+  const completionPrimaryLabel = isFinalLevel ? 'Level Select' : 'Next Level';
 
   return (
     <section className={`screen game-screen${isPaused ? ' paused' : ''}`} aria-labelledby="game-screen-title">
@@ -430,7 +489,7 @@ export function GameScreen({
           onMove={moveInDirection}
           onPause={pauseGame}
           onReset={resetLevel}
-          onToggleHints={() => setIsHintPanelOpen((currentValue) => !currentValue)}
+          onToggleHints={toggleHints}
           onUndo={undoMove}
           playerPosition={gameState.playerPosition}
           unlockedHintCount={unlockedHintCount}
@@ -439,6 +498,7 @@ export function GameScreen({
         {gameState.isComplete ? (
           <section
             className={`completion-panel${reducedMotion ? '' : ' level-complete-pop'}`}
+            ref={completionPanelRef}
             role="status"
             aria-label={`Level completed. ${starsEarned} stars earned in ${gameState.moves} moves and ${formatTime(
               gameState.elapsedSeconds,
@@ -453,7 +513,7 @@ export function GameScreen({
               <CircleCheck aria-hidden="true" />
               <div>
                 <h2>Level Complete</h2>
-                <p>Level {Math.min(level.id + 1, LEVELS.length)} unlocked.</p>
+                <p>{isFinalLevel ? 'Campaign complete.' : `Level ${level.id + 1} unlocked.`}</p>
               </div>
             </header>
 
@@ -480,17 +540,31 @@ export function GameScreen({
             </div>
 
             <div className="completion-actions">
-              <button type="button" className="menu-button primary" onClick={onNextLevel}>
-                <Play aria-hidden="true" />
-                <span>Next Level</span>
+              <button
+                type="button"
+                className="menu-button shortcut-action completion-action primary"
+                ref={completionPrimaryActionRef}
+                onClick={goToCompletionPrimaryAction}
+              >
+                <span className="action-label">
+                  {isFinalLevel ? <ListOrdered aria-hidden="true" /> : <Play aria-hidden="true" />}
+                  <span>{completionPrimaryLabel}</span>
+                </span>
+                <span className="action-shortcut">Spacebar</span>
               </button>
-              <button type="button" className="menu-button" onClick={resetLevel}>
-                <RotateCcw aria-hidden="true" />
-                <span>Retry</span>
+              <button type="button" className="menu-button shortcut-action completion-action" onClick={resetLevel}>
+                <span className="action-label">
+                  <RotateCcw aria-hidden="true" />
+                  <span>Retry</span>
+                </span>
+                <span className="action-shortcut">R</span>
               </button>
-              <button type="button" className="menu-button" onClick={onLevelSelect}>
-                <ListOrdered aria-hidden="true" />
-                <span>Level Select</span>
+              <button type="button" className="menu-button shortcut-action completion-action" onClick={onLevelSelect}>
+                <span className="action-label">
+                  <ListOrdered aria-hidden="true" />
+                  <span>Level Select</span>
+                </span>
+                <span className="action-shortcut">L</span>
               </button>
             </div>
           </section>
@@ -547,23 +621,55 @@ export function GameScreen({
             </header>
 
             <div className="pause-actions">
-              <button type="button" className="menu-button primary" onClick={resumeGame}>
-                <Play aria-hidden="true" />
-                <span>Resume</span>
+              <button type="button" className="menu-button shortcut-action primary" onClick={resumeGame}>
+                <span className="action-label">
+                  <Play aria-hidden="true" />
+                  <span>Resume</span>
+                </span>
+                <span className="action-shortcut">Spacebar</span>
               </button>
-              <button type="button" className="menu-button" onClick={resetLevel}>
-                <RotateCcw aria-hidden="true" />
-                <span>Restart Level</span>
+              <button type="button" className="menu-button shortcut-action" onClick={resetLevel}>
+                <span className="action-label">
+                  <RotateCcw aria-hidden="true" />
+                  <span>Restart Level</span>
+                </span>
+                <span className="action-shortcut">R</span>
               </button>
-              <button type="button" className="menu-button" onClick={onLevelSelect}>
-                <ListOrdered aria-hidden="true" />
-                <span>Level Select</span>
+              <button type="button" className="menu-button shortcut-action" onClick={onLevelSelect}>
+                <span className="action-label">
+                  <ListOrdered aria-hidden="true" />
+                  <span>Level Select</span>
+                </span>
+                <span className="action-shortcut">L</span>
               </button>
               <button type="button" className="menu-button" onClick={onSettings}>
                 <Settings aria-hidden="true" />
                 <span>Settings</span>
               </button>
             </div>
+
+            <footer className="shortcut-help" aria-label="Keyboard shortcuts">
+              <h3>Shortcuts</h3>
+              <dl>
+                <div>
+                  <dt>Movement</dt>
+                  <dd>Arrow Keys / WASD</dd>
+                </div>
+                <div>
+                  <dt>Actions</dt>
+                  <dd>Undo: U or Backspace</dd>
+                  <dd>Restart: R</dd>
+                  <dd>Pause: P or Esc</dd>
+                  <dd>Hints: H</dd>
+                </div>
+                <div>
+                  <dt>Completion</dt>
+                  <dd>Next Level: Spacebar or Enter</dd>
+                  <dd>Retry: R</dd>
+                  <dd>Level Select: L</dd>
+                </div>
+              </dl>
+            </footer>
           </section>
         </div>
       ) : null}

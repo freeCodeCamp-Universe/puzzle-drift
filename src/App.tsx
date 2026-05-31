@@ -72,6 +72,7 @@ export function App() {
       {view === 'game' && (
         <GameScreen
           currentLevel={save.currentLevel}
+          isSettingsOpen={isSettingsOpen}
           onBack={() => setView('start')}
           onCompleteLevel={(result) =>
             setSave((currentSave) => completeLevel(currentSave, currentSave.currentLevel, result))

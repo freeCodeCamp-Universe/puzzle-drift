@@ -831,6 +831,49 @@ h2 {
   gap: 0.55rem;
 }
 
+.shortcut-action.menu-button {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.22rem;
+  min-height: 4.35rem;
+  padding: 0.72rem 0.85rem;
+  text-align: center;
+}
+
+.action-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-width: 0;
+  color: currentColor;
+  font-size: 0.96rem;
+  font-weight: 800;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.action-shortcut {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, currentColor 38%, transparent);
+  border-radius: 0.35rem;
+  background: color-mix(in srgb, var(--background) 24%, transparent);
+  color: color-mix(in srgb, currentColor 76%, var(--muted));
+  padding: 0.12rem 0.42rem;
+  font-family: "Fira Mono", Menlo, Consolas, monospace;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.shortcut-action.primary .action-shortcut {
+  background: color-mix(in srgb, var(--background) 14%, transparent);
+}
+
 @keyframes star-pop {
   0% {
     opacity: 0;
@@ -1652,6 +1695,47 @@ h2 {
 .pause-actions {
   display: grid;
   gap: 0.75rem;
+}
+
+.shortcut-help {
+  display: grid;
+  gap: 0.6rem;
+  margin-block-start: 0.9rem;
+  border-block-start: 1px solid var(--border);
+  padding-block-start: 0.85rem;
+}
+
+.shortcut-help h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.86rem;
+  letter-spacing: 0;
+}
+
+.shortcut-help dl {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.shortcut-help dl > div {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.shortcut-help dt {
+  color: var(--yellow);
+  font-family: "Fira Mono", Menlo, Consolas, monospace;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.shortcut-help dd {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
 }
 
 .how-to-list {
