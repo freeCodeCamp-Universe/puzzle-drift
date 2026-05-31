@@ -25,6 +25,7 @@ function serializeState(state: GameState) {
     linkedDoorsOpenedThisAttempt: state.linkedDoorsOpenedThisAttempt,
     openedDoorPositions: sortPositions(state.openedDoorPositions),
     playerPosition: state.playerPosition,
+    pressurePlatesActivatedThisAttempt: state.pressurePlatesActivatedThisAttempt,
     pushBlocks: sortPositions(state.pushBlocks),
     switchesActivatedThisAttempt: state.switchesActivatedThisAttempt,
   });
@@ -714,6 +715,106 @@ describe('level pack', () => {
     expect(canCompleteLevel(toggleKey, switchOnlyState)).toBe(false);
     expect(canCompleteLevel(toggleKey, missingDoorState)).toBe(false);
     expect(canCompleteLevel(toggleKey, completedState)).toBe(true);
+  });
+
+  it('Cargo Lock blocks the reported straight-up-key-and-right bypass', () => {
+    const bypassAttempt = movePath(10, [
+      'up',
+      'up',
+      'up',
+      'up',
+      'up',
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+    ]);
+
+    expect(bypassAttempt?.isComplete).toBe(false);
+    expect(bypassAttempt?.blocksPushedThisAttempt).toBe(0);
+    expect(bypassAttempt?.pressurePlatesActivatedThisAttempt).toBe(0);
+    expect(bypassAttempt?.linkedDoorsOpenedThisAttempt).toBe(0);
+    expect(bypassAttempt?.keysCollectedThisAttempt).toBe(0);
+    expect(bypassAttempt?.doorsOpenedThisAttempt).toBe(0);
+  });
+
+  it('Cargo Lock gates the key and exit behind the cargo plate door', () => {
+    expect(isTileReachableWithDoorsBlocked(10, { x: 6, y: 1 })).toBe(false);
+    expect(isExitReachableWithDoorsBlocked(10)).toBe(false);
+  });
+
+  it('Cargo Lock requires the cargo gate, key, and final locked door', () => {
+    const cargoLock = LEVELS.find((level) => level.id === 10);
+    const completedState = getCompletedState(10);
+
+    expect(cargoLock?.completionRequirements).toEqual({
+      requiresBlockPush: true,
+      requiredBlocksPushed: 1,
+      requiresPressurePlateActivation: true,
+      requiredPressurePlatesActivated: 1,
+      requiresLinkedDoorOpened: true,
+      requiredLinkedDoorsOpened: 1,
+      requiresKeyCollection: true,
+      requiredKeysCollected: 1,
+      requiresDoorOpened: true,
+      requiredDoorsOpened: 1,
+    });
+    expect(cargoLock?.tileIds?.['4,5']).toBe('plate-a');
+    expect(cargoLock?.tileIds?.['4,1']).toBe('door-a');
+    expect(cargoLock?.links).toContainEqual({ sourceId: 'plate-a', targetId: 'door-a' });
+    expect(cargoLock?.targetMoves).toBe(16);
+    expect(cargoLock?.targetTimeSeconds).toBe(42);
+    expect(findSolutionLength(10)).toBe(16);
+    expect(completedState?.blocksPushedThisAttempt).toBe(1);
+    expect(completedState?.pressurePlatesActivatedThisAttempt).toBe(1);
+    expect(completedState?.linkedDoorsOpenedThisAttempt).toBe(1);
+    expect(completedState?.pushBlocks).toContainEqual({ x: 4, y: 5 });
+    expect(completedState?.collectedKeyPositions).toContainEqual({ x: 6, y: 1 });
+    expect(completedState?.keysCollectedThisAttempt).toBe(1);
+    expect(completedState?.openedDoorPositions).toContainEqual({ x: 7, y: 1 });
+    expect(completedState?.doorsOpenedThisAttempt).toBe(1);
+    expect(completedState?.collectedKeys).toBe(0);
+  });
+
+  it('Cargo Lock cannot complete with any required mechanic missing', () => {
+    const cargoLock = LEVELS.find((level) => level.id === 10);
+
+    expect(cargoLock).toBeDefined();
+
+    if (!cargoLock) {
+      return;
+    }
+
+    const exitOnlyState = {
+      ...createInitialGameState(cargoLock),
+      playerPosition: { x: 8, y: 1 },
+    };
+    const gateOnlyState = {
+      ...exitOnlyState,
+      blocksPushedThisAttempt: 1,
+      linkedDoorsOpenedThisAttempt: 1,
+      pressurePlatesActivatedThisAttempt: 1,
+      pushBlocks: [{ x: 4, y: 5 }],
+    };
+    const missingDoorState = {
+      ...gateOnlyState,
+      collectedKeys: 1,
+      keysCollectedThisAttempt: 1,
+    };
+    const completedState = {
+      ...missingDoorState,
+      collectedKeys: 0,
+      doorsOpenedThisAttempt: 1,
+      openedDoorPositions: [{ x: 7, y: 1 }],
+    };
+
+    expect(canCompleteLevel(cargoLock, exitOnlyState)).toBe(false);
+    expect(canCompleteLevel(cargoLock, gateOnlyState)).toBe(false);
+    expect(canCompleteLevel(cargoLock, missingDoorState)).toBe(false);
+    expect(canCompleteLevel(cargoLock, completedState)).toBe(true);
   });
 
   it('every spike level has meaningful hazard routing and calibrated par', () => {

@@ -107,6 +107,13 @@ export function validateLevel(level: Level): LevelValidationIssue[] {
     });
   }
 
+  if (level.completionRequirements?.requiresPressurePlateActivation && !tileCounts.get('pressurePlate')) {
+    issues.push({
+      levelId: level.id,
+      message: 'Level requires pressure plate activation but defines no pressure plate tiles.',
+    });
+  }
+
   if (
     level.completionRequirements?.requiresLinkedDoorOpened &&
     !level.links?.some((link) => {

@@ -60,11 +60,13 @@ export type LevelCompletionRequirements = {
   requiresSwitchActivation?: boolean;
   requiresLinkedDoorOpened?: boolean;
   requiresBlockPush?: boolean;
+  requiresPressurePlateActivation?: boolean;
   requiredKeysCollected?: number;
   requiredDoorsOpened?: number;
   requiredSwitchesActivated?: number;
   requiredLinkedDoorsOpened?: number;
   requiredBlocksPushed?: number;
+  requiredPressurePlatesActivated?: number;
 };
 
 export type GameState = {
@@ -85,6 +87,7 @@ export type GameState = {
   switchesActivatedThisAttempt: number;
   linkedDoorsOpenedThisAttempt: number;
   blocksPushedThisAttempt: number;
+  pressurePlatesActivatedThisAttempt: number;
   isComplete: boolean;
   isFailed: boolean;
 };

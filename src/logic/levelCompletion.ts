@@ -26,12 +26,15 @@ export function canCompleteLevel(level: Level, state: GameState) {
   const requiredLinkedDoorsOpened =
     requirements.requiredLinkedDoorsOpened ?? (requirements.requiresLinkedDoorOpened ? 1 : 0);
   const requiredBlocksPushed = requirements.requiredBlocksPushed ?? (requirements.requiresBlockPush ? 1 : 0);
+  const requiredPressurePlatesActivated =
+    requirements.requiredPressurePlatesActivated ?? (requirements.requiresPressurePlateActivation ? 1 : 0);
 
   return (
     state.keysCollectedThisAttempt >= requiredKeysCollected &&
     state.doorsOpenedThisAttempt >= requiredDoorsOpened &&
     state.switchesActivatedThisAttempt >= requiredSwitchesActivated &&
     state.linkedDoorsOpenedThisAttempt >= requiredLinkedDoorsOpened &&
-    state.blocksPushedThisAttempt >= requiredBlocksPushed
+    state.blocksPushedThisAttempt >= requiredBlocksPushed &&
+    state.pressurePlatesActivatedThisAttempt >= requiredPressurePlatesActivated
   );
 }

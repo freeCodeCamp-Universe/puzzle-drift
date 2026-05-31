@@ -58,6 +58,14 @@ function getLinkedDoorCount(level: Level, sourceId: string) {
   );
 }
 
+function getNewPressurePlateIds(state: GameState, nextPressurePlateIds: string[]) {
+  return nextPressurePlateIds.filter((plateId) => !state.activePressurePlateIds.includes(plateId));
+}
+
+function getLinkedDoorCountForSources(level: Level, sourceIds: string[]) {
+  return sourceIds.reduce((count, sourceId) => count + getLinkedDoorCount(level, sourceId), 0);
+}
+
 function getLinkedPortalPosition(level: Level, position: Position): Position | null {
   const portalId = getTileId(level, position);
 
@@ -147,7 +155,7 @@ function applyTileArrival(
   const linkedDoorsOpened = switchId && activatesSwitch ? getLinkedDoorCount(level, switchId) : 0;
   const hitsSpike = tile === 'spike';
 
-  const nextState = {
+  const nextStateBase = {
     ...state,
     activeSwitchIds: switchId ? toggleSwitchId(state.activeSwitchIds, switchId) : state.activeSwitchIds,
     activatedSwitches: switchId
@@ -161,15 +169,25 @@ function applyTileArrival(
     isComplete: false,
     isFailed: hitsSpike,
     keysCollectedThisAttempt: state.keysCollectedThisAttempt + (collectsKey ? 1 : 0),
-    linkedDoorsOpenedThisAttempt: state.linkedDoorsOpenedThisAttempt + linkedDoorsOpened,
     openedDoorPositions: consumesKey ? [...state.openedDoorPositions, position] : state.openedDoorPositions,
     playerPosition: destinationPosition,
     switchesActivatedThisAttempt: state.switchesActivatedThisAttempt + (activatesSwitch ? 1 : 0),
   };
+  const nextPressurePlateIds = getActivePressurePlateIds(level, nextStateBase);
+  const newPressurePlateIds = getNewPressurePlateIds(state, nextPressurePlateIds);
+  const nextState = {
+    ...nextStateBase,
+    activePressurePlateIds: nextPressurePlateIds,
+    linkedDoorsOpenedThisAttempt:
+      state.linkedDoorsOpenedThisAttempt +
+      linkedDoorsOpened +
+      getLinkedDoorCountForSources(level, newPressurePlateIds),
+    pressurePlatesActivatedThisAttempt:
+      state.pressurePlatesActivatedThisAttempt + newPressurePlateIds.length,
+  };
 
   return {
     ...nextState,
-    activePressurePlateIds: getActivePressurePlateIds(level, nextState),
     isComplete: !hitsSpike && canCompleteLevel(level, nextState),
   };
 }
@@ -212,6 +230,7 @@ export function createInitialGameState(level: Level): GameState {
     moves: 0,
     openedDoorPositions: [],
     playerPosition: { ...level.playerStart },
+    pressurePlatesActivatedThisAttempt: 0,
     pushBlocks: getInitialPushBlocks(level),
     switchesActivatedThisAttempt: 0,
   };
@@ -328,7 +347,7 @@ export function movePlayer(level: Level, state: GameState, direction: Direction)
       };
     }
 
-    const nextState = {
+    const nextStateBase = {
       ...state,
       blocksPushedThisAttempt: state.blocksPushedThisAttempt + 1,
       facing: direction,
@@ -336,10 +355,19 @@ export function movePlayer(level: Level, state: GameState, direction: Direction)
       playerPosition: nextPosition,
       pushBlocks: setBlockPosition(state, nextPosition, blockDestination),
     };
+    const nextPressurePlateIds = getActivePressurePlateIds(level, nextStateBase);
+    const newPressurePlateIds = getNewPressurePlateIds(state, nextPressurePlateIds);
+    const nextState = {
+      ...nextStateBase,
+      activePressurePlateIds: nextPressurePlateIds,
+      linkedDoorsOpenedThisAttempt:
+        state.linkedDoorsOpenedThisAttempt + getLinkedDoorCountForSources(level, newPressurePlateIds),
+      pressurePlatesActivatedThisAttempt:
+        state.pressurePlatesActivatedThisAttempt + newPressurePlateIds.length,
+    };
 
     return {
       ...nextState,
-      activePressurePlateIds: getActivePressurePlateIds(level, nextState),
     };
   }
 

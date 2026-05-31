@@ -439,6 +439,8 @@ describe('movement logic', () => {
 
     expect(result.pushBlocks).toEqual([{ x: 2, y: 0 }]);
     expect(result.activePressurePlateIds).toContain('plate-a');
+    expect(result.pressurePlatesActivatedThisAttempt).toBe(1);
+    expect(result.linkedDoorsOpenedThisAttempt).toBe(0);
   });
 
   it('activates a pressure plate when the player is on it', () => {
@@ -446,7 +448,11 @@ describe('movement logic', () => {
     const result = movePlayer(pressurePlateLevel, start, 'down');
 
     expect(result.playerPosition).toEqual({ x: 0, y: 1 });
-    expect(movePlayer(pressurePlateLevel, result, 'right').activePressurePlateIds).toContain('plate-b');
+    const active = movePlayer(pressurePlateLevel, result, 'right');
+
+    expect(active.activePressurePlateIds).toContain('plate-b');
+    expect(active.pressurePlatesActivatedThisAttempt).toBe(1);
+    expect(active.linkedDoorsOpenedThisAttempt).toBe(1);
   });
 
   it('opens and closes a linked door based on pressure plate activity', () => {
@@ -467,6 +473,8 @@ describe('movement logic', () => {
     expect(active.activePressurePlateIds).toContain('plate-a');
     expect(undoSnapshot.pushBlocks).toEqual([{ x: 1, y: 0 }]);
     expect(undoSnapshot.blocksPushedThisAttempt).toBe(0);
+    expect(undoSnapshot.pressurePlatesActivatedThisAttempt).toBe(0);
+    expect(undoSnapshot.linkedDoorsOpenedThisAttempt).toBe(0);
     expect(undoSnapshot.activePressurePlateIds).toEqual([]);
   });
 
@@ -479,6 +487,8 @@ describe('movement logic', () => {
     expect(pushed.blocksPushedThisAttempt).toBe(1);
     expect(resetState.pushBlocks).toEqual([{ x: 1, y: 0 }]);
     expect(resetState.blocksPushedThisAttempt).toBe(0);
+    expect(resetState.pressurePlatesActivatedThisAttempt).toBe(0);
+    expect(resetState.linkedDoorsOpenedThisAttempt).toBe(0);
   });
 
   it('stepping on a switch toggles it', () => {
