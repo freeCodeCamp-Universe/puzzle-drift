@@ -1,4 +1,5 @@
 import type { Direction, GameState, Level, Position, TileType } from '../types/game';
+import { canCompleteLevel } from './levelCompletion';
 
 const DIRECTION_OFFSETS: Record<Direction, Position> = {
   down: { x: 0, y: 1 },
@@ -126,6 +127,7 @@ function applyTileArrival(
   const collectsKey = tile === 'key';
   const opensDoor = tile === 'door';
   const opensLinkedDoor = opensDoor && isLinkedDoorOpen(level, state, position);
+  const consumesKey = opensDoor && !opensLinkedDoor;
   const switchId = tile === 'switch' ? getTileId(level, position) : undefined;
   const hitsSpike = tile === 'spike';
 
@@ -137,18 +139,20 @@ function applyTileArrival(
         ? state.activatedSwitches.filter((switchPosition) => !positionsMatch(switchPosition, position))
         : [...state.activatedSwitches, position]
       : state.activatedSwitches,
-    collectedKeys: state.collectedKeys + (collectsKey ? 1 : 0) - (opensDoor && !opensLinkedDoor ? 1 : 0),
+    collectedKeys: state.collectedKeys + (collectsKey ? 1 : 0) - (consumesKey ? 1 : 0),
     collectedKeyPositions: collectsKey ? [...state.collectedKeyPositions, position] : state.collectedKeyPositions,
-    isComplete: tile === 'exit' && !hitsSpike,
+    doorsOpenedThisAttempt: state.doorsOpenedThisAttempt + (consumesKey ? 1 : 0),
+    isComplete: false,
     isFailed: hitsSpike,
-    openedDoorPositions:
-      opensDoor && !opensLinkedDoor ? [...state.openedDoorPositions, position] : state.openedDoorPositions,
+    keysCollectedThisAttempt: state.keysCollectedThisAttempt + (collectsKey ? 1 : 0),
+    openedDoorPositions: consumesKey ? [...state.openedDoorPositions, position] : state.openedDoorPositions,
     playerPosition: destinationPosition,
   };
 
   return {
     ...nextState,
     activePressurePlateIds: getActivePressurePlateIds(level, nextState),
+    isComplete: !hitsSpike && canCompleteLevel(level, nextState),
   };
 }
 
@@ -180,8 +184,10 @@ export function createInitialGameState(level: Level): GameState {
     collectedKeyPositions: [],
     elapsedSeconds: 0,
     facing: 'down',
+    doorsOpenedThisAttempt: 0,
     isComplete: false,
     isFailed: false,
+    keysCollectedThisAttempt: 0,
     levelId: level.id,
     moves: 0,
     openedDoorPositions: [],

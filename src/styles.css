@@ -297,12 +297,40 @@ h2 {
   filter: saturate(1.18);
 }
 
-.game-board-shell.key-collect .player-avatar {
-  animation: key-pop 320ms ease-out both;
+.locked-door-message {
+  position: absolute;
+  inset-block-start: min(38%, 16rem);
+  inset-inline-start: 50%;
+  z-index: 7;
+  width: max-content;
+  max-width: min(100% - 2rem, 20rem);
+  border: 1px solid color-mix(in srgb, var(--yellow) 72%, var(--border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--yellow) 14%, transparent), transparent 58%),
+    color-mix(in srgb, var(--surface) 96%, var(--background));
+  color: var(--text);
+  padding: 0.55rem 0.75rem;
+  font-weight: 700;
+  text-align: center;
+  transform: translate(-50%, -50%);
+  animation: locked-door-pop 180ms ease-out both;
+}
+
+.locked-door-message.no-motion {
+  animation: none;
 }
 
 .game-board-shell.portal-teleport .player-avatar {
   animation: portal-blink 420ms ease-out both;
+}
+
+.game-board-shell.key-collect .player-avatar,
+.game-board-shell.key-collect .tile-key-collected .tile-object-icon {
+  animation: key-pop 320ms ease-out both;
+}
+
+.game-board-shell.door-unlock .tile-opened .tile-object-icon {
+  animation: door-unlock 320ms ease-out both;
 }
 
 .player-avatar.player-moving {
@@ -831,6 +859,23 @@ h2 {
   }
 }
 
+@keyframes door-unlock {
+  0% {
+    filter: brightness(1.35);
+    transform: rotate(0deg) scale(1);
+  }
+
+  45% {
+    filter: brightness(1.55);
+    transform: rotate(-10deg) scale(1.12);
+  }
+
+  100% {
+    filter: none;
+    transform: rotate(-6deg) scale(1);
+  }
+}
+
 @keyframes portal-blink {
   0% {
     opacity: 0.35;
@@ -863,6 +908,18 @@ h2 {
   from {
     opacity: 0;
     transform: translate(-50%, calc(-50% + 0.4rem)) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes locked-door-pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 0.25rem)) scale(0.98);
   }
 
   to {
@@ -1037,19 +1094,84 @@ h2 {
   animation: exit-breathe 1800ms ease-in-out infinite;
 }
 
+.tile-object {
+  padding: clamp(0.18rem, 0.8vw, 0.38rem);
+}
+
+.tile-object-icon {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 78%;
+  height: 78%;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, currentColor 58%, transparent);
+  background: color-mix(in srgb, var(--background) 34%, transparent);
+  color: var(--text);
+}
+
+.tile-object-icon svg {
+  width: 72%;
+  height: 72%;
+  stroke-width: 2.35;
+}
+
 .tile-key {
   border-color: color-mix(in srgb, var(--yellow) 82%, var(--border));
   background:
-    radial-gradient(circle at 58% 36%, var(--yellow), transparent 28%),
-    radial-gradient(circle, color-mix(in srgb, var(--yellow) 34%, transparent), #4d3800 76%);
+    radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--yellow) 28%, transparent), transparent 52%),
+    color-mix(in srgb, var(--yellow) 14%, var(--surface-strong));
   animation: key-glow 1800ms ease-in-out infinite;
 }
 
-.tile-door {
-  border-color: color-mix(in srgb, var(--yellow) 70%, var(--border));
+.tile-key .tile-object-icon {
+  border-radius: 50%;
+  color: var(--yellow);
   background:
-    linear-gradient(90deg, #4d3800, color-mix(in srgb, var(--yellow) 46%, #4d3800) 48%, #4d3800),
+    radial-gradient(circle, color-mix(in srgb, var(--yellow) 20%, transparent), transparent 62%),
+    color-mix(in srgb, var(--background) 78%, black);
+}
+
+.tile-key-collected {
+  border-color: color-mix(in srgb, var(--border) 36%, transparent);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--surface-strong) 42%, transparent), transparent 54%),
+    color-mix(in srgb, var(--background) 72%, var(--surface));
+  animation: none;
+}
+
+.tile-key-collected .tile-object-icon {
+  opacity: 0;
+}
+
+.tile-door {
+  border-color: color-mix(in srgb, var(--blue) 74%, var(--border));
+  background:
+    linear-gradient(90deg, #1b1b32, color-mix(in srgb, var(--blue) 28%, #1b1b32) 50%, #1b1b32),
     var(--surface-strong);
+  outline-width: 2px;
+  outline-color: color-mix(in srgb, var(--blue) 38%, transparent);
+}
+
+.tile-door .tile-object-icon {
+  color: var(--blue);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--blue) 12%, transparent), transparent),
+    color-mix(in srgb, var(--background) 82%, black);
+}
+
+.tile-door.tile-opened {
+  border-color: color-mix(in srgb, var(--green) 54%, var(--border));
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--green) 10%, #1b1b32), transparent 46%),
+    color-mix(in srgb, var(--surface) 66%, var(--background));
+  outline-color: color-mix(in srgb, var(--green) 34%, transparent);
+}
+
+.tile-door.tile-opened .tile-object-icon {
+  color: var(--green);
+  opacity: 0.74;
+  transform: rotate(-6deg);
 }
 
 .tile-switch {
@@ -1065,6 +1187,24 @@ h2 {
     radial-gradient(circle, var(--green), transparent 33%),
     radial-gradient(circle, color-mix(in srgb, var(--green) 42%, transparent), #15375c 76%);
   animation: active-tile-pulse 1500ms ease-in-out infinite;
+}
+
+.tile-switch .tile-object-icon,
+.tile-pressurePlate .tile-object-icon,
+.tile-pushBlock .tile-object-icon,
+.tile-spike .tile-object-icon,
+.tile-ice .tile-object-icon {
+  width: 68%;
+  height: 68%;
+}
+
+.tile-switch .tile-object-icon {
+  color: var(--blue);
+}
+
+.tile-switch.tile-active .tile-object-icon,
+.tile-pressurePlate.tile-active .tile-object-icon {
+  color: var(--green);
 }
 
 .tile-pressurePlate {
@@ -1087,6 +1227,10 @@ h2 {
   border-color: color-mix(in srgb, var(--muted) 76%, var(--border));
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--muted) 70%, var(--surface-strong)), #3b3b4f);
+}
+
+.tile-pushBlock .tile-object-icon {
+  color: var(--text);
 }
 
 .tile-portal {
@@ -1130,17 +1274,20 @@ h2 {
   background: linear-gradient(135deg, #5a1f2b, #1b1b32);
 }
 
-.tile-spike::before {
-  width: 58%;
-  height: 58%;
-  background: var(--red);
-  clip-path: polygon(50% 0, 100% 100%, 0 100%);
-  content: "";
+.tile-spike .tile-object-icon {
+  border-color: color-mix(in srgb, var(--red) 64%, transparent);
+  color: var(--red);
+  background: color-mix(in srgb, var(--background) 54%, transparent);
 }
 
 .tile-ice {
   border-color: var(--blue);
   background: linear-gradient(135deg, rgba(153, 201, 255, 0.75), rgba(219, 184, 255, 0.35));
+}
+
+.tile-ice .tile-object-icon {
+  color: var(--background);
+  background: color-mix(in srgb, var(--blue) 34%, white);
 }
 
 .tile-cracked {

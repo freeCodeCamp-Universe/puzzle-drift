@@ -508,6 +508,8 @@ describe('App', () => {
   it('collecting a key increases key count and removes the key tile', async () => {
     await openLevel3();
 
+    fireEvent.keyDown(window, { key: 'ArrowUp' });
+    fireEvent.keyDown(window, { key: 'ArrowUp' });
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     fireEvent.keyDown(window, { key: 'ArrowRight' });
 
@@ -518,58 +520,59 @@ describe('App', () => {
   it('a door blocks player without a key', async () => {
     await openLevel3();
 
-    fireEvent.keyDown(window, { key: 'ArrowDown' });
-    fireEvent.keyDown(window, { key: 'ArrowDown' });
-    fireEvent.keyDown(window, { key: 'ArrowRight' });
-    fireEvent.keyDown(window, { key: 'ArrowRight' });
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     fireEvent.keyDown(window, { key: 'ArrowRight' });
 
-    expect(screen.getByLabelText('Player at 4, 3')).toBeInTheDocument();
-    expect(screen.getByLabelText('Door at 5, 3')).toBeInTheDocument();
+    expect(screen.getByLabelText('Player at 2, 3')).toBeInTheDocument();
+    expect(screen.getByLabelText('Locked door at 3, 3')).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: /locked\. find a key/i })).toBeInTheDocument();
   });
 
   it('opens a door with a key, consumes the key, and undo restores the door state', async () => {
     const user = await openLevel3();
 
+    fireEvent.keyDown(window, { key: 'ArrowUp' });
+    fireEvent.keyDown(window, { key: 'ArrowUp' });
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     fireEvent.keyDown(window, { key: 'ArrowRight' });
-    fireEvent.keyDown(window, { key: 'ArrowRight' });
-    fireEvent.keyDown(window, { key: 'ArrowRight' });
-    fireEvent.keyDown(window, { key: 'ArrowRight' });
-    fireEvent.keyDown(window, { key: 'ArrowDown' });
-    fireEvent.keyDown(window, { key: 'ArrowDown' });
     fireEvent.keyDown(window, { key: 'ArrowLeft' });
+    fireEvent.keyDown(window, { key: 'ArrowLeft' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
 
-    expect(screen.getByLabelText('Player at 5, 3')).toBeInTheDocument();
+    expect(screen.getByLabelText('Player at 3, 3')).toBeInTheDocument();
     expect(screen.getByLabelText('0 keys')).toBeInTheDocument();
-    expect(screen.getByLabelText('Floor at 5, 3')).toBeInTheDocument();
+    expect(screen.getByLabelText('Opened door at 3, 3')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /undo move/i }));
 
-    expect(screen.getByLabelText('Player at 6, 3')).toBeInTheDocument();
+    expect(screen.getByLabelText('Player at 2, 3')).toBeInTheDocument();
     expect(screen.getByLabelText('1 keys')).toBeInTheDocument();
-    expect(screen.getByLabelText('Door at 5, 3')).toBeInTheDocument();
+    expect(screen.getByLabelText('Locked door at 3, 3')).toBeInTheDocument();
   });
 
   it('reset restores the original key and door layout', async () => {
     const user = await openLevel3();
 
+    fireEvent.keyDown(window, { key: 'ArrowUp' });
+    fireEvent.keyDown(window, { key: 'ArrowUp' });
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     fireEvent.keyDown(window, { key: 'ArrowRight' });
-    fireEvent.keyDown(window, { key: 'ArrowRight' });
-    fireEvent.keyDown(window, { key: 'ArrowRight' });
-    fireEvent.keyDown(window, { key: 'ArrowRight' });
-    fireEvent.keyDown(window, { key: 'ArrowDown' });
-    fireEvent.keyDown(window, { key: 'ArrowDown' });
     fireEvent.keyDown(window, { key: 'ArrowLeft' });
+    fireEvent.keyDown(window, { key: 'ArrowLeft' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
 
     await user.click(screen.getByRole('button', { name: /reset level/i }));
 
-    expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
+    expect(screen.getByLabelText('Player at 1, 3')).toBeInTheDocument();
     expect(screen.getByLabelText('0 keys')).toBeInTheDocument();
-    expect(screen.getByLabelText('Key at 3, 1')).toBeInTheDocument();
-    expect(screen.getByLabelText('Door at 5, 3')).toBeInTheDocument();
+    expect(screen.getByLabelText('Collectible key at 3, 1')).toBeInTheDocument();
+    expect(screen.getByLabelText('Locked door at 3, 3')).toBeInTheDocument();
   });
 
   it('stepping on a spike shows a failed attempt overlay until retry', async () => {

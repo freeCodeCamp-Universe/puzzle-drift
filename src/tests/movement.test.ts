@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Level } from '../types/game';
+import { canCompleteLevel } from '../logic/levelCompletion';
 import { calculateStars, createInitialGameState, getEffectiveTileAt, movePlayer } from '../logic/movement';
 
 const movementLevel: Level = {
@@ -31,6 +32,22 @@ const wallLevel: Level = {
 
 const keyDoorLevel: Level = {
   ...movementLevel,
+  grid: [
+    ['floor', 'key', 'door'],
+    ['floor', 'floor', 'exit'],
+    ['floor', 'floor', 'floor'],
+  ],
+  playerStart: { x: 0, y: 0 },
+};
+
+const keyCompletionLevel: Level = {
+  ...movementLevel,
+  completionRequirements: {
+    requiresKeyCollection: true,
+    requiresDoorOpened: true,
+    requiredKeysCollected: 1,
+    requiredDoorsOpened: 1,
+  },
   grid: [
     ['floor', 'key', 'door'],
     ['floor', 'floor', 'exit'],
@@ -212,11 +229,46 @@ describe('movement logic', () => {
     expect(result.isComplete).toBe(true);
   });
 
+  it('does not complete a required key level by reaching the exit without key progress', () => {
+    const state = {
+      ...createInitialGameState(keyCompletionLevel),
+      playerPosition: { x: 2, y: 1 },
+    };
+
+    expect(canCompleteLevel(keyCompletionLevel, state)).toBe(false);
+  });
+
+  it('does not complete a required key level after collecting a key without opening a door', () => {
+    const state = {
+      ...createInitialGameState(keyCompletionLevel),
+      collectedKeyPositions: [{ x: 1, y: 0 }],
+      collectedKeys: 1,
+      keysCollectedThisAttempt: 1,
+      playerPosition: { x: 2, y: 1 },
+    };
+
+    expect(canCompleteLevel(keyCompletionLevel, state)).toBe(false);
+  });
+
+  it('completes a required key level after collecting a key and opening a door', () => {
+    const state = {
+      ...createInitialGameState(keyCompletionLevel),
+      collectedKeyPositions: [{ x: 1, y: 0 }],
+      doorsOpenedThisAttempt: 1,
+      keysCollectedThisAttempt: 1,
+      openedDoorPositions: [{ x: 2, y: 0 }],
+      playerPosition: { x: 2, y: 1 },
+    };
+
+    expect(canCompleteLevel(keyCompletionLevel, state)).toBe(true);
+  });
+
   it('collecting a key increases key count and removes the key tile', () => {
     const start = createInitialGameState(keyDoorLevel);
     const result = movePlayer(keyDoorLevel, start, 'right');
 
     expect(result.collectedKeys).toBe(1);
+    expect(result.keysCollectedThisAttempt).toBe(1);
     expect(getEffectiveTileAt(keyDoorLevel, result, { x: 1, y: 0 })).toBe('floor');
   });
 
@@ -238,6 +290,8 @@ describe('movement logic', () => {
 
     expect(result.playerPosition).toEqual({ x: 2, y: 0 });
     expect(result.collectedKeys).toBe(0);
+    expect(result.keysCollectedThisAttempt).toBe(1);
+    expect(result.doorsOpenedThisAttempt).toBe(1);
     expect(getEffectiveTileAt(keyDoorLevel, result, { x: 2, y: 0 })).toBe('floor');
   });
 

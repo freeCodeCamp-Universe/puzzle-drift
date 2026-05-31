@@ -50,6 +50,40 @@ describe('level validation', () => {
     );
   });
 
+  it('rejects key completion requirements without key tiles', () => {
+    const invalidLevel: Level = {
+      ...LEVELS[0],
+      completionRequirements: {
+        requiresKeyCollection: true,
+      },
+    };
+
+    expect(validateLevel(invalidLevel)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: 'Level requires key collection but defines no key tiles.',
+        }),
+      ]),
+    );
+  });
+
+  it('rejects door completion requirements without door tiles', () => {
+    const invalidLevel: Level = {
+      ...LEVELS[0],
+      completionRequirements: {
+        requiresDoorOpened: true,
+      },
+    };
+
+    expect(validateLevel(invalidLevel)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: 'Level requires a door to be opened but defines no door tiles.',
+        }),
+      ]),
+    );
+  });
+
   it('contains the full supported tile type list', () => {
     expect(VALID_TILE_TYPES).toEqual([
       'floor',

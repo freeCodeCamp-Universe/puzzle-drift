@@ -34,6 +34,7 @@ export type Level = {
   height: number;
   grid: TileType[][];
   hints: LevelHint[];
+  completionRequirements?: LevelCompletionRequirements;
   tileIds?: Record<string, string>;
   links?: LevelLink[];
   playerStart: Position;
@@ -53,6 +54,13 @@ export type LevelLink = {
   targetId: string;
 };
 
+export type LevelCompletionRequirements = {
+  requiresKeyCollection?: boolean;
+  requiresDoorOpened?: boolean;
+  requiredKeysCollected?: number;
+  requiredDoorsOpened?: number;
+};
+
 export type GameState = {
   levelId: number;
   playerPosition: Position;
@@ -66,6 +74,8 @@ export type GameState = {
   activePressurePlateIds: string[];
   activeSwitchIds: string[];
   pushBlocks: Position[];
+  keysCollectedThisAttempt: number;
+  doorsOpenedThisAttempt: number;
   isComplete: boolean;
   isFailed: boolean;
 };

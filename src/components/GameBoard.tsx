@@ -3,15 +3,22 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUp,
+  Box,
+  CircleDot,
   Compass,
+  DoorClosed,
+  DoorOpen,
   Footprints,
   KeyRound,
   Lightbulb,
   ListOrdered,
   Pause,
   RotateCcw,
+  Snowflake,
+  ToggleRight,
   Target,
   Timer,
+  TriangleAlert,
   Undo2,
   X,
 } from 'lucide-react';
@@ -40,12 +47,12 @@ type GameBoardProps = {
 
 const TILE_LABELS: Record<TileType, string> = {
   cracked: 'Cracked tile',
-  door: 'Door',
+  door: 'Locked door',
   exit: 'Exit',
   floor: 'Floor',
   fog: 'Fog',
   ice: 'Ice',
-  key: 'Key',
+  key: 'Collectible key',
   laserEmitter: 'Laser emitter',
   laserReceiver: 'Laser receiver',
   mirror: 'Mirror',
@@ -72,6 +79,57 @@ function getPortalPairClass(level: Level, x: number, y: number) {
   );
 
   return linkIndex !== undefined && linkIndex >= 0 ? ` portal-pair-${(linkIndex % 4) + 1}` : '';
+}
+
+function positionsMatch(first: Position, second: Position) {
+  return first.x === second.x && first.y === second.y;
+}
+
+function isActiveTile(level: Level, gameState: GameState, x: number, y: number, tile: TileType) {
+  const tileId = level.tileIds?.[`${x},${y}`] ?? '';
+
+  if (tile === 'pressurePlate') {
+    return gameState.activePressurePlateIds.includes(tileId);
+  }
+
+  if (tile === 'switch') {
+    return gameState.activeSwitchIds.includes(tileId);
+  }
+
+  return false;
+}
+
+function getRenderedTile(tile: TileType, effectiveTile: TileType) {
+  return tile === 'door' && effectiveTile === 'floor' ? 'door' : effectiveTile;
+}
+
+function getTileLabel(tile: TileType, renderedTile: TileType, effectiveTile: TileType) {
+  if (tile === 'door' && effectiveTile === 'floor') {
+    return 'Opened door';
+  }
+
+  return TILE_LABELS[renderedTile];
+}
+
+function renderObjectIcon(tile: TileType, isActive: boolean, isOpenedDoor: boolean) {
+  switch (tile) {
+    case 'door':
+      return isOpenedDoor ? <DoorOpen aria-hidden="true" /> : <DoorClosed aria-hidden="true" />;
+    case 'ice':
+      return <Snowflake aria-hidden="true" />;
+    case 'key':
+      return <KeyRound aria-hidden="true" />;
+    case 'pressurePlate':
+      return <CircleDot aria-hidden="true" />;
+    case 'pushBlock':
+      return <Box aria-hidden="true" />;
+    case 'spike':
+      return <TriangleAlert aria-hidden="true" />;
+    case 'switch':
+      return <ToggleRight aria-hidden="true" className={isActive ? 'object-icon-active' : ''} />;
+    default:
+      return null;
+  }
 }
 
 export function GameBoard({
@@ -195,25 +253,30 @@ export function GameBoard({
           row.map((tile, x) => {
             const hasPlayer = playerPosition.x === x && playerPosition.y === y;
             const effectiveTile = getEffectiveTileAt(level, gameState, { x, y }) ?? tile;
+            const renderedTile = getRenderedTile(tile, effectiveTile);
+            const isActive = isActiveTile(level, gameState, x, y, renderedTile);
+            const isOpenedDoor = tile === 'door' && effectiveTile === 'floor';
+            const objectIcon = renderObjectIcon(renderedTile, isActive, isOpenedDoor);
+            const wasKeyCollected =
+              tile === 'key' && gameState.collectedKeyPositions.some((position) => positionsMatch(position, { x, y }));
 
             return (
               <div
-                aria-label={`${TILE_LABELS[effectiveTile]} at ${x}, ${y}`}
-                className={`board-tile tile-${effectiveTile}${
-                  effectiveTile === 'pressurePlate' &&
-                  gameState.activePressurePlateIds.includes(level.tileIds?.[`${x},${y}`] ?? '')
-                    ? ' tile-active'
-                    : ''
-                }${
-                  effectiveTile === 'switch' &&
-                  gameState.activeSwitchIds.includes(level.tileIds?.[`${x},${y}`] ?? '')
-                    ? ' tile-active'
-                    : ''
-                }${effectiveTile === 'portal' ? getPortalPairClass(level, x, y) : ''}`}
+                aria-label={`${getTileLabel(tile, renderedTile, effectiveTile)} at ${x}, ${y}`}
+                className={`board-tile tile-${renderedTile}${
+                  objectIcon ? ' tile-object' : ''
+                }${isActive ? ' tile-active' : ''}${isOpenedDoor ? ' tile-opened' : ''}${
+                  wasKeyCollected ? ' tile-key-collected' : ''
+                }${renderedTile === 'portal' ? getPortalPairClass(level, x, y) : ''}`}
                 data-testid="board-tile"
                 key={`${x}-${y}`}
                 role="gridcell"
               >
+                {objectIcon ? (
+                  <span className="tile-object-icon" data-testid={`${isOpenedDoor ? 'opened-door' : renderedTile}-icon`}>
+                    {objectIcon}
+                  </span>
+                ) : null}
                 {hasPlayer ? (
                   <span
                     aria-label={`Player at ${x}, ${y}`}

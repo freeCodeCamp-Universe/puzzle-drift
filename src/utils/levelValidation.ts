@@ -29,6 +29,7 @@ export type LevelValidationIssue = {
 
 export function validateLevel(level: Level): LevelValidationIssue[] {
   const issues: LevelValidationIssue[] = [];
+  const tileCounts = new Map<TileType, number>();
 
   if (level.grid.length !== level.height) {
     issues.push({
@@ -46,6 +47,8 @@ export function validateLevel(level: Level): LevelValidationIssue[] {
     }
 
     row.forEach((tile, columnIndex) => {
+      tileCounts.set(tile, (tileCounts.get(tile) ?? 0) + 1);
+
       if (!VALID_TILE_TYPE_SET.has(tile)) {
         issues.push({
           levelId: level.id,
@@ -73,6 +76,20 @@ export function validateLevel(level: Level): LevelValidationIssue[] {
     issues.push({
       levelId: level.id,
       message: 'Level must have at least one exit tile.',
+    });
+  }
+
+  if (level.completionRequirements?.requiresDoorOpened && !tileCounts.get('door')) {
+    issues.push({
+      levelId: level.id,
+      message: 'Level requires a door to be opened but defines no door tiles.',
+    });
+  }
+
+  if (level.completionRequirements?.requiresKeyCollection && !tileCounts.get('key')) {
+    issues.push({
+      levelId: level.id,
+      message: 'Level requires key collection but defines no key tiles.',
     });
   }
 

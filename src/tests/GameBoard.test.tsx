@@ -6,6 +6,7 @@ import { LEVELS } from '../data/levels';
 import { createInitialGameState } from '../logic/movement';
 
 const level = LEVELS[0];
+const keyline = LEVELS[2];
 const noop = vi.fn();
 const gameState = createInitialGameState(level);
 const renderBoard = (overrides = {}) =>
@@ -29,6 +30,17 @@ const renderBoard = (overrides = {}) =>
       {...overrides}
     />,
   );
+
+const renderKeyline = (overrides = {}) => {
+  const keylineState = createInitialGameState(keyline);
+
+  return renderBoard({
+    gameState: keylineState,
+    level: keyline,
+    playerPosition: keyline.playerStart,
+    ...overrides,
+  });
+};
 
 describe('GameBoard', () => {
   it('renders the correct number of tiles', () => {
@@ -204,5 +216,62 @@ describe('GameBoard', () => {
 
     expect(screen.getByRole('region', { name: /level hints/i })).toBeInTheDocument();
     expect(screen.getByText(level.hints[0].text)).toBeInTheDocument();
+  });
+
+  it('renders key and door Lucide object icons with clear labels', () => {
+    renderKeyline();
+
+    expect(screen.getByLabelText('Collectible key at 3, 1')).toBeInTheDocument();
+    expect(screen.getByLabelText('Locked door at 3, 3')).toBeInTheDocument();
+    expect(screen.getByTestId('key-icon').querySelector('.lucide-key-round')).toBeInTheDocument();
+    expect(screen.getByTestId('door-icon').querySelector('.lucide-door-closed')).toBeInTheDocument();
+  });
+
+  it('renders opened doors differently from locked doors', () => {
+    const openedState = {
+      ...createInitialGameState(keyline),
+      doorsOpenedThisAttempt: 1,
+      openedDoorPositions: [{ x: 3, y: 3 }],
+    };
+
+    renderKeyline({ gameState: openedState });
+
+    const openedDoor = screen.getByLabelText('Opened door at 3, 3');
+
+    expect(openedDoor).toHaveClass('tile-opened');
+    expect(screen.getByTestId('opened-door-icon').querySelector('.lucide-door-open')).toBeInTheDocument();
+  });
+
+  it('renders collected keys as floor while preserving the pickup animation hook', () => {
+    const collectedState = {
+      ...createInitialGameState(keyline),
+      collectedKeyPositions: [{ x: 3, y: 1 }],
+      keysCollectedThisAttempt: 1,
+    };
+
+    renderKeyline({ animationClass: 'key-collect', gameState: collectedState });
+
+    expect(screen.getByLabelText('Floor at 3, 1')).toHaveClass('tile-key-collected');
+    expect(screen.getByTestId('game-board-shell')).toHaveClass('key-collect');
+  });
+
+  it('renders door unlock animation hook when a door opens', () => {
+    const openedState = {
+      ...createInitialGameState(keyline),
+      doorsOpenedThisAttempt: 1,
+      openedDoorPositions: [{ x: 3, y: 3 }],
+    };
+
+    renderKeyline({ animationClass: 'door-unlock', gameState: openedState });
+
+    expect(screen.getByTestId('game-board-shell')).toHaveClass('door-unlock');
+    expect(screen.getByLabelText('Opened door at 3, 3')).toHaveClass('tile-opened');
+  });
+
+  it('omits key and door animation classes when reduced motion state is supplied', () => {
+    renderKeyline({ animationClass: '', reducedMotion: true });
+
+    expect(screen.getByTestId('game-board-shell')).not.toHaveClass('key-collect');
+    expect(screen.getByTestId('game-board-shell')).not.toHaveClass('door-unlock');
   });
 });

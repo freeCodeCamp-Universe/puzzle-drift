@@ -94,10 +94,65 @@ function getSolutionPositions(levelId: number) {
   return positions;
 }
 
+function getCompletedState(levelId: number) {
+  const level = LEVELS.find((candidate) => candidate.id === levelId);
+  const path = findSolutionPath(levelId);
+
+  if (!level || !path) {
+    return null;
+  }
+
+  return path.reduce((state, direction) => movePlayer(level, state, direction), createInitialGameState(level));
+}
+
 function getSpikePositions(level: (typeof LEVELS)[number]) {
   return level.grid.flatMap((row, y) =>
     row.flatMap((tile, x) => (tile === 'spike' ? [{ x, y }] : [])),
   );
+}
+
+function isExitReachableWithDoorsBlocked(levelId: number) {
+  const level = LEVELS.find((candidate) => candidate.id === levelId);
+
+  if (!level) {
+    return false;
+  }
+
+  const queue: Position[] = [level.playerStart];
+  const visited = new Set([`${level.playerStart.x},${level.playerStart.y}`]);
+  const directions: Position[] = [
+    { x: 0, y: -1 },
+    { x: 1, y: 0 },
+    { x: 0, y: 1 },
+    { x: -1, y: 0 },
+  ];
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+
+    if (!current) {
+      break;
+    }
+
+    if (level.grid[current.y][current.x] === 'exit') {
+      return true;
+    }
+
+    directions.forEach((direction) => {
+      const next = { x: current.x + direction.x, y: current.y + direction.y };
+      const tile = level.grid[next.y]?.[next.x];
+      const key = `${next.x},${next.y}`;
+
+      if (!tile || visited.has(key) || tile === 'wall' || tile === 'door') {
+        return;
+      }
+
+      visited.add(key);
+      queue.push(next);
+    });
+  }
+
+  return false;
 }
 
 describe('level pack', () => {
@@ -146,6 +201,25 @@ describe('level pack', () => {
     expect(spikeLane?.targetMoves).toBe(17);
     expect(spikeLane?.targetTimeSeconds).toBe(40);
     expect(findSolutionLength(11)).toBe(17);
+  });
+
+  it('Keyline requires collecting a key and opening the locked door', () => {
+    const keyline = LEVELS.find((level) => level.id === 3);
+    const completedState = getCompletedState(3);
+
+    expect(keyline?.targetMoves).toBe(18);
+    expect(keyline?.targetTimeSeconds).toBe(35);
+    expect(findSolutionLength(3)).toBe(18);
+    expect(completedState?.collectedKeyPositions).toContainEqual({ x: 3, y: 1 });
+    expect(completedState?.openedDoorPositions).toContainEqual({ x: 3, y: 3 });
+    expect(completedState?.keysCollectedThisAttempt).toBe(1);
+    expect(completedState?.doorsOpenedThisAttempt).toBe(1);
+    expect(completedState?.collectedKeys).toBe(0);
+  });
+
+  it('Keyline exit is unreachable when locked doors are treated as walls', () => {
+    expect(isExitReachableWithDoorsBlocked(3)).toBe(false);
+    expect(findSolutionLength(3)).toBe(18);
   });
 
   it('every spike level has meaningful hazard routing and calibrated par', () => {

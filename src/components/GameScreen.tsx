@@ -12,8 +12,15 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import { LEVELS } from '../data/levels';
-import { calculateStars, createInitialGameState, getDirectionFromKey, movePlayer } from '../logic/movement';
-import type { Direction, GameState, SaveData } from '../types/game';
+import {
+  calculateStars,
+  createInitialGameState,
+  getDirectionFromKey,
+  getEffectiveTileAt,
+  getNextPosition,
+  movePlayer,
+} from '../logic/movement';
+import type { Direction, GameState, Level, SaveData } from '../types/game';
 import { GameBoard } from './GameBoard';
 
 type CompletionPayload = {
@@ -33,11 +40,24 @@ type GameScreenProps = {
   reducedMotion: boolean;
 };
 
+const LOCKED_DOOR_MESSAGE = 'Locked. Find a key.';
+const LOCKED_DOOR_MESSAGE_MS = 1400;
+
 function formatTime(seconds: number) {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
 
   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
+
+function positionKey(position: { x: number; y: number }) {
+  return `${position.x},${position.y}`;
+}
+
+function isLinkedDoor(level: Level, position: { x: number; y: number }) {
+  const doorId = level.tileIds?.[positionKey(position)];
+
+  return Boolean(doorId && level.links?.some((link) => link.targetId === doorId));
 }
 
 function getUnlockedHintCount(level: (typeof LEVELS)[number], elapsedSeconds: number, failedResetCount: number) {
@@ -96,7 +116,30 @@ export function GameScreen({
   const [failedResetCount, setFailedResetCount] = useState(0);
   const [isHintPanelOpen, setIsHintPanelOpen] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [lockedDoorMessage, setLockedDoorMessage] = useState('');
+  const lockedDoorTimeoutRef = useRef<number | null>(null);
   const savedCompletionRef = useRef(false);
+
+  const clearLockedDoorMessage = useCallback(() => {
+    if (lockedDoorTimeoutRef.current !== null) {
+      window.clearTimeout(lockedDoorTimeoutRef.current);
+      lockedDoorTimeoutRef.current = null;
+    }
+
+    setLockedDoorMessage('');
+  }, []);
+
+  const showLockedDoorMessage = useCallback(() => {
+    if (lockedDoorTimeoutRef.current !== null) {
+      window.clearTimeout(lockedDoorTimeoutRef.current);
+    }
+
+    setLockedDoorMessage(LOCKED_DOOR_MESSAGE);
+    lockedDoorTimeoutRef.current = window.setTimeout(() => {
+      setLockedDoorMessage('');
+      lockedDoorTimeoutRef.current = null;
+    }, LOCKED_DOOR_MESSAGE_MS);
+  }, []);
 
   const triggerBoardAnimation = useCallback(
     (animationClass: string) => {
@@ -118,6 +161,18 @@ export function GameScreen({
       }
 
       setGameState((currentState) => {
+        const attemptedPosition = getNextPosition(currentState.playerPosition, direction);
+        const attemptedTile = getEffectiveTileAt(level, currentState, attemptedPosition);
+
+        if (
+          attemptedTile === 'door' &&
+          currentState.collectedKeys === 0 &&
+          level.mechanics.includes('key') &&
+          !isLinkedDoor(level, attemptedPosition)
+        ) {
+          showLockedDoorMessage();
+        }
+
         const nextState = movePlayer(level, currentState, direction);
 
         if (nextState.isFailed) {
@@ -133,16 +188,21 @@ export function GameScreen({
           return nextState;
         }
 
+        clearLockedDoorMessage();
+
         const collectedKey = nextState.collectedKeyPositions.length > currentState.collectedKeyPositions.length;
+        const openedDoor = nextState.openedDoorPositions.length > currentState.openedDoorPositions.length;
         const teleported =
           Math.abs(nextState.playerPosition.x - currentState.playerPosition.x) +
             Math.abs(nextState.playerPosition.y - currentState.playerPosition.y) >
           1;
         const animationClass = collectedKey
           ? 'key-collect'
-          : teleported
-            ? 'portal-teleport'
-            : 'player-move';
+          : openedDoor
+            ? 'door-unlock'
+            : teleported
+              ? 'portal-teleport'
+              : 'player-move';
 
         triggerBoardAnimation(animationClass);
         setHistory((currentHistory) => [...currentHistory, currentState]);
@@ -150,10 +210,11 @@ export function GameScreen({
         return nextState;
       });
     },
-    [isPaused, level, triggerBoardAnimation],
+    [clearLockedDoorMessage, isPaused, level, showLockedDoorMessage, triggerBoardAnimation],
   );
 
   useEffect(() => {
+    clearLockedDoorMessage();
     setGameState(createInitialGameState(level));
     setHistory([]);
     setHazardFlashCount(0);
@@ -162,7 +223,9 @@ export function GameScreen({
     setIsHintPanelOpen(false);
     setIsPaused(false);
     savedCompletionRef.current = false;
-  }, [level]);
+  }, [clearLockedDoorMessage, level]);
+
+  useEffect(() => clearLockedDoorMessage, [clearLockedDoorMessage]);
 
   useEffect(() => {
     if (isPaused || gameState.isComplete || gameState.isFailed) {
@@ -218,6 +281,7 @@ export function GameScreen({
     setHistory([]);
     setHazardFlashCount(0);
     setBoardAnimationClass('');
+    clearLockedDoorMessage();
     setIsPaused(false);
     savedCompletionRef.current = false;
   };
@@ -354,6 +418,17 @@ export function GameScreen({
               <span>Retry the level?</span>
             </button>
           </section>
+        ) : null}
+
+        {lockedDoorMessage ? (
+          <div
+            className={`locked-door-message${reducedMotion ? ' no-motion' : ''}`}
+            role="status"
+            aria-label={lockedDoorMessage}
+            aria-live="polite"
+          >
+            {lockedDoorMessage}
+          </div>
         ) : null}
       </div>
 
