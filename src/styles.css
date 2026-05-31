@@ -21,40 +21,6 @@
   background: var(--background);
 }
 
-:root.theme-crystal-blue {
-  --background: #081527;
-  --surface: #10263f;
-  --surface-strong: #19395c;
-  --border: #31577e;
-  --blue: #9ee8ff;
-  --purple: #c2d3ff;
-  --yellow: #f7d66b;
-  --green: #9ff7d4;
-}
-
-:root.theme-ember-grid {
-  --background: #180d12;
-  --surface: #25161d;
-  --surface-strong: #382028;
-  --border: #61414a;
-  --blue: #ffc48f;
-  --purple: #ffd6ad;
-  --yellow: #ffbf5f;
-  --green: #d5e875;
-  --red: #ff9a9a;
-}
-
-:root.theme-forest-circuit {
-  --background: #07170f;
-  --surface: #102319;
-  --surface-strong: #173626;
-  --border: #2f5d45;
-  --blue: #b3f0d3;
-  --purple: #c6e6b5;
-  --yellow: #f1db6b;
-  --green: #98e66e;
-}
-
 :root.reduced-motion *,
 :root.reduced-motion *::before,
 :root.reduced-motion *::after {
@@ -1119,8 +1085,7 @@ h2 {
 }
 
 .dialog-title,
-.toggle-row span,
-.select-row span {
+.toggle-row span {
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -1177,13 +1142,15 @@ h2 {
   padding-block-start: 1rem;
 }
 
-.settings-group + .settings-group,
 .settings-danger-zone {
-  margin-block-start: 1rem;
+  margin-block-start: 0.85rem;
 }
 
-.toggle-row,
-.select-row {
+.settings-group + .settings-group {
+  margin-block-start: 0.75rem;
+}
+
+.toggle-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1195,18 +1162,6 @@ h2 {
   width: 1.25rem;
   height: 1.25rem;
   accent-color: var(--yellow);
-}
-
-.select-row select {
-  min-width: 11rem;
-  border: 1px solid var(--border);
-  color: var(--text);
-  background: var(--surface-strong);
-  padding: 0.6rem 0.75rem;
-}
-
-.select-row select:hover {
-  border-color: var(--blue);
 }
 
 .confirm-reset-panel {

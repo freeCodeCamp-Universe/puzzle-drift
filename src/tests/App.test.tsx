@@ -62,10 +62,21 @@ describe('App', () => {
   it('renders the start screen buttons', () => {
     render(<App />);
 
+    expect(screen.queryByText(/neon logic arcade/i)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /new game/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /level select/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /settings/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /how to play/i })).toBeInTheDocument();
+  });
+
+  it('opens the how to play dialog from the start screen', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /how to play/i }));
+
+    expect(screen.getByRole('dialog', { name: /how to play/i })).toBeInTheDocument();
   });
 
   it('shows all level cards after clicking Level Select', async () => {
@@ -88,7 +99,19 @@ describe('App', () => {
     expect(screen.getByLabelText(/sound effects/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/music/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/reduced motion/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/theme/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/theme/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^theme$/i)).not.toBeInTheDocument();
+  });
+
+  it('renders the settings modal without a header gear icon', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /settings/i }));
+
+    const settingsDialog = screen.getByRole('dialog', { name: /settings/i });
+    expect(container.querySelector('.settings-dialog .lucide-settings')).not.toBeInTheDocument();
+    expect(within(settingsDialog).getByRole('heading', { name: /settings/i })).toBeInTheDocument();
   });
 
   it('toggling sound saves the setting', async () => {
@@ -131,16 +154,28 @@ describe('App', () => {
     });
   });
 
-  it('changing theme applies a global class', async () => {
+  it('removes legacy theme settings from persisted settings', async () => {
     const user = userEvent.setup();
+    window.localStorage.setItem(
+      'puzzle-drift:settings',
+      JSON.stringify({
+        highContrast: false,
+        musicEnabled: true,
+        reducedMotion: false,
+        soundEnabled: true,
+        theme: 'crystal-blue',
+      }),
+    );
     render(<App />);
 
     await user.click(screen.getByRole('button', { name: /settings/i }));
-    await user.selectOptions(screen.getByLabelText(/theme/i), 'crystal-blue');
+    await user.click(screen.getByLabelText(/sound effects/i));
 
     await waitFor(() => {
-      expect(document.documentElement).toHaveClass('theme-crystal-blue');
-      expect(document.documentElement).not.toHaveClass('theme-rift-dark');
+      const savedSettings = JSON.parse(window.localStorage.getItem('puzzle-drift:settings') ?? '{}');
+
+      expect(savedSettings.theme).toBeUndefined();
+      expect(document.documentElement.className).not.toMatch(/theme-/);
     });
   });
 
@@ -160,7 +195,6 @@ describe('App', () => {
         musicEnabled: false,
         reducedMotion: true,
         soundEnabled: false,
-        theme: 'forest-circuit',
       }),
     );
     render(<App />);
@@ -178,7 +212,6 @@ describe('App', () => {
       musicEnabled: false,
       reducedMotion: true,
       soundEnabled: false,
-      theme: 'forest-circuit',
     });
   });
 
@@ -579,7 +612,6 @@ describe('App', () => {
         musicEnabled: true,
         reducedMotion: true,
         soundEnabled: true,
-        theme: 'rift-dark',
       }),
     );
 
@@ -601,7 +633,6 @@ describe('App', () => {
         musicEnabled: true,
         reducedMotion: true,
         soundEnabled: true,
-        theme: 'rift-dark',
       }),
     );
     render(<App />);
@@ -627,7 +658,6 @@ describe('App', () => {
         musicEnabled: true,
         reducedMotion: true,
         soundEnabled: true,
-        theme: 'rift-dark',
       }),
     );
     render(<App />);

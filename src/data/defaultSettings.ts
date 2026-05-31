@@ -5,5 +5,4 @@ export const DEFAULT_SETTINGS: GameSettings = {
   musicEnabled: true,
   reducedMotion: false,
   soundEnabled: true,
-  theme: 'rift-dark',
 };

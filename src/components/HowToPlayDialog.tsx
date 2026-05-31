@@ -1,4 +1,4 @@
-import { ArrowRight, CircleHelp, Diamond, KeyRound, MousePointer2, X } from 'lucide-react';
+import { ArrowRight, Diamond, KeyRound, MousePointer2, X } from 'lucide-react';
 
 type HowToPlayDialogProps = {
   isOpen: boolean;
@@ -38,7 +38,6 @@ export function HowToPlayDialog({ isOpen, onClose }: HowToPlayDialogProps) {
       <section className="how-to-dialog" role="dialog" aria-modal="true" aria-labelledby="how-to-title">
         <header className="dialog-header">
           <div className="dialog-title">
-            <CircleHelp aria-hidden="true" />
             <h2 id="how-to-title">How To Play</h2>
           </div>
           <button type="button" className="icon-button" onClick={onClose} aria-label="Close how to play">

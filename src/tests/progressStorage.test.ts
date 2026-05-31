@@ -38,7 +38,6 @@ describe('progress storage', () => {
       musicEnabled: false,
       reducedMotion: true,
       soundEnabled: false,
-      theme: 'ember-grid',
     });
 
     expect(loadSettings()).toEqual({
@@ -46,7 +45,26 @@ describe('progress storage', () => {
       musicEnabled: false,
       reducedMotion: true,
       soundEnabled: false,
-      theme: 'ember-grid',
+    });
+  });
+
+  it('drops legacy theme settings when loading settings', () => {
+    window.localStorage.setItem(
+      'puzzle-drift:settings',
+      JSON.stringify({
+        highContrast: true,
+        musicEnabled: false,
+        reducedMotion: true,
+        soundEnabled: false,
+        theme: 'ember-grid',
+      }),
+    );
+
+    expect(loadSettings()).toEqual({
+      highContrast: true,
+      musicEnabled: false,
+      reducedMotion: true,
+      soundEnabled: false,
     });
   });
 

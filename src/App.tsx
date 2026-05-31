@@ -42,9 +42,7 @@ export function App() {
     const root = document.documentElement;
 
     root.classList.toggle('reduced-motion', settings.reducedMotion);
-    root.classList.remove('theme-rift-dark', 'theme-crystal-blue', 'theme-ember-grid', 'theme-forest-circuit');
-    root.classList.add(`theme-${settings.theme}`);
-  }, [settings.reducedMotion, settings.theme]);
+  }, [settings.reducedMotion]);
 
   const startNewGame = () => {
     setSave({ ...createInitialSaveData(), hasActiveRun: true });

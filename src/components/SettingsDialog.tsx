@@ -1,4 +1,4 @@
-import { AlertTriangle, Music, Palette, RotateCcw, Settings, Volume2, Wand2, X } from 'lucide-react';
+import { AlertTriangle, Music, RotateCcw, Volume2, Wand2, X } from 'lucide-react';
 import { useState } from 'react';
 import type { GameSettings } from '../types/game';
 
@@ -9,13 +9,6 @@ type SettingsDialogProps = {
   onClose: () => void;
   onResetProgress: () => void;
 };
-
-const THEMES: Array<{ label: string; value: GameSettings['theme'] }> = [
-  { label: 'Rift Dark', value: 'rift-dark' },
-  { label: 'Crystal Blue', value: 'crystal-blue' },
-  { label: 'Ember Grid', value: 'ember-grid' },
-  { label: 'Forest Circuit', value: 'forest-circuit' },
-];
 
 export function SettingsDialog({
   isOpen,
@@ -39,7 +32,6 @@ export function SettingsDialog({
       <section className="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <header className="dialog-header">
           <div className="dialog-title">
-            <Settings aria-hidden="true" />
             <h2 id="settings-title">Settings</h2>
           </div>
           <button type="button" className="icon-button" onClick={onClose} aria-label="Close settings">
@@ -84,23 +76,6 @@ export function SettingsDialog({
               checked={settings.reducedMotion}
               onChange={(event) => updateSetting('reducedMotion', event.target.checked)}
             />
-          </label>
-
-          <label className="select-row">
-            <span>
-              <Palette aria-hidden="true" />
-              Theme
-            </span>
-            <select
-              value={settings.theme}
-              onChange={(event) => updateSetting('theme', event.target.value as GameSettings['theme'])}
-            >
-              {THEMES.map((theme) => (
-                <option key={theme.value} value={theme.value}>
-                  {theme.label}
-                </option>
-              ))}
-            </select>
           </label>
         </div>
 

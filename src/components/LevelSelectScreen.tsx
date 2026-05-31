@@ -140,7 +140,6 @@ export function LevelSelectScreen({ progress, onBack, onSelectLevel }: LevelSele
           <ArrowLeft aria-hidden="true" />
         </button>
         <div>
-          <p className="eyebrow">route planner</p>
           <h2 id="level-select-title">Level Select</h2>
         </div>
       </header>

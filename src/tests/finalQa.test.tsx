@@ -84,11 +84,9 @@ describe('final QA', () => {
 
     await user.click(screen.getByRole('button', { name: /settings/i }));
     await user.click(screen.getByLabelText(/reduced motion/i));
-    await user.selectOptions(screen.getByLabelText(/theme/i), 'ember-grid');
 
     await waitFor(() => {
       expect(document.documentElement).toHaveClass('reduced-motion');
-      expect(document.documentElement).toHaveClass('theme-ember-grid');
     });
 
     unmount();
@@ -97,7 +95,6 @@ describe('final QA', () => {
 
     await waitFor(() => {
       expect(document.documentElement).toHaveClass('reduced-motion');
-      expect(document.documentElement).toHaveClass('theme-ember-grid');
     });
   });
 

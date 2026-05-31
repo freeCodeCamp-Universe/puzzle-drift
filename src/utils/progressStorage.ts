@@ -58,13 +58,20 @@ export function loadSettings(): GameSettings {
   const storedSettings = readStorageValue<Partial<GameSettings>>(SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS);
 
   return {
-    ...DEFAULT_SETTINGS,
-    ...storedSettings,
+    highContrast: storedSettings.highContrast ?? DEFAULT_SETTINGS.highContrast,
+    musicEnabled: storedSettings.musicEnabled ?? DEFAULT_SETTINGS.musicEnabled,
+    reducedMotion: storedSettings.reducedMotion ?? DEFAULT_SETTINGS.reducedMotion,
+    soundEnabled: storedSettings.soundEnabled ?? DEFAULT_SETTINGS.soundEnabled,
   };
 }
 
 export function saveSettings(settings: GameSettings) {
-  writeStorageValue(SETTINGS_STORAGE_KEY, settings);
+  writeStorageValue(SETTINGS_STORAGE_KEY, {
+    highContrast: settings.highContrast,
+    musicEnabled: settings.musicEnabled,
+    reducedMotion: settings.reducedMotion,
+    soundEnabled: settings.soundEnabled,
+  });
 }
 
 export function clearProgressStorage() {

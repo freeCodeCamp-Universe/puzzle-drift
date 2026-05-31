@@ -96,5 +96,4 @@ export type GameSettings = {
   soundEnabled: boolean;
   musicEnabled: boolean;
   highContrast: boolean;
-  theme: 'rift-dark' | 'crystal-blue' | 'ember-grid' | 'forest-circuit';
 };
