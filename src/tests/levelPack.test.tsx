@@ -108,6 +108,16 @@ function getCompletedState(levelId: number) {
   return path.reduce((state, direction) => movePlayer(level, state, direction), createInitialGameState(level));
 }
 
+function movePath(levelId: number, path: Direction[]) {
+  const level = LEVELS.find((candidate) => candidate.id === levelId);
+
+  if (!level) {
+    return null;
+  }
+
+  return path.reduce((state, direction) => movePlayer(level, state, direction), createInitialGameState(level));
+}
+
 function getSpikePositions(level: (typeof LEVELS)[number]) {
   return level.grid.flatMap((row, y) =>
     row.flatMap((tile, x) => (tile === 'spike' ? [{ x, y }] : [])),
@@ -278,6 +288,86 @@ describe('level pack', () => {
   it('Door Loop exit is unreachable until the locked door is opened', () => {
     expect(isExitReachableWithDoorsBlocked(4)).toBe(false);
     expect(findSolutionLength(4)).toBe(22);
+  });
+
+  it('Clean Exit blocks the reported right-side bypass route', () => {
+    const bypassAttempt = movePath(5, [
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+      'up',
+      'up',
+      'up',
+      'up',
+      'up',
+      'up',
+      'up',
+      'up',
+    ]);
+
+    expect(bypassAttempt?.isComplete).toBe(false);
+    expect(bypassAttempt?.keysCollectedThisAttempt).toBe(0);
+    expect(bypassAttempt?.doorsOpenedThisAttempt).toBe(0);
+  });
+
+  it('Clean Exit requires the maze key and final locked passage', () => {
+    const cleanExit = LEVELS.find((level) => level.id === 5);
+    const completedState = getCompletedState(5);
+
+    expect(cleanExit?.completionRequirements).toEqual({
+      requiresKeyCollection: true,
+      requiresDoorOpened: true,
+      requiredKeysCollected: 1,
+      requiredDoorsOpened: 1,
+    });
+    expect(cleanExit?.targetMoves).toBe(18);
+    expect(cleanExit?.targetTimeSeconds).toBe(38);
+    expect(findSolutionLength(5)).toBe(18);
+    expect(completedState?.collectedKeyPositions).toContainEqual({ x: 1, y: 1 });
+    expect(completedState?.openedDoorPositions).toContainEqual({ x: 7, y: 2 });
+    expect(completedState?.keysCollectedThisAttempt).toBe(1);
+    expect(completedState?.doorsOpenedThisAttempt).toBe(1);
+    expect(completedState?.collectedKeys).toBe(0);
+  });
+
+  it('Clean Exit cannot complete without collecting the key and opening the door', () => {
+    const cleanExit = LEVELS.find((level) => level.id === 5);
+
+    expect(cleanExit).toBeDefined();
+
+    if (!cleanExit) {
+      return;
+    }
+
+    const exitOnlyState = {
+      ...createInitialGameState(cleanExit),
+      playerPosition: { x: 7, y: 1 },
+    };
+    const collectedKeyState = {
+      ...exitOnlyState,
+      collectedKeys: 1,
+      keysCollectedThisAttempt: 1,
+    };
+    const completedState = {
+      ...collectedKeyState,
+      collectedKeys: 0,
+      doorsOpenedThisAttempt: 1,
+      openedDoorPositions: [{ x: 7, y: 2 }],
+    };
+
+    expect(canCompleteLevel(cleanExit, exitOnlyState)).toBe(false);
+    expect(canCompleteLevel(cleanExit, collectedKeyState)).toBe(false);
+    expect(canCompleteLevel(cleanExit, completedState)).toBe(true);
+  });
+
+  it('Clean Exit exit is unreachable until the locked door is opened', () => {
+    expect(isExitReachableWithDoorsBlocked(5)).toBe(false);
+    expect(findSolutionLength(5)).toBe(18);
   });
 
   it('every spike level has meaningful hazard routing and calibrated par', () => {

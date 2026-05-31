@@ -66,8 +66,9 @@ const LEVEL_HINTS: Record<number, LevelHint[]> = {
     { text: 'Return to the locked door after collecting the key.', unlockAfterSeconds: 30 },
   ],
   5: [
-    { text: 'Pick up the key first, then unwind toward the exit corridor.' },
-    { text: 'The locked shortcut is only useful after the key is collected.', unlockAfterSeconds: 35 },
+    { text: 'The open-looking edge path should not be the solution.' },
+    { text: 'Find the key before committing to the final corridor.', unlockAfterFailedResets: 1 },
+    { text: 'The last door is the only clean way out.', unlockAfterSeconds: 35 },
   ],
   6: [
     { text: 'Step on the switch before testing the nearby door.' },
@@ -241,13 +242,19 @@ const LEVEL_DEFINITIONS: Level[] = [
   defineLevel({
     id: 5,
     name: 'Clean Exit',
-    description: 'Combine maze routing and one final locked shortcut.',
+    description: 'Navigate the maze, collect the key, and unlock the final passage to the exit.',
     width: 9,
     height: 7,
-    grid: ['#########', '#K...#E.#', '#.##.#D.#', '#....#..#', '#.####..#', '#.......#', '#########'],
+    grid: ['#########', '#K....#E#', '#.###.#D#', '#...#...#', '###.###.#', '#.....#.#', '#########'],
+    completionRequirements: {
+      requiresKeyCollection: true,
+      requiresDoorOpened: true,
+      requiredKeysCollected: 1,
+      requiredDoorsOpened: 1,
+    },
     playerStart: position(1, 5),
-    targetMoves: 22,
-    targetTimeSeconds: 40,
+    targetMoves: 18,
+    targetTimeSeconds: 38,
     mechanics: ['floor', 'wall', 'exit', 'key', 'door'],
   }),
   defineLevel({
