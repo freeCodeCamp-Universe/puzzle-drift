@@ -59,10 +59,12 @@ export type LevelCompletionRequirements = {
   requiresDoorOpened?: boolean;
   requiresSwitchActivation?: boolean;
   requiresLinkedDoorOpened?: boolean;
+  requiresBlockPush?: boolean;
   requiredKeysCollected?: number;
   requiredDoorsOpened?: number;
   requiredSwitchesActivated?: number;
   requiredLinkedDoorsOpened?: number;
+  requiredBlocksPushed?: number;
 };
 
 export type GameState = {
@@ -82,6 +84,7 @@ export type GameState = {
   doorsOpenedThisAttempt: number;
   switchesActivatedThisAttempt: number;
   linkedDoorsOpenedThisAttempt: number;
+  blocksPushedThisAttempt: number;
   isComplete: boolean;
   isFailed: boolean;
 };

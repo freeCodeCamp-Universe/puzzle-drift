@@ -198,6 +198,7 @@ export function createInitialGameState(level: Level): GameState {
     activePressurePlateIds: [],
     activeSwitchIds: [],
     activatedSwitches: [],
+    blocksPushedThisAttempt: 0,
     collectedKeys: 0,
     collectedKeyPositions: [],
     elapsedSeconds: 0,
@@ -329,6 +330,7 @@ export function movePlayer(level: Level, state: GameState, direction: Direction)
 
     const nextState = {
       ...state,
+      blocksPushedThisAttempt: state.blocksPushedThisAttempt + 1,
       facing: direction,
       moves: state.moves + 1,
       playerPosition: nextPosition,

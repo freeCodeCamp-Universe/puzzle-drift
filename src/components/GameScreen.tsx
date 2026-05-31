@@ -43,6 +43,7 @@ type GameScreenProps = {
 const LOCKED_DOOR_MESSAGE = 'Locked. Find a key.';
 const LINKED_DOOR_MESSAGE = 'Door closed. Use the switch.';
 const DOOR_OPENED_MESSAGE = 'Door opened.';
+const BLOCK_MOVED_MESSAGE = 'Block moved.';
 const LOCKED_DOOR_MESSAGE_MS = 1400;
 
 function formatTime(seconds: number) {
@@ -200,6 +201,7 @@ export function GameScreen({
         const openedDoor = nextState.openedDoorPositions.length > currentState.openedDoorPositions.length;
         const openedLinkedDoor =
           nextState.linkedDoorsOpenedThisAttempt > currentState.linkedDoorsOpenedThisAttempt;
+        const pushedBlock = nextState.blocksPushedThisAttempt > currentState.blocksPushedThisAttempt;
         const teleported =
           Math.abs(nextState.playerPosition.x - currentState.playerPosition.x) +
             Math.abs(nextState.playerPosition.y - currentState.playerPosition.y) >
@@ -208,12 +210,18 @@ export function GameScreen({
           ? 'key-collect'
           : openedDoor || openedLinkedDoor
             ? 'door-unlock'
-            : teleported
-              ? 'portal-teleport'
-              : 'player-move';
+            : pushedBlock
+              ? 'block-move'
+              : teleported
+                ? 'portal-teleport'
+                : 'player-move';
 
         if (openedLinkedDoor) {
           showFeedbackMessage(DOOR_OPENED_MESSAGE);
+        }
+
+        if (pushedBlock) {
+          showFeedbackMessage(BLOCK_MOVED_MESSAGE);
         }
 
         triggerBoardAnimation(animationClass);

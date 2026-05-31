@@ -129,6 +129,21 @@ const switchCompletionLevel: Level = {
   },
 };
 
+const blockCompletionLevel: Level = {
+  ...pushBlockLevel,
+  completionRequirements: {
+    requiresBlockPush: true,
+    requiredBlocksPushed: 1,
+  },
+  grid: [
+    ['floor', 'pushBlock', 'floor'],
+    ['floor', 'floor', 'exit'],
+    ['floor', 'floor', 'floor'],
+  ],
+  playerStart: { x: 0, y: 0 },
+  width: 3,
+};
+
 const iceLevel: Level = {
   ...movementLevel,
   grid: [['floor', 'ice', 'ice', 'floor', 'wall']],
@@ -357,6 +372,7 @@ describe('movement logic', () => {
 
     expect(result.playerPosition).toEqual({ x: 1, y: 0 });
     expect(result.pushBlocks).toEqual([{ x: 2, y: 0 }]);
+    expect(result.blocksPushedThisAttempt).toBe(1);
     expect(getEffectiveTileAt(pushBlockLevel, result, { x: 2, y: 0 })).toBe('pushBlock');
   });
 
@@ -370,6 +386,7 @@ describe('movement logic', () => {
 
     expect(result.playerPosition).toEqual({ x: 1, y: 0 });
     expect(result.pushBlocks).toEqual([{ x: 2, y: 0 }]);
+    expect(result.blocksPushedThisAttempt).toBe(0);
   });
 
   it('does not push a block out of bounds', () => {
@@ -382,6 +399,7 @@ describe('movement logic', () => {
 
     expect(result.playerPosition).toEqual({ x: 2, y: 2 });
     expect(result.pushBlocks).toEqual([{ x: 3, y: 2 }]);
+    expect(result.blocksPushedThisAttempt).toBe(0);
   });
 
   it('does not push two blocks at once', () => {
@@ -389,10 +407,30 @@ describe('movement logic', () => {
     const result = movePlayer(twoBlockLevel, start, 'right');
 
     expect(result.playerPosition).toEqual({ x: 0, y: 0 });
+    expect(result.blocksPushedThisAttempt).toBe(0);
     expect(result.pushBlocks).toEqual([
       { x: 1, y: 0 },
       { x: 2, y: 0 },
     ]);
+  });
+
+  it('does not complete a required block level without a push', () => {
+    const state = {
+      ...createInitialGameState(blockCompletionLevel),
+      playerPosition: { x: 2, y: 1 },
+    };
+
+    expect(canCompleteLevel(blockCompletionLevel, state)).toBe(false);
+  });
+
+  it('completes a required block level after a successful push', () => {
+    const state = {
+      ...createInitialGameState(blockCompletionLevel),
+      blocksPushedThisAttempt: 1,
+      playerPosition: { x: 2, y: 1 },
+    };
+
+    expect(canCompleteLevel(blockCompletionLevel, state)).toBe(true);
   });
 
   it('activates a pressure plate when a block is on it', () => {
@@ -428,7 +466,19 @@ describe('movement logic', () => {
 
     expect(active.activePressurePlateIds).toContain('plate-a');
     expect(undoSnapshot.pushBlocks).toEqual([{ x: 1, y: 0 }]);
+    expect(undoSnapshot.blocksPushedThisAttempt).toBe(0);
     expect(undoSnapshot.activePressurePlateIds).toEqual([]);
+  });
+
+  it('reset restores the original block layout and clears block push progress', () => {
+    const start = createInitialGameState(pushBlockLevel);
+    const pushed = movePlayer(pushBlockLevel, start, 'right');
+    const resetState = createInitialGameState(pushBlockLevel);
+
+    expect(pushed.pushBlocks).toEqual([{ x: 2, y: 0 }]);
+    expect(pushed.blocksPushedThisAttempt).toBe(1);
+    expect(resetState.pushBlocks).toEqual([{ x: 1, y: 0 }]);
+    expect(resetState.blocksPushedThisAttempt).toBe(0);
   });
 
   it('stepping on a switch toggles it', () => {

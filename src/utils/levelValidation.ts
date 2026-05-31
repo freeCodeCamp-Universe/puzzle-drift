@@ -100,6 +100,13 @@ export function validateLevel(level: Level): LevelValidationIssue[] {
     });
   }
 
+  if (level.completionRequirements?.requiresBlockPush && !tileCounts.get('pushBlock')) {
+    issues.push({
+      levelId: level.id,
+      message: 'Level requires a block push but defines no push block tiles.',
+    });
+  }
+
   if (
     level.completionRequirements?.requiresLinkedDoorOpened &&
     !level.links?.some((link) => {

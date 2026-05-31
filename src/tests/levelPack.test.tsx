@@ -17,6 +17,7 @@ function sortPositions(positions: Position[]) {
 function serializeState(state: GameState) {
   return JSON.stringify({
     activeSwitchIds: [...state.activeSwitchIds].sort(),
+    blocksPushedThisAttempt: state.blocksPushedThisAttempt,
     collectedKeyPositions: sortPositions(state.collectedKeyPositions),
     collectedKeys: state.collectedKeys,
     doorsOpenedThisAttempt: state.doorsOpenedThisAttempt,
@@ -159,6 +160,80 @@ function isExitReachableWithDoorsBlocked(levelId: number) {
       const key = `${next.x},${next.y}`;
 
       if (!tile || visited.has(key) || tile === 'wall' || tile === 'door') {
+        return;
+      }
+
+      visited.add(key);
+      queue.push(next);
+    });
+  }
+
+  return false;
+}
+
+function isExitReachableWithInitialBlocksBlocked(levelId: number) {
+  const level = LEVELS.find((candidate) => candidate.id === levelId);
+
+  if (!level) {
+    return false;
+  }
+
+  return isExitReachableFrom(level, level.playerStart, getInitialBlockedPositions(level));
+}
+
+function isExitReachableFromCurrentState(levelId: number, state: GameState | null) {
+  const level = LEVELS.find((candidate) => candidate.id === levelId);
+
+  if (!level || !state) {
+    return false;
+  }
+
+  return isExitReachableFrom(level, state.playerPosition, new Set(state.pushBlocks.map(positionKey)));
+}
+
+function getInitialBlockedPositions(level: (typeof LEVELS)[number]) {
+  return new Set(
+    level.grid.flatMap((row, y) =>
+      row.flatMap((tile, x) => (tile === 'pushBlock' ? [`${x},${y}`] : [])),
+    ),
+  );
+}
+
+function positionKey(position: Position) {
+  return `${position.x},${position.y}`;
+}
+
+function isExitReachableFrom(
+  level: (typeof LEVELS)[number],
+  start: Position,
+  blockedPositions: Set<string>,
+) {
+  const queue: Position[] = [start];
+  const visited = new Set([positionKey(start)]);
+  const directions: Position[] = [
+    { x: 0, y: -1 },
+    { x: 1, y: 0 },
+    { x: 0, y: 1 },
+    { x: -1, y: 0 },
+  ];
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+
+    if (!current) {
+      break;
+    }
+
+    if (level.grid[current.y][current.x] === 'exit') {
+      return true;
+    }
+
+    directions.forEach((direction) => {
+      const next = { x: current.x + direction.x, y: current.y + direction.y };
+      const tile = level.grid[next.y]?.[next.x];
+      const key = positionKey(next);
+
+      if (!tile || visited.has(key) || blockedPositions.has(key) || tile === 'wall' || tile === 'door') {
         return;
       }
 
@@ -443,6 +518,64 @@ describe('level pack', () => {
   it('Switch Primer exit is unreachable until the linked door opens', () => {
     expect(isExitReachableWithDoorsBlocked(6)).toBe(false);
     expect(findSolutionLength(6)).toBe(14);
+  });
+
+  it('Block Nudge blocks the direct route to the goal until the block moves', () => {
+    const directAttempt = movePath(7, [
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+      'up',
+      'up',
+      'up',
+      'up',
+    ]);
+    const pushedState = movePath(7, ['up', 'up', 'right', 'right']);
+
+    expect(directAttempt?.isComplete).toBe(false);
+    expect(directAttempt?.blocksPushedThisAttempt).toBe(0);
+    expect(isExitReachableWithInitialBlocksBlocked(7)).toBe(false);
+    expect(isExitReachableFromCurrentState(7, pushedState)).toBe(true);
+  });
+
+  it('Block Nudge requires one successful block push', () => {
+    const blockNudge = LEVELS.find((level) => level.id === 7);
+    const completedState = getCompletedState(7);
+
+    expect(blockNudge?.completionRequirements).toEqual({
+      requiresBlockPush: true,
+      requiredBlocksPushed: 1,
+    });
+    expect(blockNudge?.targetMoves).toBe(9);
+    expect(blockNudge?.targetTimeSeconds).toBe(28);
+    expect(findSolutionLength(7)).toBe(9);
+    expect(completedState?.blocksPushedThisAttempt).toBe(1);
+    expect(completedState?.pushBlocks).toContainEqual({ x: 4, y: 3 });
+  });
+
+  it('Block Nudge cannot complete without block progress', () => {
+    const blockNudge = LEVELS.find((level) => level.id === 7);
+
+    expect(blockNudge).toBeDefined();
+
+    if (!blockNudge) {
+      return;
+    }
+
+    const exitOnlyState = {
+      ...createInitialGameState(blockNudge),
+      playerPosition: { x: 6, y: 1 },
+    };
+    const completedState = {
+      ...exitOnlyState,
+      blocksPushedThisAttempt: 1,
+    };
+
+    expect(canCompleteLevel(blockNudge, exitOnlyState)).toBe(false);
+    expect(canCompleteLevel(blockNudge, completedState)).toBe(true);
   });
 
   it('every spike level has meaningful hazard routing and calibrated par', () => {

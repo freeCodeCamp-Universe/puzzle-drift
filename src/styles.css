@@ -333,6 +333,10 @@ h2 {
   animation: door-unlock 320ms ease-out both;
 }
 
+.game-board-shell.block-move .tile-pushBlock .tile-object-icon {
+  animation: block-nudge 220ms ease-out both;
+}
+
 .player-avatar.player-moving {
   animation: player-step 180ms ease-out both;
 }
@@ -873,6 +877,20 @@ h2 {
   100% {
     filter: none;
     transform: rotate(-6deg) scale(1);
+  }
+}
+
+@keyframes block-nudge {
+  0% {
+    transform: scale(0.92);
+  }
+
+  55% {
+    transform: translateX(4%) scale(1.08);
+  }
+
+  100% {
+    transform: none;
   }
 }
 

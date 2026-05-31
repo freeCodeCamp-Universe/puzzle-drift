@@ -76,8 +76,9 @@ const LEVEL_HINTS: Record<number, LevelHint[]> = {
     { text: 'After the door opens, return to the marked passage.', unlockAfterSeconds: 35 },
   ],
   7: [
-    { text: 'A single push creates the opening you need.' },
-    { text: 'Stand on the block’s left side before pushing.', unlockAfterFailedResets: 1 },
+    { text: 'The exit path only opens after the block moves.' },
+    { text: 'Push the block once, then take the route around it.', unlockAfterFailedResets: 1 },
+    { text: 'A single nudge is enough.', unlockAfterSeconds: 30 },
   ],
   8: [
     { text: 'The plate must stay held down after you leave.' },
@@ -287,10 +288,14 @@ const LEVEL_DEFINITIONS: Level[] = [
     description: 'Push the block once, then route around it to the exit.',
     width: 9,
     height: 7,
-    grid: ['#########', '#.....E.#', '#.#####.#', '#..B....#', '#.#####.#', '#.......#', '#########'],
-    playerStart: position(1, 3),
-    targetMoves: 12,
-    targetTimeSeconds: 30,
+    grid: ['#########', '#.....E##', '###.#####', '#..B...##', '#.#####.#', '#.......#', '#########'],
+    completionRequirements: {
+      requiresBlockPush: true,
+      requiredBlocksPushed: 1,
+    },
+    playerStart: position(1, 5),
+    targetMoves: 9,
+    targetTimeSeconds: 28,
     mechanics: ['floor', 'wall', 'exit', 'pushBlock'],
   }),
   defineLevel({
