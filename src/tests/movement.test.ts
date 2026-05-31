@@ -212,6 +212,21 @@ const icePortalLevel: Level = {
   width: 5,
 };
 
+function stateOnExit(overrides = {}) {
+  return {
+    ...createInitialGameState(movementLevel),
+    playerPosition: { x: 2, y: 2 },
+    ...overrides,
+  };
+}
+
+function levelWithRequirements(completionRequirements: Level['completionRequirements']) {
+  return {
+    ...movementLevel,
+    completionRequirements,
+  };
+}
+
 describe('movement logic', () => {
   it('moves the player up, down, left, and right', () => {
     const start = createInitialGameState(movementLevel);
@@ -263,6 +278,64 @@ describe('movement logic', () => {
     expect(result.isComplete).toBe(true);
   });
 
+  it.each([
+    [
+      'requiresKeyCollection',
+      { requiresKeyCollection: true, requiredKeysCollected: 1 },
+      { keysCollectedThisAttempt: 1 },
+    ],
+    [
+      'requiresDoorOpened',
+      { requiresDoorOpened: true, requiredDoorsOpened: 1 },
+      { doorsOpenedThisAttempt: 1 },
+    ],
+    [
+      'requiresSwitchActivation',
+      { requiresSwitchActivation: true, requiredSwitchesActivated: 1 },
+      { switchesActivatedThisAttempt: 1 },
+    ],
+    [
+      'requiresLinkedDoorOpened',
+      { requiresLinkedDoorOpened: true, requiredLinkedDoorsOpened: 1 },
+      { linkedDoorsOpenedThisAttempt: 1 },
+    ],
+    [
+      'requiresPressurePlateActivation',
+      { requiresPressurePlateActivation: true, requiredPressurePlatesActivated: 1 },
+      { pressurePlatesActivatedThisAttempt: 1 },
+    ],
+    [
+      'requiresBlockPush',
+      { requiresBlockPush: true, requiredBlocksPushed: 1 },
+      { blocksPushedThisAttempt: 1 },
+    ],
+    [
+      'requiresPortalUsage',
+      { requiresPortalUsage: true, requiredPortalsUsed: 1 },
+      { portalsUsedThisAttempt: 1 },
+    ],
+    [
+      'requiresIceTraversal',
+      { requiresIceTraversal: true, requiredIceTilesTraversed: 1 },
+      { iceTilesTraversedThisAttempt: 1 },
+    ],
+  ] as const)('enforces %s', (_name, completionRequirements, satisfiedState) => {
+    const requiredLevel = levelWithRequirements(completionRequirements);
+
+    expect(canCompleteLevel(requiredLevel, stateOnExit())).toBe(false);
+    expect(canCompleteLevel(requiredLevel, stateOnExit(satisfiedState))).toBe(true);
+  });
+
+  it('requires exit reach by default and can explicitly check spike avoidance', () => {
+    const exitRequiredLevel = levelWithRequirements({ requiresExitReach: true });
+    const spikeAvoidanceLevel = levelWithRequirements({ requiresSpikeAvoidance: true });
+
+    expect(canCompleteLevel(exitRequiredLevel, createInitialGameState(exitRequiredLevel))).toBe(false);
+    expect(canCompleteLevel(exitRequiredLevel, stateOnExit())).toBe(true);
+    expect(canCompleteLevel(spikeAvoidanceLevel, stateOnExit({ isFailed: true }))).toBe(false);
+    expect(canCompleteLevel(spikeAvoidanceLevel, stateOnExit())).toBe(true);
+  });
+
   it('does not complete a required key level by reaching the exit without key progress', () => {
     const state = {
       ...createInitialGameState(keyCompletionLevel),
@@ -270,6 +343,31 @@ describe('movement logic', () => {
     };
 
     expect(canCompleteLevel(keyCompletionLevel, state)).toBe(false);
+  });
+
+  it('blocks entering the exit until required objectives are complete', () => {
+    const incompleteState = {
+      ...createInitialGameState(keyCompletionLevel),
+      playerPosition: { x: 1, y: 1 },
+    };
+    const completeState = {
+      ...incompleteState,
+      collectedKeyPositions: [{ x: 1, y: 0 }],
+      doorsOpenedThisAttempt: 1,
+      keysCollectedThisAttempt: 1,
+      openedDoorPositions: [{ x: 2, y: 0 }],
+    };
+
+    expect(movePlayer(keyCompletionLevel, incompleteState, 'right').playerPosition).toEqual({
+      x: 1,
+      y: 1,
+    });
+    expect(movePlayer(keyCompletionLevel, incompleteState, 'right').isComplete).toBe(false);
+    expect(movePlayer(keyCompletionLevel, completeState, 'right').playerPosition).toEqual({
+      x: 2,
+      y: 1,
+    });
+    expect(movePlayer(keyCompletionLevel, completeState, 'right').isComplete).toBe(true);
   });
 
   it('does not complete a required key level after collecting a key without opening a door', () => {
@@ -587,6 +685,7 @@ describe('movement logic', () => {
     const result = movePlayer(iceLevel, start, 'right');
 
     expect(result.playerPosition).toEqual({ x: 3, y: 0 });
+    expect(result.iceTilesTraversedThisAttempt).toBe(2);
   });
 
   it('sliding stops before a wall', () => {
@@ -643,6 +742,7 @@ describe('movement logic', () => {
     const result = movePlayer(portalLevel, start, 'right');
 
     expect(result.playerPosition).toEqual({ x: 0, y: 2 });
+    expect(result.portalsUsedThisAttempt).toBe(1);
   });
 
   it('portal movement increments move count once', () => {

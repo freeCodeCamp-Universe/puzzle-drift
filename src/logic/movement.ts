@@ -147,6 +147,8 @@ function applyTileArrival(
   const portalDestination = tile === 'portal' ? getLinkedPortalPosition(level, position) : null;
   const destinationPosition = portalDestination ?? position;
   const collectsKey = tile === 'key';
+  const usesPortal = Boolean(portalDestination);
+  const entersIce = tile === 'ice';
   const opensDoor = tile === 'door';
   const opensLinkedDoor = opensDoor && isLinkedDoorOpen(level, state, position);
   const consumesKey = opensDoor && !opensLinkedDoor;
@@ -168,9 +170,12 @@ function applyTileArrival(
     doorsOpenedThisAttempt: state.doorsOpenedThisAttempt + (consumesKey ? 1 : 0),
     isComplete: false,
     isFailed: hitsSpike,
+    iceTilesTraversedThisAttempt: state.iceTilesTraversedThisAttempt + (entersIce ? 1 : 0),
+    iceSlidesThisAttempt: state.iceSlidesThisAttempt + (entersIce ? 1 : 0),
     keysCollectedThisAttempt: state.keysCollectedThisAttempt + (collectsKey ? 1 : 0),
     openedDoorPositions: consumesKey ? [...state.openedDoorPositions, position] : state.openedDoorPositions,
     playerPosition: destinationPosition,
+    portalsUsedThisAttempt: state.portalsUsedThisAttempt + (usesPortal ? 1 : 0),
     switchesActivatedThisAttempt: state.switchesActivatedThisAttempt + (activatesSwitch ? 1 : 0),
   };
   const nextPressurePlateIds = getActivePressurePlateIds(level, nextStateBase);
@@ -224,12 +229,15 @@ export function createInitialGameState(level: Level): GameState {
     doorsOpenedThisAttempt: 0,
     isComplete: false,
     isFailed: false,
+    iceTilesTraversedThisAttempt: 0,
+    iceSlidesThisAttempt: 0,
     keysCollectedThisAttempt: 0,
     linkedDoorsOpenedThisAttempt: 0,
     levelId: level.id,
     moves: 0,
     openedDoorPositions: [],
     playerPosition: { ...level.playerStart },
+    portalsUsedThisAttempt: 0,
     pressurePlatesActivatedThisAttempt: 0,
     pushBlocks: getInitialPushBlocks(level),
     switchesActivatedThisAttempt: 0,
@@ -309,6 +317,10 @@ export function getEffectiveTileAt(level: Level, state: GameState, position: Pos
 
 export function canMoveTo(level: Level, state: GameState, position: Position) {
   const tile = getEffectiveTileAt(level, state, position);
+
+  if (tile === 'exit' && !canCompleteLevel(level, { ...state, playerPosition: position })) {
+    return false;
+  }
 
   return (
     tile !== null &&

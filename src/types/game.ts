@@ -61,12 +61,21 @@ export type LevelCompletionRequirements = {
   requiresLinkedDoorOpened?: boolean;
   requiresBlockPush?: boolean;
   requiresPressurePlateActivation?: boolean;
+  requiresPortalUsage?: boolean;
+  requiresPortalUse?: boolean;
+  requiresIceTraversal?: boolean;
+  requiresIceSlide?: boolean;
+  requiresSpikeAvoidance?: boolean;
+  requiresExitReach?: boolean;
   requiredKeysCollected?: number;
   requiredDoorsOpened?: number;
   requiredSwitchesActivated?: number;
   requiredLinkedDoorsOpened?: number;
   requiredBlocksPushed?: number;
   requiredPressurePlatesActivated?: number;
+  requiredPortalsUsed?: number;
+  requiredIceTilesTraversed?: number;
+  requiredIceSlides?: number;
 };
 
 export type GameState = {
@@ -88,6 +97,9 @@ export type GameState = {
   linkedDoorsOpenedThisAttempt: number;
   blocksPushedThisAttempt: number;
   pressurePlatesActivatedThisAttempt: number;
+  portalsUsedThisAttempt: number;
+  iceTilesTraversedThisAttempt: number;
+  iceSlidesThisAttempt: number;
   isComplete: boolean;
   isFailed: boolean;
 };

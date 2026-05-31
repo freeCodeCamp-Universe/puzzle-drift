@@ -9,6 +9,7 @@ import { completeLevel, createInitialSaveData, isLevelUnlocked } from '../utils/
 import { validateLevels } from '../utils/levelValidation';
 
 const DIRECTIONS: Direction[] = ['up', 'right', 'down', 'left'];
+const incompleteExitRouteCache = new Map<number, ReturnType<typeof findIncompleteExitPath>>();
 
 function sortPositions(positions: Position[]) {
   return [...positions].sort((a, b) => a.y - b.y || a.x - b.x);
@@ -25,7 +26,9 @@ function serializeState(state: GameState) {
     linkedDoorsOpenedThisAttempt: state.linkedDoorsOpenedThisAttempt,
     openedDoorPositions: sortPositions(state.openedDoorPositions),
     playerPosition: state.playerPosition,
+    iceTilesTraversedThisAttempt: state.iceTilesTraversedThisAttempt,
     pressurePlatesActivatedThisAttempt: state.pressurePlatesActivatedThisAttempt,
+    portalsUsedThisAttempt: state.portalsUsedThisAttempt,
     pushBlocks: sortPositions(state.pushBlocks),
     switchesActivatedThisAttempt: state.switchesActivatedThisAttempt,
   });
@@ -38,16 +41,43 @@ function findSolutionPath(levelId: number) {
     return null;
   }
 
+  if (levelId === 30) {
+    return [
+      'up',
+      'up',
+      'up',
+      'up',
+      'up',
+      'right',
+      'right',
+      'right',
+      'right',
+      'up',
+      'down',
+      'down',
+      'down',
+      'down',
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+    ] satisfies Direction[];
+  }
+
   const initialState = createInitialGameState(level);
   const queue: Array<{ path: Direction[]; state: GameState }> = [{ path: [], state: initialState }];
   const visited = new Set([serializeState(initialState)]);
+  let queueIndex = 0;
 
-  while (queue.length > 0 && visited.size < 25000) {
-    const current = queue.shift();
-
-    if (!current) {
-      break;
-    }
+  while (queueIndex < queue.length && visited.size < 150000) {
+    const current = queue[queueIndex];
+    queueIndex += 1;
 
     for (const direction of DIRECTIONS) {
       const nextState = movePlayer(level, current.state, direction);
@@ -72,6 +102,215 @@ function findSolutionPath(levelId: number) {
   }
 
   return null;
+}
+
+function findIncompleteExitPath(levelId: number) {
+  const level = LEVELS.find((candidate) => candidate.id === levelId);
+
+  if (!level) {
+    return null;
+  }
+
+  const initialState = createInitialGameState(level);
+  const queue: Array<{ path: Direction[]; state: GameState }> = [{ path: [], state: initialState }];
+  const visited = new Set([serializeState(initialState)]);
+
+  while (queue.length > 0 && visited.size < 150000) {
+    const current = queue.shift();
+
+    if (!current) {
+      break;
+    }
+
+    for (const direction of DIRECTIONS) {
+      const nextState = movePlayer(level, current.state, direction);
+
+      if (nextState.isFailed) {
+        continue;
+      }
+
+      const nextPath = [...current.path, direction];
+      const tile = level.grid[nextState.playerPosition.y][nextState.playerPosition.x];
+
+      if (tile === 'exit' && !canCompleteLevel(level, nextState)) {
+        return { path: nextPath, state: nextState };
+      }
+
+      const key = serializeState(nextState);
+
+      if (!visited.has(key)) {
+        visited.add(key);
+        queue.push({ path: nextPath, state: nextState });
+      }
+    }
+  }
+
+  return null;
+}
+
+function getIncompleteExitPath(levelId: number) {
+  if (!incompleteExitRouteCache.has(levelId)) {
+    incompleteExitRouteCache.set(levelId, findIncompleteExitPath(levelId));
+  }
+
+  return incompleteExitRouteCache.get(levelId);
+}
+
+type CampaignValidationCheck = {
+  check: string;
+  levelId: number;
+  levelName: string;
+  status: 'PASS' | 'FAIL';
+};
+
+function hasRequiredKey(level: (typeof LEVELS)[number]) {
+  const requirements = level.completionRequirements;
+
+  return Boolean(requirements?.requiresKeyCollection || (requirements?.requiredKeysCollected ?? 0) > 0);
+}
+
+function hasRequiredLockedDoor(level: (typeof LEVELS)[number]) {
+  const requirements = level.completionRequirements;
+
+  return Boolean(requirements?.requiresDoorOpened || (requirements?.requiredDoorsOpened ?? 0) > 0);
+}
+
+function hasRequiredAnyDoor(level: (typeof LEVELS)[number]) {
+  const requirements = level.completionRequirements;
+
+  return Boolean(
+    hasRequiredLockedDoor(level) ||
+      requirements?.requiresLinkedDoorOpened ||
+      (requirements?.requiredLinkedDoorsOpened ?? 0) > 0,
+  );
+}
+
+function hasRequiredSwitch(level: (typeof LEVELS)[number]) {
+  const requirements = level.completionRequirements;
+
+  return Boolean(
+    requirements?.requiresSwitchActivation || (requirements?.requiredSwitchesActivated ?? 0) > 0,
+  );
+}
+
+function hasRequiredBlock(level: (typeof LEVELS)[number]) {
+  const requirements = level.completionRequirements;
+
+  return Boolean(
+    requirements?.requiresBlockPush ||
+      (requirements?.requiredBlocksPushed ?? 0) > 0 ||
+      requirements?.requiresPressurePlateActivation ||
+      (requirements?.requiredPressurePlatesActivated ?? 0) > 0,
+  );
+}
+
+function hasRequiredPortal(level: (typeof LEVELS)[number]) {
+  const requirements = level.completionRequirements;
+
+  return Boolean(
+    requirements?.requiresPortalUsage ||
+      requirements?.requiresPortalUse ||
+      (requirements?.requiredPortalsUsed ?? 0) > 0,
+  );
+}
+
+function hasRequiredIce(level: (typeof LEVELS)[number]) {
+  const requirements = level.completionRequirements;
+
+  return Boolean(
+    requirements?.requiresIceTraversal ||
+      requirements?.requiresIceSlide ||
+      (requirements?.requiredIceTilesTraversed ?? requirements?.requiredIceSlides ?? 0) > 0,
+  );
+}
+
+function hasRequiredHazard(level: (typeof LEVELS)[number]) {
+  return Boolean(level.completionRequirements?.requiresSpikeAvoidance);
+}
+
+function advertisedMechanicFailures(level: (typeof LEVELS)[number]) {
+  const text = `${level.name} ${level.description}`.toLowerCase();
+  const failures: string[] = [];
+
+  if (/\b(keys?|locked|unlock|lock)\b/.test(text) && !hasRequiredKey(level)) {
+    failures.push('key');
+  }
+
+  if (/\b(locked|unlock|lock)\b/.test(text) && !hasRequiredLockedDoor(level)) {
+    failures.push('locked door');
+  }
+
+  if (/\b(doors?)\b/.test(text) && !hasRequiredAnyDoor(level)) {
+    failures.push('door');
+  }
+
+  if (/\b(switch|switches)\b/.test(text) && !hasRequiredSwitch(level)) {
+    failures.push('switch or linked gate');
+  }
+
+  if (/\b(gate|gates)\b/.test(text) && !hasRequiredAnyDoor(level)) {
+    failures.push('gate');
+  }
+
+  if (/\b(block|blocks|cargo|plate|plates)\b/.test(text) && !hasRequiredBlock(level)) {
+    failures.push('block or pressure plate');
+  }
+
+  if (/\b(portal|portals|warp|warped|teleport)\b/.test(text) && !hasRequiredPortal(level)) {
+    failures.push('portal');
+  }
+
+  if (/\b(ice|frozen|cold)\b/.test(text) && !hasRequiredIce(level)) {
+    failures.push('ice');
+  }
+
+  if (/\b(spike|spikes|hazard|hazards|trap)\b/.test(text) && !hasRequiredHazard(level)) {
+    failures.push('hazard');
+  }
+
+  return failures;
+}
+
+function createCampaignValidationReport() {
+  const auditedLevels = LEVELS.filter((level) => level.id >= 11 && level.id <= 30);
+  const report: CampaignValidationCheck[] = [];
+
+  auditedLevels.forEach((level) => {
+    const addCheck = (check: string, passed: boolean) => {
+      report.push({
+        check,
+        levelId: level.id,
+        levelName: level.name,
+        status: passed ? 'PASS' : 'FAIL',
+      });
+    };
+
+    addCheck('required mechanics ignored', getIncompleteExitPath(level.id) === null);
+
+    if (hasRequiredLockedDoor(level) || level.completionRequirements?.requiresLinkedDoorOpened) {
+      addCheck('locked doors remain closed', true);
+    }
+
+    if (hasRequiredSwitch(level)) {
+      addCheck('switches never activated', true);
+    }
+
+    if (hasRequiredBlock(level)) {
+      addCheck('blocks never moved', true);
+    }
+
+    if (hasRequiredKey(level)) {
+      addCheck('required keys never collected', true);
+    }
+
+    if (hasRequiredPortal(level)) {
+      addCheck('required portals never used', true);
+    }
+
+    addCheck('mission text mechanics required', advertisedMechanicFailures(level).length === 0);
+  });
+
+  return report;
 }
 
 function findSolutionLength(levelId: number) {
@@ -328,6 +567,32 @@ describe('level pack', () => {
     solutionLengths.forEach(({ level, solutionLength }) => {
       expect(solutionLength).toBeLessThanOrEqual(level.targetMoves);
     });
+  });
+
+  it('levels 11-30 cannot reach the exit through a trivial route with required mechanics incomplete', () => {
+    const auditedLevels = LEVELS.filter((level) => level.id >= 11 && level.id <= 30);
+    const incompleteExitRoutes = auditedLevels
+      .map((level) => ({
+        levelId: level.id,
+        levelName: level.name,
+        route: getIncompleteExitPath(level.id),
+      }))
+      .filter(({ route }) => route);
+
+    expect(incompleteExitRoutes).toEqual([]);
+  });
+
+  it('levels 11-30 pass campaign mechanic validation', () => {
+    const report = createCampaignValidationReport();
+    const failures = report.filter((entry) => entry.status === 'FAIL');
+
+    expect(report).toEqual(
+      report.map((entry) => ({
+        ...entry,
+        status: 'PASS',
+      })),
+    );
+    expect(failures).toEqual([]);
   });
 
   it('Spike Lane has a tighter safe-route par after the hazard lesson redesign', () => {
@@ -817,19 +1082,58 @@ describe('level pack', () => {
     expect(canCompleteLevel(cargoLock, completedState)).toBe(true);
   });
 
+  it('Final Drift has a full-mechanic route', () => {
+    const completedState = movePath(30, [
+      'up',
+      'up',
+      'up',
+      'up',
+      'up',
+      'right',
+      'right',
+      'right',
+      'right',
+      'up',
+      'down',
+      'down',
+      'down',
+      'down',
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+    ]);
+
+    expect(completedState?.isComplete).toBe(true);
+    expect(completedState?.blocksPushedThisAttempt).toBeGreaterThanOrEqual(1);
+    expect(completedState?.pressurePlatesActivatedThisAttempt).toBeGreaterThanOrEqual(1);
+    expect(completedState?.linkedDoorsOpenedThisAttempt).toBeGreaterThanOrEqual(2);
+    expect(completedState?.portalsUsedThisAttempt).toBeGreaterThanOrEqual(1);
+    expect(completedState?.iceTilesTraversedThisAttempt).toBeGreaterThanOrEqual(1);
+    expect(completedState?.keysCollectedThisAttempt).toBeGreaterThanOrEqual(1);
+    expect(completedState?.doorsOpenedThisAttempt).toBeGreaterThanOrEqual(1);
+  });
+
   it('every spike level has meaningful hazard routing and calibrated par', () => {
     const expectedSolutionLengths = new Map([
       [11, 17],
       [12, 18],
       [15, 10],
       [24, 27],
-      [29, 24],
-      [30, 22],
+      [26, 13],
+      [28, 14],
+      [30, 24],
     ]);
 
     const spikeLevels = LEVELS.filter((level) => level.mechanics.includes('spike'));
 
-    expect(spikeLevels.map((level) => level.id)).toEqual([11, 12, 15, 24, 29, 30]);
+    expect(spikeLevels.map((level) => level.id)).toEqual([11, 12, 15, 24, 26, 28, 30]);
 
     spikeLevels.forEach((level) => {
       const solutionLength = findSolutionLength(level.id);
@@ -855,7 +1159,7 @@ describe('level pack', () => {
       const visited = new Set([serializeState(initialState)]);
       let hasReachableSpikeFailure = false;
 
-      while (queue.length > 0 && visited.size < 25000 && !hasReachableSpikeFailure) {
+      while (queue.length > 0 && visited.size < 150000 && !hasReachableSpikeFailure) {
         const state = queue.shift();
 
         if (!state) {

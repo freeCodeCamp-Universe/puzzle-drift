@@ -9,11 +9,16 @@ function getTileAt(level: Level, position: Position) {
 }
 
 export function canCompleteLevel(level: Level, state: GameState) {
-  if (getTileAt(level, state.playerPosition) !== 'exit') {
+  const requirements = level.completionRequirements;
+  const requiresExitReach = requirements?.requiresExitReach ?? true;
+
+  if (requiresExitReach && getTileAt(level, state.playerPosition) !== 'exit') {
     return false;
   }
 
-  const requirements = level.completionRequirements;
+  if (requirements?.requiresSpikeAvoidance && state.isFailed) {
+    return false;
+  }
 
   if (!requirements) {
     return true;
@@ -28,6 +33,13 @@ export function canCompleteLevel(level: Level, state: GameState) {
   const requiredBlocksPushed = requirements.requiredBlocksPushed ?? (requirements.requiresBlockPush ? 1 : 0);
   const requiredPressurePlatesActivated =
     requirements.requiredPressurePlatesActivated ?? (requirements.requiresPressurePlateActivation ? 1 : 0);
+  const requiredPortalsUsed =
+    requirements.requiredPortalsUsed ??
+    (requirements.requiresPortalUsage || requirements.requiresPortalUse ? 1 : 0);
+  const requiredIceTilesTraversed =
+    requirements.requiredIceTilesTraversed ??
+    requirements.requiredIceSlides ??
+    (requirements.requiresIceTraversal || requirements.requiresIceSlide ? 1 : 0);
 
   return (
     state.keysCollectedThisAttempt >= requiredKeysCollected &&
@@ -35,6 +47,8 @@ export function canCompleteLevel(level: Level, state: GameState) {
     state.switchesActivatedThisAttempt >= requiredSwitchesActivated &&
     state.linkedDoorsOpenedThisAttempt >= requiredLinkedDoorsOpened &&
     state.blocksPushedThisAttempt >= requiredBlocksPushed &&
-    state.pressurePlatesActivatedThisAttempt >= requiredPressurePlatesActivated
+    state.pressurePlatesActivatedThisAttempt >= requiredPressurePlatesActivated &&
+    state.portalsUsedThisAttempt >= requiredPortalsUsed &&
+    state.iceTilesTraversedThisAttempt >= requiredIceTilesTraversed
   );
 }

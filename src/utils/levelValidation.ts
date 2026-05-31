@@ -27,6 +27,51 @@ export type LevelValidationIssue = {
   message: string;
 };
 
+export function getMinimumMeaningfulDecisions(levelId: number) {
+  if (levelId >= 26 && levelId <= 30) {
+    return 4;
+  }
+
+  if (levelId >= 21 && levelId <= 25) {
+    return 3;
+  }
+
+  if (levelId >= 16 && levelId <= 20) {
+    return 2;
+  }
+
+  if (levelId >= 11 && levelId <= 15) {
+    return 1;
+  }
+
+  return 0;
+}
+
+export function countMeaningfulDecisions(level: Level) {
+  const requirements = level.completionRequirements;
+
+  if (!requirements) {
+    return 0;
+  }
+
+  return [
+    requirements.requiresKeyCollection || (requirements.requiredKeysCollected ?? 0) > 0,
+    requirements.requiresDoorOpened || (requirements.requiredDoorsOpened ?? 0) > 0,
+    requirements.requiresSwitchActivation || (requirements.requiredSwitchesActivated ?? 0) > 0,
+    requirements.requiresLinkedDoorOpened || (requirements.requiredLinkedDoorsOpened ?? 0) > 0,
+    requirements.requiresBlockPush || (requirements.requiredBlocksPushed ?? 0) > 0,
+    requirements.requiresPressurePlateActivation ||
+      (requirements.requiredPressurePlatesActivated ?? 0) > 0,
+    requirements.requiresPortalUsage ||
+      requirements.requiresPortalUse ||
+      (requirements.requiredPortalsUsed ?? 0) > 0,
+    requirements.requiresIceTraversal ||
+      requirements.requiresIceSlide ||
+      (requirements.requiredIceTilesTraversed ?? requirements.requiredIceSlides ?? 0) > 0,
+    requirements.requiresSpikeAvoidance,
+  ].filter(Boolean).length;
+}
+
 export function validateLevel(level: Level): LevelValidationIssue[] {
   const issues: LevelValidationIssue[] = [];
   const tileCounts = new Map<TileType, number>();
@@ -79,6 +124,16 @@ export function validateLevel(level: Level): LevelValidationIssue[] {
     });
   }
 
+  const minimumMeaningfulDecisions = getMinimumMeaningfulDecisions(level.id);
+  const meaningfulDecisions = countMeaningfulDecisions(level);
+
+  if (meaningfulDecisions < minimumMeaningfulDecisions) {
+    issues.push({
+      levelId: level.id,
+      message: `Level requires at least ${minimumMeaningfulDecisions} meaningful decisions, received ${meaningfulDecisions}.`,
+    });
+  }
+
   if (level.completionRequirements?.requiresDoorOpened && !tileCounts.get('door')) {
     issues.push({
       levelId: level.id,
@@ -111,6 +166,33 @@ export function validateLevel(level: Level): LevelValidationIssue[] {
     issues.push({
       levelId: level.id,
       message: 'Level requires pressure plate activation but defines no pressure plate tiles.',
+    });
+  }
+
+  if (
+    (level.completionRequirements?.requiresPortalUsage || level.completionRequirements?.requiresPortalUse) &&
+    !tileCounts.get('portal')
+  ) {
+    issues.push({
+      levelId: level.id,
+      message: 'Level requires portal use but defines no portal tiles.',
+    });
+  }
+
+  if (
+    (level.completionRequirements?.requiresIceTraversal || level.completionRequirements?.requiresIceSlide) &&
+    !tileCounts.get('ice')
+  ) {
+    issues.push({
+      levelId: level.id,
+      message: 'Level requires ice sliding but defines no ice tiles.',
+    });
+  }
+
+  if (level.completionRequirements?.requiresSpikeAvoidance && !tileCounts.get('spike')) {
+    issues.push({
+      levelId: level.id,
+      message: 'Level requires spike avoidance but defines no spike tiles.',
     });
   }
 

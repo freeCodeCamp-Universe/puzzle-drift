@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { LEVELS } from '../data/levels';
-import { validateLevel, validateLevels, VALID_TILE_TYPES } from '../utils/levelValidation';
+import {
+  countMeaningfulDecisions,
+  getMinimumMeaningfulDecisions,
+  validateLevel,
+  validateLevels,
+  VALID_TILE_TYPES,
+} from '../utils/levelValidation';
 import type { Level } from '../types/game';
 
 describe('level validation', () => {
@@ -18,6 +24,32 @@ describe('level validation', () => {
       expect(level.hints.length).toBeLessThanOrEqual(3);
       expect(level.hints.every((hint) => hint.text.trim().length > 0)).toBe(true);
     });
+  });
+
+  it('enforces tiered meaningful decision minimums for levels 11-30', () => {
+    LEVELS.filter((level) => level.id >= 11 && level.id <= 30).forEach((level) => {
+      expect(countMeaningfulDecisions(level)).toBeGreaterThanOrEqual(
+        getMinimumMeaningfulDecisions(level.id),
+      );
+    });
+  });
+
+  it('rejects late campaign levels below their meaningful decision minimum', () => {
+    const invalidLevel: Level = {
+      ...LEVELS[25],
+      completionRequirements: {
+        requiresIceTraversal: true,
+        requiredIceTilesTraversed: 1,
+      },
+    };
+
+    expect(validateLevel(invalidLevel)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: 'Level requires at least 4 meaningful decisions, received 1.',
+        }),
+      ]),
+    );
   });
 
   it('rejects levels without an in-bounds player start', () => {
