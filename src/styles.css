@@ -122,24 +122,22 @@ select:focus-visible {
 
 .start-screen {
   display: grid;
-  width: min(100%, 62rem);
-  gap: 1.25rem;
-  grid-template-columns: minmax(0, 1.2fr) minmax(16rem, 0.8fr);
-  align-items: center;
+  width: min(100%, 26rem);
+  place-items: center;
 }
 
 .brand-lockup {
   display: grid;
-  min-height: 34rem;
-  align-content: center;
-  gap: 1rem;
+  width: 100%;
+  justify-items: center;
+  gap: 1.15rem;
   border: 1px solid var(--border);
   background:
     linear-gradient(90deg, color-mix(in srgb, var(--blue) 9%, transparent) 1px, transparent 1px),
     linear-gradient(color-mix(in srgb, var(--purple) 7%, transparent) 1px, transparent 1px),
     linear-gradient(135deg, color-mix(in srgb, var(--surface) 88%, transparent), var(--background));
   background-size: 2rem 2rem, 2rem 2rem, auto;
-  padding: clamp(1.25rem, 4vw, 3rem);
+  padding: clamp(1.25rem, 5vw, 2rem);
 }
 
 .brand-mark {
@@ -156,23 +154,6 @@ select:focus-visible {
 .brand-mark svg {
   width: 2.25rem;
   height: 2.25rem;
-}
-
-.title-kicker,
-.title-stats,
-.title-stats span {
-  display: flex;
-  align-items: center;
-}
-
-.title-kicker {
-  gap: 0.5rem;
-  color: var(--green);
-}
-
-.title-kicker svg {
-  width: 1rem;
-  height: 1rem;
 }
 
 .eyebrow {
@@ -192,9 +173,9 @@ p {
 
 h1 {
   margin-block-end: 0;
-  max-width: 9ch;
-  font-size: clamp(3.6rem, 10vw, 7rem);
-  line-height: 0.95;
+  font-size: clamp(3rem, 14vw, 4.5rem);
+  line-height: 1;
+  text-align: center;
 }
 
 h2 {
@@ -203,46 +184,18 @@ h2 {
   line-height: 1;
 }
 
-.tagline {
-  max-width: 33rem;
-  margin-block-end: 0;
-  color: var(--muted);
-  font-size: 1.1rem;
-}
-
-.title-stats {
-  flex-wrap: wrap;
-  gap: 0.65rem;
-}
-
-.title-stats span {
-  gap: 0.4rem;
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--background) 82%, transparent);
-  color: var(--muted);
-  padding: 0.45rem 0.6rem;
-  font-family: "Fira Mono", Menlo, Consolas, monospace;
-  font-size: 0.78rem;
-}
-
-.title-stats svg {
-  width: 0.95rem;
-  height: 0.95rem;
-  color: var(--yellow);
-}
-
-.menu-panel,
 .settings-dialog,
+.how-to-dialog,
 .placeholder-panel {
   border: 1px solid var(--border);
   background: color-mix(in srgb, var(--surface) 92%, transparent);
 }
 
-.menu-panel {
+.start-menu {
   display: grid;
-  gap: 0.75rem;
-  padding: 1rem;
-  animation: panel-slide 320ms ease-out both;
+  width: 100%;
+  gap: 0.7rem;
+  margin-block-start: 0.35rem;
 }
 
 .menu-button,
@@ -637,18 +590,6 @@ h2 {
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes panel-slide {
-  from {
-    opacity: 0;
-    transform: translateX(0.5rem);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateX(0);
   }
 }
 
@@ -1171,6 +1112,7 @@ h2 {
 }
 
 .settings-dialog,
+.how-to-dialog,
 .pause-dialog {
   width: min(100%, 28rem);
   padding: 1rem;
@@ -1193,6 +1135,39 @@ h2 {
 .pause-actions {
   display: grid;
   gap: 0.75rem;
+}
+
+.how-to-list {
+  display: grid;
+  gap: 0.85rem;
+  border-block-start: 1px solid var(--border);
+  padding-block-start: 1rem;
+}
+
+.how-to-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.7rem;
+}
+
+.how-to-item > svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--yellow);
+  margin-block-start: 0.15rem;
+}
+
+.how-to-item h3,
+.how-to-item p {
+  margin: 0;
+}
+
+.how-to-item h3 {
+  font-size: 1rem;
+}
+
+.how-to-item p {
+  color: var(--muted);
 }
 
 .settings-group {
@@ -1264,11 +1239,7 @@ h2 {
   }
 
   .start-screen {
-    grid-template-columns: 1fr;
-  }
-
-  .brand-lockup {
-    min-height: auto;
+    width: min(100%, 24rem);
   }
 
   .game-hud {

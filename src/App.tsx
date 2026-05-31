@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { GameScreen } from './components/GameScreen';
+import { HowToPlayDialog } from './components/HowToPlayDialog';
 import { LevelSelectScreen } from './components/LevelSelectScreen';
 import { SettingsDialog } from './components/SettingsDialog';
 import { StartScreen } from './components/StartScreen';
@@ -18,6 +19,7 @@ import type { AppView, SaveData } from './types/game';
 export function App() {
   const [view, setView] = useState<AppView>('start');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isHowToPlayOpen, setIsHowToPlayOpen] = useState(false);
   const [save, setSave] = useState<SaveData>(() => loadProgress());
   const [settings, setSettings] = useState(() => loadSettings());
   const skipNextProgressSaveRef = useRef(false);
@@ -65,6 +67,7 @@ export function App() {
           onNewGame={startNewGame}
           onLevelSelect={() => setView('levels')}
           onSettings={() => setIsSettingsOpen(true)}
+          onHowToPlay={() => setIsHowToPlayOpen(true)}
         />
       )}
 
@@ -108,6 +111,7 @@ export function App() {
         onChange={setSettings}
         onClose={() => setIsSettingsOpen(false)}
       />
+      <HowToPlayDialog isOpen={isHowToPlayOpen} onClose={() => setIsHowToPlayOpen(false)} />
     </main>
   );
 }
