@@ -24,7 +24,7 @@ function serializeState(state: GameState) {
   });
 }
 
-function findSolutionLength(levelId: number) {
+function findSolutionPath(levelId: number) {
   const level = LEVELS.find((candidate) => candidate.id === levelId);
 
   if (!level) {
@@ -32,37 +32,72 @@ function findSolutionLength(levelId: number) {
   }
 
   const initialState = createInitialGameState(level);
-  const queue: GameState[] = [initialState];
+  const queue: Array<{ path: Direction[]; state: GameState }> = [{ path: [], state: initialState }];
   const visited = new Set([serializeState(initialState)]);
 
   while (queue.length > 0 && visited.size < 25000) {
-    const state = queue.shift();
+    const current = queue.shift();
 
-    if (!state) {
+    if (!current) {
       break;
     }
 
     for (const direction of DIRECTIONS) {
-      const nextState = movePlayer(level, state, direction);
+      const nextState = movePlayer(level, current.state, direction);
 
       if (nextState.isFailed) {
         continue;
       }
 
+      const nextPath = [...current.path, direction];
+
       if (nextState.isComplete) {
-        return nextState.moves;
+        return nextPath;
       }
 
       const key = serializeState(nextState);
 
       if (!visited.has(key)) {
         visited.add(key);
-        queue.push(nextState);
+        queue.push({ path: nextPath, state: nextState });
       }
     }
   }
 
   return null;
+}
+
+function findSolutionLength(levelId: number) {
+  return findSolutionPath(levelId)?.length ?? null;
+}
+
+function positionsAreAdjacent(first: Position, second: Position) {
+  return Math.abs(first.x - second.x) + Math.abs(first.y - second.y) === 1;
+}
+
+function getSolutionPositions(levelId: number) {
+  const level = LEVELS.find((candidate) => candidate.id === levelId);
+  const path = findSolutionPath(levelId);
+
+  if (!level || !path) {
+    return [];
+  }
+
+  let state = createInitialGameState(level);
+  const positions = [state.playerPosition];
+
+  path.forEach((direction) => {
+    state = movePlayer(level, state, direction);
+    positions.push(state.playerPosition);
+  });
+
+  return positions;
+}
+
+function getSpikePositions(level: (typeof LEVELS)[number]) {
+  return level.grid.flatMap((row, y) =>
+    row.flatMap((tile, x) => (tile === 'spike' ? [{ x, y }] : [])),
+  );
 }
 
 describe('level pack', () => {
@@ -102,6 +137,80 @@ describe('level pack', () => {
 
     solutionLengths.forEach(({ level, solutionLength }) => {
       expect(solutionLength).toBeLessThanOrEqual(level.targetMoves);
+    });
+  });
+
+  it('Spike Lane has a tighter safe-route par after the hazard lesson redesign', () => {
+    const spikeLane = LEVELS.find((level) => level.id === 11);
+
+    expect(spikeLane?.targetMoves).toBe(17);
+    expect(spikeLane?.targetTimeSeconds).toBe(40);
+    expect(findSolutionLength(11)).toBe(17);
+  });
+
+  it('every spike level has meaningful hazard routing and calibrated par', () => {
+    const expectedSolutionLengths = new Map([
+      [11, 17],
+      [12, 18],
+      [15, 10],
+      [24, 27],
+      [29, 24],
+      [30, 22],
+    ]);
+
+    const spikeLevels = LEVELS.filter((level) => level.mechanics.includes('spike'));
+
+    expect(spikeLevels.map((level) => level.id)).toEqual([11, 12, 15, 24, 29, 30]);
+
+    spikeLevels.forEach((level) => {
+      const solutionLength = findSolutionLength(level.id);
+      const solutionPositions = getSolutionPositions(level.id);
+      const spikePositions = getSpikePositions(level);
+      const solutionTouchesHazardPressure = solutionPositions.some((solutionPosition) =>
+        spikePositions.some((spikePosition) => positionsAreAdjacent(solutionPosition, spikePosition)),
+      );
+
+      expect(solutionLength).toBe(expectedSolutionLengths.get(level.id));
+      expect(level.targetMoves).toBeGreaterThanOrEqual(solutionLength ?? Number.POSITIVE_INFINITY);
+      expect(level.targetMoves).toBeLessThanOrEqual((solutionLength ?? 0) + 4);
+      expect(solutionTouchesHazardPressure).toBe(true);
+    });
+  });
+
+  it('spike levels expose actual failed moves from reachable states', () => {
+    const spikeLevels = LEVELS.filter((level) => level.mechanics.includes('spike'));
+
+    spikeLevels.forEach((level) => {
+      const initialState = createInitialGameState(level);
+      const queue: GameState[] = [initialState];
+      const visited = new Set([serializeState(initialState)]);
+      let hasReachableSpikeFailure = false;
+
+      while (queue.length > 0 && visited.size < 25000 && !hasReachableSpikeFailure) {
+        const state = queue.shift();
+
+        if (!state) {
+          break;
+        }
+
+        for (const direction of DIRECTIONS) {
+          const nextState = movePlayer(level, state, direction);
+
+          if (nextState.isFailed) {
+            hasReachableSpikeFailure = true;
+            break;
+          }
+
+          const key = serializeState(nextState);
+
+          if (!visited.has(key)) {
+            visited.add(key);
+            queue.push(nextState);
+          }
+        }
+      }
+
+      expect(hasReachableSpikeFailure).toBe(true);
     });
   });
 

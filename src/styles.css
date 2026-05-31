@@ -271,7 +271,8 @@ h2 {
   justify-items: center;
 }
 
-.game-play-area.complete::before {
+.game-play-area.complete::before,
+.game-play-area.failed::before {
   position: absolute;
   inset: 0;
   z-index: 4;
@@ -291,6 +292,11 @@ h2 {
   animation: hazard-shake 240ms ease-in-out;
 }
 
+.game-board-shell.hazard-flash .game-board {
+  border-color: var(--red);
+  filter: saturate(1.18);
+}
+
 .game-board-shell.key-collect .player-avatar {
   animation: key-pop 320ms ease-out both;
 }
@@ -306,10 +312,12 @@ h2 {
 @keyframes hazard-shake {
   0%,
   100% {
+    filter: none;
     transform: translateX(0);
   }
 
   25% {
+    filter: saturate(1.45) brightness(1.08);
     transform: translateX(-0.35rem);
   }
 
@@ -318,6 +326,7 @@ h2 {
   }
 
   75% {
+    filter: saturate(1.45) brightness(1.08);
     transform: translateX(-0.18rem);
   }
 }
@@ -605,8 +614,27 @@ h2 {
   transform: translate(-50%, -50%);
 }
 
+.failure-panel {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  z-index: 6;
+  display: grid;
+  width: min(100% - 2rem, 28rem);
+  gap: 1rem;
+  border: 1px solid color-mix(in srgb, var(--red) 70%, var(--border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--red) 15%, transparent), transparent 52%),
+    color-mix(in srgb, var(--surface) 96%, var(--background));
+  padding: clamp(1rem, 3vw, 1.35rem);
+  transform: translate(-50%, -50%);
+}
+
 .completion-panel.level-complete-pop {
   animation: completion-rise 340ms ease-out both;
+}
+
+.failure-panel.hazard-failure-pop {
+  animation: failure-rise 220ms ease-out both;
 }
 
 .sr-only {
@@ -624,20 +652,36 @@ h2 {
   gap: 0.8rem;
 }
 
-.completion-header > svg {
+.failure-header {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.completion-header > svg,
+.failure-header > svg {
   width: 2.2rem;
   height: 2.2rem;
   flex: 0 0 auto;
+}
+
+.completion-header > svg {
   color: var(--green);
 }
 
-.completion-panel h2 {
+.failure-header > svg {
+  color: var(--red);
+}
+
+.completion-panel h2,
+.failure-panel h2 {
   margin: 0 0 0.25rem;
   font-size: clamp(2rem, 6vw, 3rem);
   line-height: 1;
 }
 
-.completion-panel p {
+.completion-panel p,
+.failure-panel p {
   margin: 0;
   color: var(--muted);
 }
@@ -807,6 +851,18 @@ h2 {
   from {
     opacity: 0;
     transform: translate(-50%, calc(-50% + 0.65rem)) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes failure-rise {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 0.4rem)) scale(0.98);
   }
 
   to {

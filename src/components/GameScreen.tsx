@@ -9,6 +9,7 @@ import {
   Settings,
   Star,
   Timer,
+  TriangleAlert,
 } from 'lucide-react';
 import { LEVELS } from '../data/levels';
 import { calculateStars, createInitialGameState, getDirectionFromKey, movePlayer } from '../logic/movement';
@@ -125,7 +126,7 @@ export function GameScreen({
           setFailedResetCount((currentCount) => currentCount + 1);
           savedCompletionRef.current = false;
 
-          return createInitialGameState(level);
+          return nextState;
         }
 
         if (nextState === currentState || nextState.moves === currentState.moves) {
@@ -253,7 +254,7 @@ export function GameScreen({
         </div>
       </header>
 
-      <div className={`game-play-area${gameState.isComplete ? ' complete' : ''}`}>
+      <div className={`game-play-area${gameState.isComplete ? ' complete' : ''}${gameState.isFailed ? ' failed' : ''}`}>
         <GameBoard
           elapsedSeconds={gameState.elapsedSeconds}
           animationClass={boardAnimationClass}
@@ -330,6 +331,28 @@ export function GameScreen({
                 <span>Level Select</span>
               </button>
             </div>
+          </section>
+        ) : null}
+
+        {gameState.isFailed ? (
+          <section
+            className={`failure-panel${reducedMotion ? '' : ' hazard-failure-pop'}`}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="failure-title"
+            aria-describedby="failure-description"
+          >
+            <header className="failure-header">
+              <TriangleAlert aria-hidden="true" />
+              <div>
+                <h2 id="failure-title">Hazard Hit!</h2>
+                <p id="failure-description">You hit the spikes.</p>
+              </div>
+            </header>
+            <button type="button" className="menu-button primary" onClick={resetLevel}>
+              <RotateCcw aria-hidden="true" />
+              <span>Retry the level?</span>
+            </button>
           </section>
         ) : null}
       </div>

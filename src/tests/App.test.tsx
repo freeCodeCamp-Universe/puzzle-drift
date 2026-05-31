@@ -572,11 +572,17 @@ describe('App', () => {
     expect(screen.getByLabelText('Door at 5, 3')).toBeInTheDocument();
   });
 
-  it('stepping on a spike resets player position and move count', async () => {
-    await openSpikeLane();
+  it('stepping on a spike shows a failed attempt overlay until retry', async () => {
+    const user = await openSpikeLane();
 
     fireEvent.keyDown(window, { key: 'ArrowRight' });
-    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+
+    expect(screen.getByRole('alertdialog', { name: /hazard hit/i })).toBeInTheDocument();
+    expect(screen.getByText(/you hit the spikes/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('Player at 3, 1')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /retry the level/i }));
 
     expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
     expect(screen.getByLabelText('0 moves')).toBeInTheDocument();
@@ -586,16 +592,31 @@ describe('App', () => {
     await openSpikeLane();
 
     fireEvent.keyDown(window, { key: 'ArrowRight' });
-    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
 
-    expect(screen.queryByText(/drift cleared/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /level complete/i })).not.toBeInTheDocument();
   });
 
-  it('undo history clears after spike reset', async () => {
+  it('spike failure does not save progress or unlock the next level', async () => {
+    await openSpikeLane();
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+
+    const savedProgress = JSON.parse(window.localStorage.getItem('puzzle-drift:save') ?? '{}');
+
+    expect(savedProgress.completedLevels).not.toContain(11);
+    expect(savedProgress.unlockedLevels).not.toContain(12);
+  });
+
+  it('undo history clears after retrying a spike failure', async () => {
     const user = await openSpikeLane();
 
     fireEvent.keyDown(window, { key: 'ArrowRight' });
-    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+
+    await user.click(screen.getByRole('button', { name: /retry the level/i }));
+
     await user.click(screen.getByRole('button', { name: /undo move/i }));
 
     expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
@@ -606,7 +627,7 @@ describe('App', () => {
     await openSpikeLane();
 
     fireEvent.keyDown(window, { key: 'ArrowRight' });
-    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
 
     expect(screen.getByTestId('game-board-shell')).toHaveClass('hazard-flash');
   });
@@ -625,9 +646,11 @@ describe('App', () => {
     await openSpikeLane();
 
     fireEvent.keyDown(window, { key: 'ArrowRight' });
-    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
 
     expect(screen.getByTestId('game-board-shell')).not.toHaveClass('hazard-flash');
+    expect(screen.getByRole('alertdialog', { name: /hazard hit/i })).toBeInTheDocument();
+    expect(screen.getByRole('alertdialog', { name: /hazard hit/i })).not.toHaveClass('hazard-failure-pop');
   });
 
   it('reduced motion disables completion animation classes', async () => {
