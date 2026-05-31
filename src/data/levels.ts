@@ -61,8 +61,9 @@ const LEVEL_HINTS: Record<number, LevelHint[]> = {
     { text: 'You may need to backtrack after finding the key.', unlockAfterSeconds: 25 },
   ],
   4: [
-    { text: 'Loop through the side hall before taking the locked top lane.' },
-    { text: 'The key is isolated, but the route back stays open.', unlockAfterFailedResets: 1 },
+    { text: 'The straight path should be blocked until you unlock the door.' },
+    { text: 'The side hall exists for a reason.', unlockAfterFailedResets: 1 },
+    { text: 'Return to the locked door after collecting the key.', unlockAfterSeconds: 30 },
   ],
   5: [
     { text: 'Pick up the key first, then unwind toward the exit corridor.' },
@@ -222,13 +223,19 @@ const LEVEL_DEFINITIONS: Level[] = [
   defineLevel({
     id: 4,
     name: 'Door Loop',
-    description: 'Loop through the side hall, pick up the key, and open the door.',
-    width: 9,
-    height: 7,
-    grid: ['#########', '#....D.E#', '#.#####.#', '#K......#', '#.#####.#', '#.......#', '#########'],
-    playerStart: position(1, 5),
-    targetMoves: 18,
-    targetTimeSeconds: 35,
+    description: 'Take the side loop to collect the key, then unlock the only path to the exit.',
+    width: 10,
+    height: 8,
+    grid: ['##########', '#.....K###', '#.####.###', '#.#....###', '#.#.######', '#.#.######', '#...D..E##', '##########'],
+    completionRequirements: {
+      requiresKeyCollection: true,
+      requiresDoorOpened: true,
+      requiredKeysCollected: 1,
+      requiredDoorsOpened: 1,
+    },
+    playerStart: position(1, 6),
+    targetMoves: 22,
+    targetTimeSeconds: 45,
     mechanics: ['floor', 'wall', 'exit', 'key', 'door'],
   }),
   defineLevel({

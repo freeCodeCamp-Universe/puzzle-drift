@@ -2,6 +2,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { GameBoard } from '../components/GameBoard';
 import { LEVELS } from '../data/levels';
+import { canCompleteLevel } from '../logic/levelCompletion';
 import { createInitialGameState, movePlayer } from '../logic/movement';
 import type { Direction, GameState, Position } from '../types/game';
 import { completeLevel, createInitialSaveData, isLevelUnlocked } from '../utils/progressStorage';
@@ -18,6 +19,8 @@ function serializeState(state: GameState) {
     activeSwitchIds: [...state.activeSwitchIds].sort(),
     collectedKeyPositions: sortPositions(state.collectedKeyPositions),
     collectedKeys: state.collectedKeys,
+    doorsOpenedThisAttempt: state.doorsOpenedThisAttempt,
+    keysCollectedThisAttempt: state.keysCollectedThisAttempt,
     openedDoorPositions: sortPositions(state.openedDoorPositions),
     playerPosition: state.playerPosition,
     pushBlocks: sortPositions(state.pushBlocks),
@@ -220,6 +223,61 @@ describe('level pack', () => {
   it('Keyline exit is unreachable when locked doors are treated as walls', () => {
     expect(isExitReachableWithDoorsBlocked(3)).toBe(false);
     expect(findSolutionLength(3)).toBe(18);
+  });
+
+  it('Door Loop requires the side-loop key and locked door', () => {
+    const doorLoop = LEVELS.find((level) => level.id === 4);
+    const completedState = getCompletedState(4);
+
+    expect(doorLoop?.completionRequirements).toEqual({
+      requiresKeyCollection: true,
+      requiresDoorOpened: true,
+      requiredKeysCollected: 1,
+      requiredDoorsOpened: 1,
+    });
+    expect(doorLoop?.targetMoves).toBe(22);
+    expect(doorLoop?.targetTimeSeconds).toBe(45);
+    expect(findSolutionLength(4)).toBe(22);
+    expect(completedState?.collectedKeyPositions).toContainEqual({ x: 6, y: 1 });
+    expect(completedState?.openedDoorPositions).toContainEqual({ x: 4, y: 6 });
+    expect(completedState?.keysCollectedThisAttempt).toBe(1);
+    expect(completedState?.doorsOpenedThisAttempt).toBe(1);
+    expect(completedState?.collectedKeys).toBe(0);
+  });
+
+  it('Door Loop cannot complete without collecting the key and opening the door', () => {
+    const doorLoop = LEVELS.find((level) => level.id === 4);
+
+    expect(doorLoop).toBeDefined();
+
+    if (!doorLoop) {
+      return;
+    }
+
+    const exitOnlyState = {
+      ...createInitialGameState(doorLoop),
+      playerPosition: { x: 7, y: 6 },
+    };
+    const collectedKeyState = {
+      ...exitOnlyState,
+      collectedKeys: 1,
+      keysCollectedThisAttempt: 1,
+    };
+    const completedState = {
+      ...collectedKeyState,
+      collectedKeys: 0,
+      doorsOpenedThisAttempt: 1,
+      openedDoorPositions: [{ x: 4, y: 6 }],
+    };
+
+    expect(canCompleteLevel(doorLoop, exitOnlyState)).toBe(false);
+    expect(canCompleteLevel(doorLoop, collectedKeyState)).toBe(false);
+    expect(canCompleteLevel(doorLoop, completedState)).toBe(true);
+  });
+
+  it('Door Loop exit is unreachable until the locked door is opened', () => {
+    expect(isExitReachableWithDoorsBlocked(4)).toBe(false);
+    expect(findSolutionLength(4)).toBe(22);
   });
 
   it('every spike level has meaningful hazard routing and calibrated par', () => {
