@@ -152,7 +152,7 @@ h2 {
 
 .settings-dialog,
 .how-to-dialog,
-.placeholder-panel {
+.empty-state {
   border: 1px solid var(--border);
   background: color-mix(in srgb, var(--surface) 92%, transparent);
 }
@@ -208,11 +208,6 @@ h2 {
   color: var(--text);
 }
 
-.menu-button.compact {
-  width: fit-content;
-  margin-inline: auto;
-}
-
 .menu-button svg {
   width: 1.3rem;
   height: 1.3rem;
@@ -232,6 +227,23 @@ h2 {
   justify-content: flex-start;
 }
 
+.game-screen > .screen-header {
+  margin-block-end: 0;
+  color: var(--muted);
+}
+
+.game-screen > .screen-header h2 {
+  font-size: 1.15rem;
+}
+
+.game-screen > .screen-header .icon-button {
+  width: 2.45rem;
+  height: 2.45rem;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+
 .icon-button {
   display: grid;
   width: 2.8rem;
@@ -241,7 +253,7 @@ h2 {
 }
 
 .icon-button svg,
-.placeholder-panel svg {
+.empty-state svg {
   width: 1.25rem;
   height: 1.25rem;
 }
@@ -249,12 +261,29 @@ h2 {
 .game-screen,
 .level-screen {
   display: grid;
-  gap: 1rem;
+  gap: clamp(1rem, 2.4vw, 1.5rem);
+}
+
+.game-play-area {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  justify-items: center;
+}
+
+.game-play-area.complete::before {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background: rgba(10, 10, 35, 0.62);
+  content: "";
 }
 
 .game-board-shell {
+  position: relative;
   display: grid;
-  gap: 1rem;
+  width: min(100%, 46rem);
+  gap: clamp(0.85rem, 2.2vw, 1.35rem);
   min-width: 0;
 }
 
@@ -295,47 +324,67 @@ h2 {
 
 .game-hud {
   display: grid;
-  grid-template-columns: minmax(11rem, 0.85fr) minmax(20rem, 1.4fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "title actions"
+    "stats actions";
   align-items: center;
-  gap: 1rem;
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  padding: 0.85rem;
+  gap: 0.6rem 1.1rem;
+  border-block-end: 1px solid color-mix(in srgb, var(--border) 48%, transparent);
+  background: transparent;
+  padding: 0.35rem 0 0.6rem;
   min-width: 0;
-  position: sticky;
-  top: 0.75rem;
-  z-index: 3;
 }
 
 .game-hud-title {
+  grid-area: title;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
   min-width: 0;
 }
 
 .game-hud-title h2 {
+  margin: 0;
+  font-size: clamp(1.55rem, 3vw, 2.3rem);
+  line-height: 1;
   overflow-wrap: anywhere;
 }
 
-.hud-stats div,
-.hud-actions {
+.level-badge {
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--blue) 42%, transparent);
+  background: transparent;
+  color: var(--muted);
+  padding: 0.16rem 0.4rem;
+  font-family: "Fira Mono", Menlo, Consolas, monospace;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.hud-stat {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  min-height: 2.05rem;
+  gap: 0.55rem;
+  border: 0;
+  background: color-mix(in srgb, var(--surface-strong) 46%, transparent);
+  padding: 0.3rem 0.55rem;
 }
 
 .hud-stats {
+  grid-area: stats;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.5rem;
+  grid-template-columns: repeat(3, minmax(5.25rem, 6.75rem));
+  gap: 0.35rem;
   margin: 0;
-}
-
-.hud-stats div {
   min-width: 0;
-  min-height: 3.05rem;
-  justify-content: space-between;
-  gap: 0.5rem;
-  border: 1px solid var(--border);
-  background: var(--background);
-  padding: 0.45rem 0.55rem;
+  align-self: start;
+  justify-content: start;
 }
 
 .hud-stats dt,
@@ -347,59 +396,179 @@ h2 {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
+  min-width: 0;
   color: var(--muted);
   font-family: "Fira Mono", Menlo, Consolas, monospace;
-  font-size: 0.72rem;
+  font-size: 0.64rem;
+  line-height: 1;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
 .hud-stats dd {
+  flex: 0 0 auto;
   color: var(--yellow);
   font-family: "Fira Mono", Menlo, Consolas, monospace;
+  font-size: 1.05rem;
   font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .hud-stats svg {
-  width: 0.95rem;
-  height: 0.95rem;
+  width: 0.82rem;
+  height: 0.82rem;
 }
 
 .hud-actions {
-  gap: 0.45rem;
+  grid-area: actions;
+  display: grid;
+  grid-template-columns: repeat(5, 2.35rem);
+  gap: 0.3rem;
   justify-content: end;
+  min-width: 0;
+}
+
+.hud-actions .icon-button {
+  width: 2.35rem;
+  height: 2.35rem;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+
+.hud-actions .icon-button svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.tooltip-anchor {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+}
+
+.tooltip-bubble {
+  position: absolute;
+  inset-block-end: calc(100% + 0.55rem);
+  inset-inline-start: 50%;
+  z-index: 8;
+  width: max-content;
+  max-width: 12rem;
+  border: 1px solid color-mix(in srgb, var(--border) 68%, transparent);
+  background: color-mix(in srgb, var(--background) 94%, black);
+  color: var(--text);
+  padding: 0.35rem 0.5rem;
+  font-family: "Fira Mono", Menlo, Consolas, monospace;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+  white-space: nowrap;
+  transform: translate(-50%, -0.15rem);
+  animation: tooltip-fade 140ms ease-out both;
+  pointer-events: none;
+}
+
+.tooltip-bubble::after {
+  position: absolute;
+  inset-block-start: 100%;
+  inset-inline-start: 50%;
+  width: 0.45rem;
+  height: 0.45rem;
+  background: color-mix(in srgb, var(--background) 94%, black);
+  border-inline-end: 1px solid color-mix(in srgb, var(--border) 68%, transparent);
+  border-block-end: 1px solid color-mix(in srgb, var(--border) 68%, transparent);
+  content: "";
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.tooltip-bubble.no-motion {
+  animation: none;
+}
+
+@keyframes tooltip-fade {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, -0.15rem);
+  }
 }
 
 .objective-panel {
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface-strong) 82%, transparent);
-  padding: 0.85rem;
+  display: grid;
+  max-width: min(100%, 31rem);
+  justify-self: start;
+  gap: 0.3rem;
+  margin-block-start: 0.15rem;
+  border-inline-start: 2px solid color-mix(in srgb, var(--yellow) 62%, transparent);
+  background: transparent;
+  padding: 0.2rem 0 0.2rem 0.7rem;
+}
+
+.objective-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--yellow);
+}
+
+.objective-heading svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.objective-heading h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.88rem;
+  line-height: 1.1;
 }
 
 .objective-panel p:last-child {
   margin: 0;
   color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.35;
 }
 
 .hint-panel {
+  position: absolute;
+  top: clamp(7.25rem, 18vw, 9.5rem);
+  right: 0;
+  z-index: 5;
   display: grid;
-  gap: 0.75rem;
-  border: 1px solid var(--yellow);
-  background: color-mix(in srgb, var(--yellow) 12%, var(--surface));
-  padding: 0.85rem;
+  gap: 0.65rem;
+  width: min(100%, 24rem);
+  border: 1px solid color-mix(in srgb, var(--yellow) 58%, var(--border));
+  background: color-mix(in srgb, var(--surface) 90%, var(--background));
+  padding: 0.75rem;
 }
 
 .hint-panel-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 0.7rem;
+  gap: 0.6rem;
 }
 
 .hint-panel-header svg {
   color: var(--yellow);
 }
 
+.hint-panel-header .icon-button {
+  width: 2.3rem;
+  height: 2.3rem;
+}
+
 .hint-panel h3 {
   margin: 0;
+  font-size: 1rem;
+  line-height: 1.1;
 }
 
 .hint-panel ol {
@@ -407,6 +576,7 @@ h2 {
   gap: 0.5rem;
   margin: 0;
   padding-left: 1.25rem;
+  font-size: 0.95rem;
 }
 
 .hint-panel li {
@@ -421,11 +591,18 @@ h2 {
 }
 
 .completion-panel {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  z-index: 6;
   display: grid;
-  gap: 1rem;
-  border: 1px solid var(--green);
-  background: color-mix(in srgb, var(--green) 18%, var(--surface));
-  padding: 1rem;
+  width: min(100% - 2rem, 30rem);
+  gap: 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--green) 62%, var(--border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--green) 13%, transparent), transparent 48%),
+    color-mix(in srgb, var(--surface) 96%, var(--background));
+  padding: clamp(1rem, 3vw, 1.35rem);
+  transform: translate(-50%, -50%);
 }
 
 .completion-panel.level-complete-pop {
@@ -444,18 +621,20 @@ h2 {
 .completion-header {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
+  gap: 0.8rem;
 }
 
 .completion-header > svg {
-  width: 2rem;
-  height: 2rem;
+  width: 2.2rem;
+  height: 2.2rem;
   flex: 0 0 auto;
   color: var(--green);
 }
 
 .completion-panel h2 {
-  margin-block-end: 0.35rem;
+  margin: 0 0 0.25rem;
+  font-size: clamp(2rem, 6vw, 3rem);
+  line-height: 1;
 }
 
 .completion-panel p {
@@ -465,12 +644,13 @@ h2 {
 
 .completion-stars {
   display: flex;
-  gap: 0.45rem;
+  justify-content: center;
+  gap: 0.55rem;
 }
 
 .completion-stars svg {
-  width: 1.8rem;
-  height: 1.8rem;
+  width: 2.25rem;
+  height: 2.25rem;
 }
 
 .completion-stars .star-earned {
@@ -488,18 +668,19 @@ h2 {
 
 .completion-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(8.75rem, 1fr));
-  gap: 0.65rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
 }
 
 .stat-card {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 0.2rem 0.5rem;
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface-strong) 84%, transparent);
-  padding: 0.75rem;
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  background: color-mix(in srgb, var(--surface-strong) 72%, transparent);
+  padding: 0.65rem;
 }
 
 .stat-card svg {
@@ -510,25 +691,36 @@ h2 {
 
 .stat-card span {
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.68rem;
+  line-height: 1;
   text-transform: uppercase;
 }
 
 .stat-card strong {
   grid-column: 1 / -1;
   color: var(--text);
-  font-size: 1.35rem;
+  font-size: 1.55rem;
+  line-height: 1.05;
+}
+
+.stat-card.record {
+  border-color: color-mix(in srgb, var(--yellow) 74%, var(--border));
+  background: color-mix(in srgb, var(--yellow) 12%, var(--surface-strong));
+}
+
+.stat-card em {
+  color: var(--yellow);
+  font-family: "Fira Mono", Menlo, Consolas, monospace;
+  font-size: 0.58rem;
+  font-style: normal;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .completion-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-}
-
-.completion-note {
-  border-block-start: 1px solid var(--border);
-  padding-block-start: 0.85rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
 }
 
 @keyframes star-pop {
@@ -614,12 +806,12 @@ h2 {
 @keyframes completion-rise {
   from {
     opacity: 0;
-    transform: translateY(0.5rem);
+    transform: translate(-50%, calc(-50% + 0.65rem)) scale(0.96);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate(-50%, -50%) scale(1);
   }
 }
 
@@ -647,20 +839,33 @@ h2 {
   }
 
   50% {
-    filter: saturate(1.35);
+    filter: saturate(1.45) brightness(1.08);
+  }
+}
+
+@keyframes active-tile-pulse {
+  0%,
+  100% {
+    outline-color: color-mix(in srgb, var(--green) 62%, transparent);
+    transform: scale(1);
+  }
+
+  50% {
+    outline-color: color-mix(in srgb, var(--green) 92%, transparent);
+    transform: scale(1.025);
   }
 }
 
 .game-board {
   display: grid;
-  gap: clamp(0.18rem, 0.8vw, 0.4rem);
-  width: min(100%, 35rem);
-  max-width: calc(100vw - 2rem);
+  gap: clamp(0.14rem, 0.48vw, 0.3rem);
+  width: min(100%, 43rem, 74vh);
+  max-width: calc(100vw - 1.5rem);
   justify-self: center;
   overflow: hidden;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  padding: clamp(0.45rem, 1.8vw, 0.75rem);
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  background: color-mix(in srgb, var(--surface) 82%, var(--background));
+  padding: clamp(0.35rem, 1vw, 0.55rem);
   transition: border-color 160ms ease;
 }
 
@@ -670,45 +875,69 @@ h2 {
   aspect-ratio: 1;
   min-width: 0;
   place-items: center;
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--border) 62%, transparent);
   background: var(--surface-strong);
+  outline: 0 solid transparent;
+  outline-offset: -2px;
   transition:
     border-color 180ms ease,
     background 180ms ease,
+    filter 180ms ease,
+    outline-color 180ms ease,
     transform 180ms ease;
 }
 
 .direction-controls {
-  display: grid;
+  display: none;
   grid-template-areas:
     ". up ."
     "left . right"
     ". down .";
-  grid-template-columns: repeat(3, minmax(3.5rem, 4.5rem));
+  grid-template-columns: repeat(3, 4.25rem);
   justify-content: center;
-  gap: 0.55rem;
+  gap: 0.45rem;
+  width: fit-content;
+  justify-self: center;
+  border: 1px solid color-mix(in srgb, var(--border) 52%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 56%, transparent), color-mix(in srgb, var(--background) 54%, transparent));
+  padding: 0.65rem;
   touch-action: manipulation;
 }
 
 .direction-button {
   display: grid;
-  min-width: 3.5rem;
-  min-height: 3.5rem;
+  width: 4.25rem;
+  height: 4.25rem;
   place-items: center;
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
   color: var(--text);
-  background: color-mix(in srgb, var(--surface-strong) 88%, transparent);
+  background: color-mix(in srgb, var(--surface-strong) 72%, transparent);
+  transition:
+    border-color 140ms ease,
+    color 140ms ease,
+    background 140ms ease,
+    transform 140ms ease;
 }
 
-.direction-button:hover {
+.direction-button:hover,
+.direction-button:focus-visible {
   border-color: var(--blue);
   color: var(--blue);
   transform: translateY(-1px);
 }
 
+.direction-button:active {
+  border-color: var(--yellow);
+  background: color-mix(in srgb, var(--yellow) 18%, var(--surface-strong));
+  color: var(--yellow);
+  transform: scale(0.96);
+}
+
 .direction-button svg {
-  width: 1.45rem;
-  height: 1.45rem;
+  width: 1.65rem;
+  height: 1.65rem;
+  stroke-width: 2.4;
 }
 
 .direction-up {
@@ -728,82 +957,116 @@ h2 {
 }
 
 .tile-floor {
-  background: linear-gradient(135deg, #202038, #15152c);
+  border-color: color-mix(in srgb, var(--border) 36%, transparent);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--surface-strong) 42%, transparent), transparent 54%),
+    color-mix(in srgb, var(--background) 72%, var(--surface));
 }
 
 .tile-wall {
-  border-color: #858591;
+  border-color: color-mix(in srgb, var(--border) 50%, transparent);
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 45%),
-    #3b3b4f;
+    linear-gradient(135deg, color-mix(in srgb, var(--muted) 8%, transparent), transparent 46%),
+    color-mix(in srgb, var(--border) 42%, var(--surface));
+  filter: saturate(0.72) brightness(0.86);
 }
 
 .tile-exit {
   border-color: var(--green);
-  background: radial-gradient(circle, rgba(172, 209, 87, 0.75), rgba(24, 63, 46, 0.8));
+  outline-width: 2px;
+  outline-color: color-mix(in srgb, var(--green) 62%, transparent);
+  background:
+    radial-gradient(circle at 50% 48%, color-mix(in srgb, var(--green) 92%, white 8%), transparent 34%),
+    radial-gradient(circle, color-mix(in srgb, var(--green) 58%, transparent), #183f2e 78%);
   animation: exit-breathe 1800ms ease-in-out infinite;
 }
 
 .tile-key {
-  border-color: var(--yellow);
-  background: radial-gradient(circle at 60% 35%, var(--yellow), #4d3800);
+  border-color: color-mix(in srgb, var(--yellow) 82%, var(--border));
+  background:
+    radial-gradient(circle at 58% 36%, var(--yellow), transparent 28%),
+    radial-gradient(circle, color-mix(in srgb, var(--yellow) 34%, transparent), #4d3800 76%);
   animation: key-glow 1800ms ease-in-out infinite;
 }
 
 .tile-door {
-  border-color: var(--yellow);
-  background: linear-gradient(90deg, #4d3800, #8d6a14 48%, #4d3800);
+  border-color: color-mix(in srgb, var(--yellow) 70%, var(--border));
+  background:
+    linear-gradient(90deg, #4d3800, color-mix(in srgb, var(--yellow) 46%, #4d3800) 48%, #4d3800),
+    var(--surface-strong);
 }
 
 .tile-switch {
-  border-color: var(--blue);
-  background: radial-gradient(circle, var(--blue), #15375c);
+  border-color: color-mix(in srgb, var(--blue) 68%, var(--border));
+  background: radial-gradient(circle, color-mix(in srgb, var(--blue) 74%, transparent), #15375c 74%);
 }
 
 .tile-switch.tile-active {
   border-color: var(--green);
-  background: radial-gradient(circle, var(--green), #15375c 72%);
+  outline-width: 2px;
+  outline-color: color-mix(in srgb, var(--green) 82%, transparent);
+  background:
+    radial-gradient(circle, var(--green), transparent 33%),
+    radial-gradient(circle, color-mix(in srgb, var(--green) 42%, transparent), #15375c 76%);
+  animation: active-tile-pulse 1500ms ease-in-out infinite;
 }
 
 .tile-pressurePlate {
-  border-color: var(--purple);
-  background: linear-gradient(135deg, #3b2357, #17172e);
+  border-color: color-mix(in srgb, var(--purple) 62%, var(--border));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--purple) 28%, #17172e), #17172e);
 }
 
 .tile-pressurePlate.tile-active {
   border-color: var(--green);
-  background: radial-gradient(circle, rgba(172, 209, 87, 0.65), #23381d);
+  outline-width: 2px;
+  outline-color: color-mix(in srgb, var(--green) 82%, transparent);
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--green) 76%, transparent), transparent 38%),
+    #23381d;
+  animation: active-tile-pulse 1500ms ease-in-out infinite;
 }
 
 .tile-pushBlock {
-  border-color: var(--muted);
-  background: linear-gradient(135deg, #858591, #3b3b4f);
+  border-color: color-mix(in srgb, var(--muted) 76%, var(--border));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--muted) 70%, var(--surface-strong)), #3b3b4f);
 }
 
 .tile-portal {
-  border-color: var(--purple);
-  background: conic-gradient(from 45deg, var(--purple), var(--blue), var(--purple));
+  border-color: color-mix(in srgb, var(--purple) 80%, var(--border));
+  background:
+    radial-gradient(circle, var(--background) 22%, transparent 23%),
+    conic-gradient(from 45deg, var(--purple), var(--blue), var(--purple));
   animation: portal-spin 2400ms linear infinite;
 }
 
 .tile-portal.portal-pair-1 {
-  border-color: var(--purple);
-  background: conic-gradient(from 45deg, var(--purple), var(--blue), var(--purple));
+  border-color: color-mix(in srgb, var(--purple) 80%, var(--border));
+  background:
+    radial-gradient(circle, var(--background) 22%, transparent 23%),
+    conic-gradient(from 45deg, var(--purple), var(--blue), var(--purple));
 }
 
 .tile-portal.portal-pair-2 {
-  border-color: var(--green);
-  background: conic-gradient(from 45deg, var(--green), var(--blue), var(--green));
+  border-color: color-mix(in srgb, var(--green) 80%, var(--border));
+  background:
+    radial-gradient(circle, var(--background) 22%, transparent 23%),
+    conic-gradient(from 45deg, var(--green), var(--blue), var(--green));
 }
 
 .tile-portal.portal-pair-3 {
-  border-color: var(--yellow);
-  background: conic-gradient(from 45deg, var(--yellow), var(--purple), var(--yellow));
+  border-color: color-mix(in srgb, var(--yellow) 80%, var(--border));
+  background:
+    radial-gradient(circle, var(--background) 22%, transparent 23%),
+    conic-gradient(from 45deg, var(--yellow), var(--purple), var(--yellow));
 }
 
 .tile-portal.portal-pair-4 {
-  border-color: var(--red);
-  background: conic-gradient(from 45deg, var(--red), var(--blue), var(--red));
+  border-color: color-mix(in srgb, var(--red) 80%, var(--border));
+  background:
+    radial-gradient(circle, var(--background) 22%, transparent 23%),
+    conic-gradient(from 45deg, var(--red), var(--blue), var(--red));
 }
 
 .tile-spike {
@@ -825,61 +1088,80 @@ h2 {
 }
 
 .tile-cracked {
-  background: linear-gradient(135deg, #2a2a40 45%, #858591 48%, #2a2a40 52%);
+  border-color: color-mix(in srgb, var(--border) 58%, transparent);
+  background: linear-gradient(135deg, #242438 45%, color-mix(in srgb, var(--muted) 62%, transparent) 48%, #242438 52%);
 }
 
 .tile-fog {
-  background: color-mix(in srgb, var(--dim) 55%, var(--surface));
+  border-color: color-mix(in srgb, var(--border) 42%, transparent);
+  background: color-mix(in srgb, var(--dim) 34%, var(--surface));
 }
 
 .tile-oneWay {
-  background: linear-gradient(90deg, var(--surface-strong), #15375c);
+  border-color: color-mix(in srgb, var(--blue) 46%, var(--border));
+  background: linear-gradient(90deg, var(--surface-strong), color-mix(in srgb, var(--blue) 34%, #15375c));
 }
 
 .tile-mirror {
-  border-color: var(--blue);
-  background: linear-gradient(135deg, #f5f6f7, #99c9ff 45%, #2a2a40 48%);
+  border-color: color-mix(in srgb, var(--blue) 76%, var(--border));
+  background: linear-gradient(135deg, #f5f6f7, #99c9ff 42%, #2a2a40 48%);
 }
 
 .tile-laserEmitter {
-  border-color: var(--red);
-  background: radial-gradient(circle, var(--red), #5a1f2b);
+  border-color: color-mix(in srgb, var(--red) 82%, var(--border));
+  background: radial-gradient(circle, var(--red), #5a1f2b 72%);
 }
 
 .tile-laserReceiver {
-  border-color: var(--green);
-  background: radial-gradient(circle, var(--green), #263f1b);
+  border-color: color-mix(in srgb, var(--green) 82%, var(--border));
+  background: radial-gradient(circle, var(--green), #263f1b 72%);
 }
 
 .player-avatar {
   position: absolute;
-  inset: 14%;
-  z-index: 1;
+  inset: 6%;
+  z-index: 2;
   display: grid;
   place-items: center;
-  border: 2px solid var(--yellow);
-  background: var(--background);
+  border: 2px solid var(--text);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--yellow) 42%, transparent), transparent 46%),
+    conic-gradient(from 45deg, color-mix(in srgb, var(--blue) 52%, transparent), transparent 20%, color-mix(in srgb, var(--yellow) 52%, transparent), transparent 70%),
+    var(--background);
   color: var(--yellow);
-  transition: transform 160ms ease;
+  outline: 2px solid color-mix(in srgb, var(--yellow) 88%, transparent);
+  outline-offset: -5px;
+  transition:
+    outline-color 160ms ease,
+    transform 160ms ease;
+}
+
+.player-avatar::before,
+.player-avatar::after {
+  position: absolute;
+  content: "";
+}
+
+.player-avatar::before {
+  inset: -0.22rem;
+  z-index: -1;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--yellow) 24%, transparent);
+}
+
+.player-avatar::after {
+  top: -0.22rem;
+  width: 0.52rem;
+  height: 0.52rem;
+  background: var(--text);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
 }
 
 .player-avatar svg {
-  width: 70%;
-  height: 70%;
-}
-
-.placeholder-panel {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  min-height: 7rem;
-  color: var(--muted);
-}
-
-.placeholder-panel p,
-.placeholder-copy {
-  margin: 0;
+  width: 62%;
+  height: 62%;
+  stroke-width: 2.6;
 }
 
 .level-card-grid {
@@ -1199,30 +1481,52 @@ h2 {
 
   .game-hud {
     grid-template-columns: 1fr;
-    position: static;
-  }
-
-  .hud-stats,
-  .hud-actions {
-    justify-content: stretch;
+    grid-template-areas:
+      "title"
+      "stats"
+      "actions";
+    align-items: stretch;
   }
 
   .hud-stats {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .hud-stats div {
-    min-width: 0;
+    grid-template-columns: repeat(auto-fit, minmax(5.75rem, 1fr));
   }
 
   .hud-actions {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(2.5rem, 1fr));
+    justify-content: stretch;
+  }
+
+  .objective-panel {
+    justify-self: stretch;
   }
 
   .hud-actions .icon-button {
     width: 100%;
+  }
+
+  .game-board {
+    width: min(100%, 42rem);
+  }
+
+  .direction-controls {
+    display: grid;
+    margin-block-start: 0.25rem;
+  }
+
+  .hint-panel {
+    position: fixed;
+    inset: auto 1rem 1rem;
+    width: auto;
+  }
+
+  .completion-panel {
+    width: min(100% - 1.25rem, 28rem);
+  }
+
+  .completion-stats,
+  .completion-actions {
+    grid-template-columns: 1fr;
   }
 
   .level-card-grid {

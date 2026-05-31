@@ -375,7 +375,12 @@ describe('App', () => {
     render(<App />);
 
     await user.click(screen.getByRole('button', { name: /new game/i }));
-    await user.click(screen.getByRole('button', { name: /complete level/i }));
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
     await user.click(screen.getByRole('button', { name: /back to start/i }));
     await user.click(screen.getByRole('button', { name: /level select/i }));
 
@@ -394,7 +399,7 @@ describe('App', () => {
     fireEvent.keyDown(window, { key: 'ArrowDown' });
     fireEvent.keyDown(window, { key: 'ArrowDown' });
 
-    expect(screen.getByText(/drift cleared/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /level complete/i })).toBeInTheDocument();
 
     await waitFor(() => {
       const savedProgress = JSON.parse(window.localStorage.getItem('puzzle-drift:save') ?? '{}');
@@ -418,15 +423,17 @@ describe('App', () => {
 
     const completion = screen.getByRole('status', { name: /level completed/i });
 
-    expect(within(completion).getAllByText(/level completed/i).length).toBeGreaterThan(0);
+    expect(within(completion).getByRole('heading', { name: /level complete/i })).toBeInTheDocument();
     expect(within(completion).getByText('Time')).toBeInTheDocument();
     expect(within(completion).getByText('Moves')).toBeInTheDocument();
     expect(within(completion).getByText('Stars Earned')).toBeInTheDocument();
-    expect(within(completion).getByText('Best Moves')).toBeInTheDocument();
-    expect(within(completion).getByText('Best Time')).toBeInTheDocument();
+    expect(within(completion).queryByText('Best Moves')).not.toBeInTheDocument();
+    expect(within(completion).queryByText('Best Time')).not.toBeInTheDocument();
+    expect(within(completion).getAllByText('New Record').length).toBeGreaterThan(0);
     expect(within(completion).getByRole('button', { name: /next level/i })).toBeInTheDocument();
     expect(within(completion).getByRole('button', { name: /retry/i })).toBeInTheDocument();
     expect(within(completion).getByRole('button', { name: /level select/i })).toBeInTheDocument();
+    expect(screen.getByRole('grid', { name: /first drift board/i })).toBeInTheDocument();
   });
 
   it('completion message is accessible', async () => {

@@ -117,6 +117,7 @@ describe('level pack', () => {
           isHintPanelOpen={false}
           level={level}
           moves={0}
+          reducedMotion={false}
           onLevelSelect={vi.fn()}
           onMove={vi.fn()}
           onPause={vi.fn()}

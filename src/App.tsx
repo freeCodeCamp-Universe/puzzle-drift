@@ -77,7 +77,6 @@ export function App() {
             setSave((currentSave) => completeLevel(currentSave, currentSave.currentLevel, result))
           }
           onLevelSelect={() => setView('levels')}
-          onMarkActive={() => setSave({ ...save, hasActiveRun: true })}
           onNextLevel={() =>
             setSave((currentSave) => ({
               ...currentSave,
