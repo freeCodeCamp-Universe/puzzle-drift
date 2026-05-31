@@ -93,6 +93,33 @@ export function validateLevel(level: Level): LevelValidationIssue[] {
     });
   }
 
+  if (level.completionRequirements?.requiresSwitchActivation && !tileCounts.get('switch')) {
+    issues.push({
+      levelId: level.id,
+      message: 'Level requires switch activation but defines no switch tiles.',
+    });
+  }
+
+  if (
+    level.completionRequirements?.requiresLinkedDoorOpened &&
+    !level.links?.some((link) => {
+      const targetPosition = Object.entries(level.tileIds ?? {}).find(([, id]) => id === link.targetId)?.[0];
+
+      if (!targetPosition) {
+        return false;
+      }
+
+      const [x, y] = targetPosition.split(',').map(Number);
+
+      return level.grid[y]?.[x] === 'door';
+    })
+  ) {
+    issues.push({
+      levelId: level.id,
+      message: 'Level requires a linked door to open but defines no linked door tiles.',
+    });
+  }
+
   if (!Array.isArray(level.hints) || level.hints.length < 1 || level.hints.length > 3) {
     issues.push({
       levelId: level.id,

@@ -21,9 +21,15 @@ export function canCompleteLevel(level: Level, state: GameState) {
 
   const requiredKeysCollected = requirements.requiredKeysCollected ?? (requirements.requiresKeyCollection ? 1 : 0);
   const requiredDoorsOpened = requirements.requiredDoorsOpened ?? (requirements.requiresDoorOpened ? 1 : 0);
+  const requiredSwitchesActivated =
+    requirements.requiredSwitchesActivated ?? (requirements.requiresSwitchActivation ? 1 : 0);
+  const requiredLinkedDoorsOpened =
+    requirements.requiredLinkedDoorsOpened ?? (requirements.requiresLinkedDoorOpened ? 1 : 0);
 
   return (
     state.keysCollectedThisAttempt >= requiredKeysCollected &&
-    state.doorsOpenedThisAttempt >= requiredDoorsOpened
+    state.doorsOpenedThisAttempt >= requiredDoorsOpened &&
+    state.switchesActivatedThisAttempt >= requiredSwitchesActivated &&
+    state.linkedDoorsOpenedThisAttempt >= requiredLinkedDoorsOpened
   );
 }

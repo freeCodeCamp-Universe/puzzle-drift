@@ -110,6 +110,25 @@ const switchLevel: Level = {
   },
 };
 
+const switchCompletionLevel: Level = {
+  ...switchLevel,
+  completionRequirements: {
+    requiresSwitchActivation: true,
+    requiresLinkedDoorOpened: true,
+    requiredSwitchesActivated: 1,
+    requiredLinkedDoorsOpened: 1,
+  },
+  grid: [
+    ['floor', 'switch', 'door'],
+    ['floor', 'floor', 'exit'],
+    ['floor', 'floor', 'floor'],
+  ],
+  tileIds: {
+    '1,0': 'switch-a',
+    '2,0': 'door-a',
+  },
+};
+
 const iceLevel: Level = {
   ...movementLevel,
   grid: [['floor', 'ice', 'ice', 'floor', 'wall']],
@@ -424,6 +443,45 @@ describe('movement logic', () => {
     const active = movePlayer(switchLevel, start, 'right');
 
     expect(getEffectiveTileAt(switchLevel, active, { x: 2, y: 1 })).toBe('floor');
+  });
+
+  it('tracks switch activations and linked doors opened during the attempt', () => {
+    const start = createInitialGameState(switchLevel);
+    const active = movePlayer(switchLevel, start, 'right');
+
+    expect(active.switchesActivatedThisAttempt).toBe(1);
+    expect(active.linkedDoorsOpenedThisAttempt).toBe(1);
+  });
+
+  it('does not complete a required switch level without switch progress', () => {
+    const state = {
+      ...createInitialGameState(switchCompletionLevel),
+      playerPosition: { x: 2, y: 1 },
+    };
+
+    expect(canCompleteLevel(switchCompletionLevel, state)).toBe(false);
+  });
+
+  it('does not complete a required switch level without linked door progress', () => {
+    const state = {
+      ...createInitialGameState(switchCompletionLevel),
+      playerPosition: { x: 2, y: 1 },
+      switchesActivatedThisAttempt: 1,
+    };
+
+    expect(canCompleteLevel(switchCompletionLevel, state)).toBe(false);
+  });
+
+  it('completes a required switch level after opening a linked door', () => {
+    const state = {
+      ...createInitialGameState(switchCompletionLevel),
+      activeSwitchIds: ['switch-a'],
+      linkedDoorsOpenedThisAttempt: 1,
+      playerPosition: { x: 2, y: 1 },
+      switchesActivatedThisAttempt: 1,
+    };
+
+    expect(canCompleteLevel(switchCompletionLevel, state)).toBe(true);
   });
 
   it('stepping on a switch again toggles it off', () => {

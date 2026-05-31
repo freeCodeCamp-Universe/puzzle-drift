@@ -32,6 +32,17 @@ async function openLevel3() {
   return user;
 }
 
+async function openLevel6() {
+  const user = userEvent.setup();
+  unlockThroughLevel(6);
+  render(<App />);
+
+  await user.click(screen.getByRole('button', { name: /level select/i }));
+  await user.click(screen.getByRole('button', { name: 'Level 6: Switch Primer' }));
+
+  return user;
+}
+
 async function openSpikeLane() {
   const user = userEvent.setup();
   unlockThroughLevel(11);
@@ -526,6 +537,24 @@ describe('App', () => {
     expect(screen.getByLabelText('Player at 2, 3')).toBeInTheDocument();
     expect(screen.getByLabelText('Locked door at 3, 3')).toBeInTheDocument();
     expect(screen.getByRole('status', { name: /locked\. find a key/i })).toBeInTheDocument();
+  });
+
+  it('a linked door shows switch guidance before it is opened', async () => {
+    await openLevel6();
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowUp' });
+    fireEvent.keyDown(window, { key: 'ArrowUp' });
+    fireEvent.keyDown(window, { key: 'ArrowUp' });
+    fireEvent.keyDown(window, { key: 'ArrowUp' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+
+    expect(screen.getByLabelText('Player at 5, 1')).toBeInTheDocument();
+    expect(screen.getByLabelText('Locked door at 6, 1')).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: /door closed\. use the switch/i })).toBeInTheDocument();
   });
 
   it('opens a door with a key, consumes the key, and undo restores the door state', async () => {

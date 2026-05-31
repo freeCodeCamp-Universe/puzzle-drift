@@ -44,6 +44,20 @@ function getPositionByTileId(level: Level, tileId: string): Position | null {
   return { x, y };
 }
 
+function getLinkedDoorCount(level: Level, sourceId: string) {
+  return (
+    level.links?.filter((link) => {
+      if (link.sourceId !== sourceId) {
+        return false;
+      }
+
+      const targetPosition = getPositionByTileId(level, link.targetId);
+
+      return Boolean(targetPosition && getTileAt(level, targetPosition) === 'door');
+    }).length ?? 0
+  );
+}
+
 function getLinkedPortalPosition(level: Level, position: Position): Position | null {
   const portalId = getTileId(level, position);
 
@@ -129,6 +143,8 @@ function applyTileArrival(
   const opensLinkedDoor = opensDoor && isLinkedDoorOpen(level, state, position);
   const consumesKey = opensDoor && !opensLinkedDoor;
   const switchId = tile === 'switch' ? getTileId(level, position) : undefined;
+  const activatesSwitch = Boolean(switchId && !state.activeSwitchIds.includes(switchId));
+  const linkedDoorsOpened = switchId && activatesSwitch ? getLinkedDoorCount(level, switchId) : 0;
   const hitsSpike = tile === 'spike';
 
   const nextState = {
@@ -145,8 +161,10 @@ function applyTileArrival(
     isComplete: false,
     isFailed: hitsSpike,
     keysCollectedThisAttempt: state.keysCollectedThisAttempt + (collectsKey ? 1 : 0),
+    linkedDoorsOpenedThisAttempt: state.linkedDoorsOpenedThisAttempt + linkedDoorsOpened,
     openedDoorPositions: consumesKey ? [...state.openedDoorPositions, position] : state.openedDoorPositions,
     playerPosition: destinationPosition,
+    switchesActivatedThisAttempt: state.switchesActivatedThisAttempt + (activatesSwitch ? 1 : 0),
   };
 
   return {
@@ -188,11 +206,13 @@ export function createInitialGameState(level: Level): GameState {
     isComplete: false,
     isFailed: false,
     keysCollectedThisAttempt: 0,
+    linkedDoorsOpenedThisAttempt: 0,
     levelId: level.id,
     moves: 0,
     openedDoorPositions: [],
     playerPosition: { ...level.playerStart },
     pushBlocks: getInitialPushBlocks(level),
+    switchesActivatedThisAttempt: 0,
   };
 
   return {

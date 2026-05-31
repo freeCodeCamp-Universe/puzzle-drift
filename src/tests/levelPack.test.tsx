@@ -21,9 +21,11 @@ function serializeState(state: GameState) {
     collectedKeys: state.collectedKeys,
     doorsOpenedThisAttempt: state.doorsOpenedThisAttempt,
     keysCollectedThisAttempt: state.keysCollectedThisAttempt,
+    linkedDoorsOpenedThisAttempt: state.linkedDoorsOpenedThisAttempt,
     openedDoorPositions: sortPositions(state.openedDoorPositions),
     playerPosition: state.playerPosition,
     pushBlocks: sortPositions(state.pushBlocks),
+    switchesActivatedThisAttempt: state.switchesActivatedThisAttempt,
   });
 }
 
@@ -368,6 +370,79 @@ describe('level pack', () => {
   it('Clean Exit exit is unreachable until the locked door is opened', () => {
     expect(isExitReachableWithDoorsBlocked(5)).toBe(false);
     expect(findSolutionLength(5)).toBe(18);
+  });
+
+  it('Switch Primer blocks the direct route to the goal', () => {
+    const directAttempt = movePath(6, [
+      'right',
+      'right',
+      'right',
+      'right',
+      'up',
+      'up',
+      'up',
+      'up',
+      'right',
+      'right',
+    ]);
+
+    expect(directAttempt?.isComplete).toBe(false);
+    expect(directAttempt?.switchesActivatedThisAttempt).toBe(0);
+    expect(directAttempt?.linkedDoorsOpenedThisAttempt).toBe(0);
+  });
+
+  it('Switch Primer requires activating the switch and opening the linked door', () => {
+    const switchPrimer = LEVELS.find((level) => level.id === 6);
+    const completedState = getCompletedState(6);
+
+    expect(switchPrimer?.completionRequirements).toEqual({
+      requiresSwitchActivation: true,
+      requiresLinkedDoorOpened: true,
+      requiredSwitchesActivated: 1,
+      requiredLinkedDoorsOpened: 1,
+    });
+    expect(switchPrimer?.tileIds?.['3,3']).toBe('switch-a');
+    expect(switchPrimer?.tileIds?.['6,1']).toBe('door-a');
+    expect(switchPrimer?.links).toContainEqual({ sourceId: 'switch-a', targetId: 'door-a' });
+    expect(switchPrimer?.targetMoves).toBe(14);
+    expect(switchPrimer?.targetTimeSeconds).toBe(35);
+    expect(findSolutionLength(6)).toBe(14);
+    expect(completedState?.switchesActivatedThisAttempt).toBe(1);
+    expect(completedState?.linkedDoorsOpenedThisAttempt).toBe(1);
+    expect(completedState?.activeSwitchIds).toContain('switch-a');
+  });
+
+  it('Switch Primer cannot complete without switch progress', () => {
+    const switchPrimer = LEVELS.find((level) => level.id === 6);
+
+    expect(switchPrimer).toBeDefined();
+
+    if (!switchPrimer) {
+      return;
+    }
+
+    const exitOnlyState = {
+      ...createInitialGameState(switchPrimer),
+      playerPosition: { x: 7, y: 1 },
+    };
+    const switchOnlyState = {
+      ...exitOnlyState,
+      switchesActivatedThisAttempt: 1,
+    };
+    const completedState = {
+      ...switchOnlyState,
+      activeSwitchIds: ['switch-a'],
+      linkedDoorsOpenedThisAttempt: 1,
+    };
+
+    expect(canCompleteLevel(switchPrimer, exitOnlyState)).toBe(false);
+    expect(canCompleteLevel(switchPrimer, switchOnlyState)).toBe(false);
+    expect(canCompleteLevel(switchPrimer, completedState)).toBe(true);
+  });
+
+  it('Switch Primer exit is unreachable until the linked door opens', () => {
+    expect(isExitReachableWithDoorsBlocked(6)).toBe(false);
+    expect(findSolutionLength(6)).toBe(14);
   });
 
   it('every spike level has meaningful hazard routing and calibrated par', () => {

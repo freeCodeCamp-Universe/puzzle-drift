@@ -41,6 +41,8 @@ type GameScreenProps = {
 };
 
 const LOCKED_DOOR_MESSAGE = 'Locked. Find a key.';
+const LINKED_DOOR_MESSAGE = 'Door closed. Use the switch.';
+const DOOR_OPENED_MESSAGE = 'Door opened.';
 const LOCKED_DOOR_MESSAGE_MS = 1400;
 
 function formatTime(seconds: number) {
@@ -116,27 +118,27 @@ export function GameScreen({
   const [failedResetCount, setFailedResetCount] = useState(0);
   const [isHintPanelOpen, setIsHintPanelOpen] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [lockedDoorMessage, setLockedDoorMessage] = useState('');
+  const [feedbackMessage, setFeedbackMessage] = useState('');
   const lockedDoorTimeoutRef = useRef<number | null>(null);
   const savedCompletionRef = useRef(false);
 
-  const clearLockedDoorMessage = useCallback(() => {
+  const clearFeedbackMessage = useCallback(() => {
     if (lockedDoorTimeoutRef.current !== null) {
       window.clearTimeout(lockedDoorTimeoutRef.current);
       lockedDoorTimeoutRef.current = null;
     }
 
-    setLockedDoorMessage('');
+    setFeedbackMessage('');
   }, []);
 
-  const showLockedDoorMessage = useCallback(() => {
+  const showFeedbackMessage = useCallback((message: string) => {
     if (lockedDoorTimeoutRef.current !== null) {
       window.clearTimeout(lockedDoorTimeoutRef.current);
     }
 
-    setLockedDoorMessage(LOCKED_DOOR_MESSAGE);
+    setFeedbackMessage(message);
     lockedDoorTimeoutRef.current = window.setTimeout(() => {
-      setLockedDoorMessage('');
+      setFeedbackMessage('');
       lockedDoorTimeoutRef.current = null;
     }, LOCKED_DOOR_MESSAGE_MS);
   }, []);
@@ -170,7 +172,11 @@ export function GameScreen({
           level.mechanics.includes('key') &&
           !isLinkedDoor(level, attemptedPosition)
         ) {
-          showLockedDoorMessage();
+          showFeedbackMessage(LOCKED_DOOR_MESSAGE);
+        }
+
+        if (attemptedTile === 'door' && isLinkedDoor(level, attemptedPosition)) {
+          showFeedbackMessage(LINKED_DOOR_MESSAGE);
         }
 
         const nextState = movePlayer(level, currentState, direction);
@@ -188,21 +194,27 @@ export function GameScreen({
           return nextState;
         }
 
-        clearLockedDoorMessage();
+        clearFeedbackMessage();
 
         const collectedKey = nextState.collectedKeyPositions.length > currentState.collectedKeyPositions.length;
         const openedDoor = nextState.openedDoorPositions.length > currentState.openedDoorPositions.length;
+        const openedLinkedDoor =
+          nextState.linkedDoorsOpenedThisAttempt > currentState.linkedDoorsOpenedThisAttempt;
         const teleported =
           Math.abs(nextState.playerPosition.x - currentState.playerPosition.x) +
             Math.abs(nextState.playerPosition.y - currentState.playerPosition.y) >
           1;
         const animationClass = collectedKey
           ? 'key-collect'
-          : openedDoor
+          : openedDoor || openedLinkedDoor
             ? 'door-unlock'
             : teleported
               ? 'portal-teleport'
               : 'player-move';
+
+        if (openedLinkedDoor) {
+          showFeedbackMessage(DOOR_OPENED_MESSAGE);
+        }
 
         triggerBoardAnimation(animationClass);
         setHistory((currentHistory) => [...currentHistory, currentState]);
@@ -210,11 +222,11 @@ export function GameScreen({
         return nextState;
       });
     },
-    [clearLockedDoorMessage, isPaused, level, showLockedDoorMessage, triggerBoardAnimation],
+    [clearFeedbackMessage, isPaused, level, showFeedbackMessage, triggerBoardAnimation],
   );
 
   useEffect(() => {
-    clearLockedDoorMessage();
+    clearFeedbackMessage();
     setGameState(createInitialGameState(level));
     setHistory([]);
     setHazardFlashCount(0);
@@ -223,9 +235,9 @@ export function GameScreen({
     setIsHintPanelOpen(false);
     setIsPaused(false);
     savedCompletionRef.current = false;
-  }, [clearLockedDoorMessage, level]);
+  }, [clearFeedbackMessage, level]);
 
-  useEffect(() => clearLockedDoorMessage, [clearLockedDoorMessage]);
+  useEffect(() => clearFeedbackMessage, [clearFeedbackMessage]);
 
   useEffect(() => {
     if (isPaused || gameState.isComplete || gameState.isFailed) {
@@ -281,7 +293,7 @@ export function GameScreen({
     setHistory([]);
     setHazardFlashCount(0);
     setBoardAnimationClass('');
-    clearLockedDoorMessage();
+    clearFeedbackMessage();
     setIsPaused(false);
     savedCompletionRef.current = false;
   };
@@ -420,14 +432,14 @@ export function GameScreen({
           </section>
         ) : null}
 
-        {lockedDoorMessage ? (
+        {feedbackMessage ? (
           <div
             className={`locked-door-message${reducedMotion ? ' no-motion' : ''}`}
             role="status"
-            aria-label={lockedDoorMessage}
+            aria-label={feedbackMessage}
             aria-live="polite"
           >
-            {lockedDoorMessage}
+            {feedbackMessage}
           </div>
         ) : null}
       </div>
