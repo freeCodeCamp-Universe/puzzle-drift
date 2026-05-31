@@ -304,7 +304,7 @@ describe('App', () => {
     render(<App />);
 
     await user.click(screen.getByRole('button', { name: /new game/i }));
-    await user.click(screen.getByRole('button', { name: /move right/i }));
+    fireEvent.click(screen.getByRole('button', { name: /move right/i, hidden: true }));
 
     expect(screen.getByLabelText('Player at 2, 1')).toBeInTheDocument();
     expect(screen.getByLabelText('1 moves')).toBeInTheDocument();
@@ -315,7 +315,7 @@ describe('App', () => {
     render(<App />);
 
     await user.click(screen.getByRole('button', { name: /new game/i }));
-    await user.click(screen.getByRole('button', { name: /move right/i }));
+    fireEvent.click(screen.getByRole('button', { name: /move right/i, hidden: true }));
 
     expect(screen.getByLabelText('Game heads-up display')).toBeInTheDocument();
     expect(screen.getByLabelText('Game status')).toBeInTheDocument();
@@ -514,6 +514,40 @@ describe('App', () => {
       vi.advanceTimersByTime(3000);
     });
     expect(screen.getByText('0:02')).toBeInTheDocument();
+  });
+
+  it('pause modal blocks gameplay and restores focus when closed', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    const pauseButton = screen.getByRole('button', { name: /pause game/i });
+
+    await user.click(pauseButton);
+
+    const pauseDialog = screen.getByRole('dialog', { name: /paused/i });
+    const backdrop = pauseDialog.closest('.dialog-backdrop');
+
+    expect(pauseDialog).toHaveAttribute('aria-modal', 'true');
+    expect(backdrop).toHaveClass('pause-backdrop');
+    expect(screen.getByRole('grid', { name: /first drift board/i })).toBeInTheDocument();
+    expect(document.querySelector('.game-screen')).toHaveClass('paused');
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /move right/i }));
+    expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
+
+    await user.hover(pauseButton);
+    expect(screen.queryByRole('tooltip', { name: /pause game/i })).not.toBeInTheDocument();
+
+    await user.keyboard('{Escape}');
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: /paused/i })).not.toBeInTheDocument();
+    });
+    await waitFor(() => expect(pauseButton).toHaveFocus());
   });
 
   it('collecting a key increases key count and removes the key tile', async () => {

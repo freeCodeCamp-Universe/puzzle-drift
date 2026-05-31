@@ -14,6 +14,11 @@
   --purple: #dbb8ff;
   --red: #ffadad;
   --focus: #198eee;
+  --z-board: 1;
+  --z-hud: 10;
+  --z-tooltip: 40;
+  --z-overlay: 100;
+  --z-modal: 110;
   font-family: Lato, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 18px;
   line-height: 1.5;
@@ -280,6 +285,31 @@ h2 {
   content: "";
 }
 
+.game-screen.paused .game-play-area,
+.game-screen.paused > .screen-header {
+  pointer-events: none;
+}
+
+.game-screen.paused .game-board-shell {
+  animation: none;
+}
+
+.game-screen.paused .game-board-shell,
+.game-screen.paused .game-board,
+.game-screen.paused .board-tile,
+.game-screen.paused .player-avatar,
+.game-screen.paused .tile-portal,
+.game-screen.paused .tile-exit,
+.game-screen.paused .tile-key,
+.game-screen.paused .tile-switch.tile-active,
+.game-screen.paused .tile-pressurePlate.tile-active {
+  animation-play-state: paused;
+}
+
+.game-screen.paused .tooltip-bubble {
+  display: none;
+}
+
 .game-board-shell {
   position: relative;
   display: grid;
@@ -301,7 +331,7 @@ h2 {
   position: absolute;
   inset-block-start: min(38%, 16rem);
   inset-inline-start: 50%;
-  z-index: 7;
+  z-index: var(--z-tooltip);
   width: max-content;
   max-width: min(100% - 2rem, 20rem);
   border: 1px solid color-mix(in srgb, var(--yellow) 72%, var(--border));
@@ -364,6 +394,8 @@ h2 {
 }
 
 .game-hud {
+  position: relative;
+  z-index: var(--z-hud);
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
@@ -493,7 +525,7 @@ h2 {
   position: absolute;
   inset-block-end: calc(100% + 0.55rem);
   inset-inline-start: 50%;
-  z-index: 8;
+  z-index: var(--z-tooltip);
   width: max-content;
   max-width: 12rem;
   border: 1px solid color-mix(in srgb, var(--border) 68%, transparent);
@@ -581,7 +613,7 @@ h2 {
   position: absolute;
   top: clamp(7.25rem, 18vw, 9.5rem);
   right: 0;
-  z-index: 5;
+  z-index: var(--z-tooltip);
   display: grid;
   gap: 0.65rem;
   width: min(100%, 24rem);
@@ -634,7 +666,7 @@ h2 {
 .completion-panel {
   position: absolute;
   inset: 50% auto auto 50%;
-  z-index: 6;
+  z-index: var(--z-modal);
   display: grid;
   width: min(100% - 2rem, 30rem);
   gap: 0.9rem;
@@ -649,7 +681,7 @@ h2 {
 .failure-panel {
   position: absolute;
   inset: 50% auto auto 50%;
-  z-index: 6;
+  z-index: var(--z-modal);
   display: grid;
   width: min(100% - 2rem, 28rem);
   gap: 1rem;
@@ -988,6 +1020,8 @@ h2 {
 }
 
 .game-board {
+  position: relative;
+  z-index: var(--z-board);
   display: grid;
   gap: clamp(0.14rem, 0.48vw, 0.3rem);
   width: min(100%, 43rem, 74vh);
@@ -1002,6 +1036,7 @@ h2 {
 
 .board-tile {
   position: relative;
+  z-index: var(--z-board);
   display: grid;
   aspect-ratio: 1;
   min-width: 0;
@@ -1574,17 +1609,31 @@ h2 {
 .dialog-backdrop {
   position: fixed;
   inset: 0;
+  z-index: var(--z-overlay);
   display: grid;
   place-items: center;
   padding: 1rem;
   background: rgba(10, 10, 35, 0.85);
 }
 
+.pause-backdrop {
+  background: transparent;
+  backdrop-filter: blur(6px);
+}
+
 .settings-dialog,
 .how-to-dialog,
 .pause-dialog {
+  position: relative;
+  z-index: var(--z-modal);
   width: min(100%, 28rem);
   padding: 1rem;
+}
+
+.pause-dialog {
+  border: 1px solid color-mix(in srgb, var(--yellow) 58%, var(--border));
+  background: var(--surface);
+  box-shadow: 0 1.4rem 4rem rgba(0, 0, 0, 0.62);
 }
 
 .dialog-title,

@@ -16,13 +16,14 @@ type TooltipPlacement = 'top';
 type TooltipProps = {
   children: ReactNode;
   content: string;
+  disabled?: boolean;
   placement?: TooltipPlacement;
   reducedMotion?: boolean;
 };
 
 const LONG_PRESS_DELAY_MS = 520;
 
-export function Tooltip({ children, content, placement = 'top', reducedMotion = false }: TooltipProps) {
+export function Tooltip({ children, content, disabled = false, placement = 'top', reducedMotion = false }: TooltipProps) {
   const [isOpen, setIsOpen] = useState(false);
   const tooltipId = useId();
   const longPressTimeoutRef = useRef<number | null>(null);
@@ -35,6 +36,12 @@ export function Tooltip({ children, content, placement = 'top', reducedMotion = 
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (disabled) {
+      setIsOpen(false);
+    }
+  }, [disabled]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -64,6 +71,10 @@ export function Tooltip({ children, content, placement = 'top', reducedMotion = 
   };
 
   const startLongPress = (event: PointerEvent<HTMLSpanElement>) => {
+    if (disabled) {
+      return;
+    }
+
     if (event.pointerType !== 'touch') {
       return;
     }
@@ -88,13 +99,21 @@ export function Tooltip({ children, content, placement = 'top', reducedMotion = 
       className="tooltip-anchor"
       data-placement={placement}
       onBlur={closeTooltip}
-      onFocus={() => setIsOpen(true)}
+      onFocus={() => {
+        if (!disabled) {
+          setIsOpen(true);
+        }
+      }}
       onKeyDown={(event) => {
         if (event.key === 'Escape') {
           closeTooltip();
         }
       }}
-      onMouseEnter={() => setIsOpen(true)}
+      onMouseEnter={() => {
+        if (!disabled) {
+          setIsOpen(true);
+        }
+      }}
       onMouseLeave={closeTooltip}
       onPointerCancel={clearLongPress}
       onPointerDown={startLongPress}

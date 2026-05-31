@@ -33,6 +33,7 @@ type GameBoardProps = {
   gameState: GameState;
   hazardFlash: boolean;
   isHintPanelOpen: boolean;
+  isPaused?: boolean;
   reducedMotion: boolean;
   animationClass?: string;
   playerPosition: Position;
@@ -139,6 +140,7 @@ export function GameBoard({
   gameState,
   hazardFlash,
   isHintPanelOpen,
+  isPaused = false,
   reducedMotion,
   animationClass = '',
   playerPosition,
@@ -193,32 +195,33 @@ export function GameBoard({
         </dl>
 
         <nav className="hud-actions" aria-label="Game controls">
-          <Tooltip content="Undo Move" reducedMotion={reducedMotion}>
-            <button type="button" className="icon-button" onClick={onUndo} aria-label="Undo move">
+          <Tooltip content="Undo Move" disabled={isPaused} reducedMotion={reducedMotion}>
+            <button type="button" className="icon-button" onClick={onUndo} aria-label="Undo move" disabled={isPaused}>
               <Undo2 aria-hidden="true" />
             </button>
           </Tooltip>
-          <Tooltip content="Restart Level" reducedMotion={reducedMotion}>
-            <button type="button" className="icon-button" onClick={onReset} aria-label="Reset level">
+          <Tooltip content="Restart Level" disabled={isPaused} reducedMotion={reducedMotion}>
+            <button type="button" className="icon-button" onClick={onReset} aria-label="Reset level" disabled={isPaused}>
               <RotateCcw aria-hidden="true" />
             </button>
           </Tooltip>
-          <Tooltip content="Pause Game" reducedMotion={reducedMotion}>
-            <button type="button" className="icon-button" onClick={onPause} aria-label="Pause game">
+          <Tooltip content="Pause Game" disabled={isPaused} reducedMotion={reducedMotion}>
+            <button type="button" className="icon-button" onClick={onPause} aria-label="Pause game" disabled={isPaused}>
               <Pause aria-hidden="true" />
             </button>
           </Tooltip>
-          <Tooltip content="Level Select" reducedMotion={reducedMotion}>
+          <Tooltip content="Level Select" disabled={isPaused} reducedMotion={reducedMotion}>
             <button
               type="button"
               className="icon-button"
               onClick={onLevelSelect}
               aria-label="Open level select"
+              disabled={isPaused}
             >
               <ListOrdered aria-hidden="true" />
             </button>
           </Tooltip>
-          <Tooltip content={isHintPanelOpen ? 'Hide Hints' : 'Show Hints'} reducedMotion={reducedMotion}>
+          <Tooltip content={isHintPanelOpen ? 'Hide Hints' : 'Show Hints'} disabled={isPaused} reducedMotion={reducedMotion}>
             <button
               type="button"
               className="icon-button"
@@ -226,6 +229,7 @@ export function GameBoard({
               aria-label={isHintPanelOpen ? 'Hide hints' : 'Show hints'}
               aria-expanded={isHintPanelOpen}
               aria-controls="hint-panel"
+              disabled={isPaused}
             >
               <Lightbulb aria-hidden="true" />
             </button>
@@ -319,16 +323,16 @@ export function GameBoard({
       ) : null}
 
       <nav className="direction-controls" aria-label="Directional controls">
-        <button type="button" className="direction-button direction-up" onClick={() => onMove('up')} aria-label="Move up">
+        <button type="button" className="direction-button direction-up" onClick={() => onMove('up')} aria-label="Move up" disabled={isPaused}>
           <ArrowUp aria-hidden="true" />
         </button>
-        <button type="button" className="direction-button direction-left" onClick={() => onMove('left')} aria-label="Move left">
+        <button type="button" className="direction-button direction-left" onClick={() => onMove('left')} aria-label="Move left" disabled={isPaused}>
           <ArrowLeft aria-hidden="true" />
         </button>
-        <button type="button" className="direction-button direction-right" onClick={() => onMove('right')} aria-label="Move right">
+        <button type="button" className="direction-button direction-right" onClick={() => onMove('right')} aria-label="Move right" disabled={isPaused}>
           <ArrowRight aria-hidden="true" />
         </button>
-        <button type="button" className="direction-button direction-down" onClick={() => onMove('down')} aria-label="Move down">
+        <button type="button" className="direction-button direction-down" onClick={() => onMove('down')} aria-label="Move down" disabled={isPaused}>
           <ArrowDown aria-hidden="true" />
         </button>
       </nav>

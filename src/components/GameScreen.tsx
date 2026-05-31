@@ -121,6 +121,8 @@ export function GameScreen({
   const [isPaused, setIsPaused] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const lockedDoorTimeoutRef = useRef<number | null>(null);
+  const pauseDialogRef = useRef<HTMLElement | null>(null);
+  const pauseReturnFocusRef = useRef<HTMLElement | null>(null);
   const savedCompletionRef = useRef(false);
 
   const clearFeedbackMessage = useCallback(() => {
@@ -233,6 +235,22 @@ export function GameScreen({
     [clearFeedbackMessage, isPaused, level, showFeedbackMessage, triggerBoardAnimation],
   );
 
+  const pauseGame = () => {
+    pauseReturnFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setBoardAnimationClass('');
+    setHazardFlashCount(0);
+    setIsPaused(true);
+  };
+
+  const resumeGame = useCallback(() => {
+    setIsPaused(false);
+    window.setTimeout(() => {
+      pauseReturnFocusRef.current?.focus();
+      pauseReturnFocusRef.current = null;
+    }, 0);
+  }, []);
+
   useEffect(() => {
     clearFeedbackMessage();
     setGameState(createInitialGameState(level));
@@ -277,9 +295,13 @@ export function GameScreen({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (isPaused) {
+        return;
+      }
+
       const direction = getDirectionFromKey(event.key);
 
-      if (!direction || isPaused) {
+      if (!direction) {
         return;
       }
 
@@ -291,6 +313,61 @@ export function GameScreen({
 
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isPaused, moveInDirection]);
+
+  useEffect(() => {
+    if (!isPaused) {
+      return undefined;
+    }
+
+    setIsHintPanelOpen(false);
+
+    const dialog = pauseDialogRef.current;
+    const focusableElements = () =>
+      Array.from(
+        dialog?.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      ).filter((element) => !element.hasAttribute('disabled') && element.tabIndex !== -1);
+
+    focusableElements()[0]?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        resumeGame();
+
+        return;
+      }
+
+      if (event.key !== 'Tab') {
+        return;
+      }
+
+      const elements = focusableElements();
+      const firstElement = elements[0];
+      const lastElement = elements[elements.length - 1];
+
+      if (!firstElement || !lastElement) {
+        event.preventDefault();
+
+        return;
+      }
+
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      }
+
+      if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isPaused, resumeGame]);
 
   const resetLevel = () => {
     if (!gameState.isComplete && (gameState.moves > 0 || gameState.elapsedSeconds > 0)) {
@@ -327,7 +404,7 @@ export function GameScreen({
   const unlockedHintCount = getUnlockedHintCount(level, gameState.elapsedSeconds, failedResetCount);
 
   return (
-    <section className="screen game-screen" aria-labelledby="game-screen-title">
+    <section className={`screen game-screen${isPaused ? ' paused' : ''}`} aria-labelledby="game-screen-title">
       <header className="screen-header">
         <button type="button" className="icon-button" onClick={onBack} aria-label="Back to start">
           <ArrowLeft aria-hidden="true" />
@@ -345,12 +422,13 @@ export function GameScreen({
           gameState={gameState}
           hazardFlash={hazardFlashCount > 0 && !reducedMotion}
           isHintPanelOpen={isHintPanelOpen}
+          isPaused={isPaused}
           level={level}
           moves={gameState.moves}
           reducedMotion={reducedMotion}
           onLevelSelect={onLevelSelect}
           onMove={moveInDirection}
-          onPause={() => setIsPaused(true)}
+          onPause={pauseGame}
           onReset={resetLevel}
           onToggleHints={() => setIsHintPanelOpen((currentValue) => !currentValue)}
           onUndo={undoMove}
@@ -453,8 +531,14 @@ export function GameScreen({
       </div>
 
       {isPaused ? (
-        <div className="dialog-backdrop" role="presentation">
-          <section className="pause-dialog" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+        <div className="dialog-backdrop pause-backdrop" role="presentation">
+          <section
+            className="pause-dialog"
+            ref={pauseDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pause-title"
+          >
             <header className="dialog-header">
               <div className="dialog-title">
                 <Play aria-hidden="true" />
@@ -463,7 +547,7 @@ export function GameScreen({
             </header>
 
             <div className="pause-actions">
-              <button type="button" className="menu-button primary" onClick={() => setIsPaused(false)}>
+              <button type="button" className="menu-button primary" onClick={resumeGame}>
                 <Play aria-hidden="true" />
                 <span>Resume</span>
               </button>
