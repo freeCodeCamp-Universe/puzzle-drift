@@ -171,6 +171,50 @@ function isExitReachableWithDoorsBlocked(levelId: number) {
   return false;
 }
 
+function isTileReachableWithDoorsBlocked(levelId: number, target: Position) {
+  const level = LEVELS.find((candidate) => candidate.id === levelId);
+
+  if (!level) {
+    return false;
+  }
+
+  const queue: Position[] = [level.playerStart];
+  const visited = new Set([`${level.playerStart.x},${level.playerStart.y}`]);
+  const directions: Position[] = [
+    { x: 0, y: -1 },
+    { x: 1, y: 0 },
+    { x: 0, y: 1 },
+    { x: -1, y: 0 },
+  ];
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+
+    if (!current) {
+      break;
+    }
+
+    if (current.x === target.x && current.y === target.y) {
+      return true;
+    }
+
+    directions.forEach((direction) => {
+      const next = { x: current.x + direction.x, y: current.y + direction.y };
+      const tile = level.grid[next.y]?.[next.x];
+      const key = `${next.x},${next.y}`;
+
+      if (!tile || visited.has(key) || tile === 'wall' || tile === 'door') {
+        return;
+      }
+
+      visited.add(key);
+      queue.push(next);
+    });
+  }
+
+  return false;
+}
+
 function isExitReachableWithInitialBlocksBlocked(levelId: number) {
   const level = LEVELS.find((candidate) => candidate.id === levelId);
 
@@ -576,6 +620,100 @@ describe('level pack', () => {
 
     expect(canCompleteLevel(blockNudge, exitOnlyState)).toBe(false);
     expect(canCompleteLevel(blockNudge, completedState)).toBe(true);
+  });
+
+  it('Toggle Key blocks the reported straight-up-and-right bypass', () => {
+    const bypassAttempt = movePath(9, [
+      'up',
+      'up',
+      'up',
+      'up',
+      'up',
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+    ]);
+
+    expect(bypassAttempt?.isComplete).toBe(false);
+    expect(bypassAttempt?.switchesActivatedThisAttempt).toBe(0);
+    expect(bypassAttempt?.linkedDoorsOpenedThisAttempt).toBe(0);
+    expect(bypassAttempt?.keysCollectedThisAttempt).toBe(0);
+    expect(bypassAttempt?.doorsOpenedThisAttempt).toBe(0);
+  });
+
+  it('Toggle Key gates the key and exit behind the switch door', () => {
+    expect(isTileReachableWithDoorsBlocked(9, { x: 6, y: 1 })).toBe(false);
+    expect(isExitReachableWithDoorsBlocked(9)).toBe(false);
+  });
+
+  it('Toggle Key requires the switch gate, key, and final locked door', () => {
+    const toggleKey = LEVELS.find((level) => level.id === 9);
+    const completedState = getCompletedState(9);
+
+    expect(toggleKey?.completionRequirements).toEqual({
+      requiresSwitchActivation: true,
+      requiredSwitchesActivated: 1,
+      requiresLinkedDoorOpened: true,
+      requiredLinkedDoorsOpened: 1,
+      requiresKeyCollection: true,
+      requiredKeysCollected: 1,
+      requiresDoorOpened: true,
+      requiredDoorsOpened: 1,
+    });
+    expect(toggleKey?.tileIds?.['3,5']).toBe('switch-a');
+    expect(toggleKey?.tileIds?.['4,1']).toBe('door-a');
+    expect(toggleKey?.links).toContainEqual({ sourceId: 'switch-a', targetId: 'door-a' });
+    expect(toggleKey?.targetMoves).toBe(16);
+    expect(toggleKey?.targetTimeSeconds).toBe(38);
+    expect(findSolutionLength(9)).toBe(16);
+    expect(completedState?.switchesActivatedThisAttempt).toBe(1);
+    expect(completedState?.linkedDoorsOpenedThisAttempt).toBe(1);
+    expect(completedState?.collectedKeyPositions).toContainEqual({ x: 6, y: 1 });
+    expect(completedState?.keysCollectedThisAttempt).toBe(1);
+    expect(completedState?.openedDoorPositions).toContainEqual({ x: 7, y: 1 });
+    expect(completedState?.doorsOpenedThisAttempt).toBe(1);
+    expect(completedState?.collectedKeys).toBe(0);
+  });
+
+  it('Toggle Key cannot complete with any required mechanic missing', () => {
+    const toggleKey = LEVELS.find((level) => level.id === 9);
+
+    expect(toggleKey).toBeDefined();
+
+    if (!toggleKey) {
+      return;
+    }
+
+    const exitOnlyState = {
+      ...createInitialGameState(toggleKey),
+      playerPosition: { x: 8, y: 1 },
+    };
+    const switchOnlyState = {
+      ...exitOnlyState,
+      activeSwitchIds: ['switch-a'],
+      linkedDoorsOpenedThisAttempt: 1,
+      switchesActivatedThisAttempt: 1,
+    };
+    const missingDoorState = {
+      ...switchOnlyState,
+      collectedKeys: 1,
+      keysCollectedThisAttempt: 1,
+    };
+    const completedState = {
+      ...missingDoorState,
+      collectedKeys: 0,
+      doorsOpenedThisAttempt: 1,
+      openedDoorPositions: [{ x: 7, y: 1 }],
+    };
+
+    expect(canCompleteLevel(toggleKey, exitOnlyState)).toBe(false);
+    expect(canCompleteLevel(toggleKey, switchOnlyState)).toBe(false);
+    expect(canCompleteLevel(toggleKey, missingDoorState)).toBe(false);
+    expect(canCompleteLevel(toggleKey, completedState)).toBe(true);
   });
 
   it('every spike level has meaningful hazard routing and calibrated par', () => {
