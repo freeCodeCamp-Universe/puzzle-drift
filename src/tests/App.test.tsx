@@ -64,6 +64,15 @@ function solveFirstDrift() {
   fireEvent.keyDown(window, { key: 'ArrowDown' });
 }
 
+function expectLevelOneCompleteLevelTwoIncomplete() {
+  const levelOneCard = screen.getByRole('button', { name: 'Level 1: First Drift' });
+  const levelTwoCard = screen.getByRole('button', { name: 'Level 2: Corner Signal' });
+
+  expect(within(levelOneCard).getByText('Completed')).toBeInTheDocument();
+  expect(within(levelTwoCard).getByText('Unlocked')).toBeInTheDocument();
+  expect(within(levelTwoCard).queryByText('Completed')).not.toBeInTheDocument();
+}
+
 describe('App', () => {
   beforeEach(() => {
     resetAppStorage();
@@ -299,7 +308,11 @@ describe('App', () => {
       timeSeconds: 12,
     });
 
-    window.localStorage.setItem('puzzle-drift:save', JSON.stringify(progress));
+    window.localStorage.setItem('puzzle-drift:save', JSON.stringify({
+      ...progress,
+      currentLevel: 2,
+      hasActiveRun: true,
+    }));
     render(<App />);
 
     await user.click(screen.getByRole('button', { name: /level select/i }));
@@ -1042,6 +1055,90 @@ describe('App', () => {
       nextMessage: 'Campaign complete.',
     });
     expect(getChapterCompletionMilestone(9)).toBeNull();
+  });
+
+  it('completing level 1 does not complete level 2 after advancing and leaving immediately', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    solveFirstDrift();
+    await user.click(screen.getByRole('button', { name: /next level/i }));
+
+    expect(screen.getByRole('heading', { name: /level 2/i })).toBeInTheDocument();
+    expect(screen.queryByRole('status', { name: /level completed|chapter completed/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /open level select/i }));
+
+    expectLevelOneCompleteLevelTwoIncomplete();
+  });
+
+  it('navigating away from an incomplete level does not mark it complete', async () => {
+    const user = userEvent.setup();
+    const progress = completeLevel(createInitialSaveData(), 1, {
+      moves: 6,
+      stars: 3,
+      timeSeconds: 12,
+    });
+
+    window.localStorage.setItem('puzzle-drift:save', JSON.stringify({
+      ...progress,
+      currentLevel: 2,
+      hasActiveRun: true,
+    }));
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /continue/i }));
+    expect(screen.getByRole('heading', { name: /level 2/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /back to start/i }));
+    await user.click(screen.getByRole('button', { name: /level select/i }));
+
+    expectLevelOneCompleteLevelTwoIncomplete();
+  });
+
+  it('pressing Level Select from pause does not mark the current level complete', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    solveFirstDrift();
+    await user.click(screen.getByRole('button', { name: /next level/i }));
+    fireEvent.keyDown(window, { key: 'p' });
+
+    await user.click(within(screen.getByRole('dialog', { name: /paused/i })).getByRole('button', { name: /level select/i }));
+
+    expectLevelOneCompleteLevelTwoIncomplete();
+  });
+
+  it('reset progress clears completed data and preserves only level 1 unlock', async () => {
+    const user = userEvent.setup();
+    const progress = completeLevel(completeLevel(createInitialSaveData(), 1, {
+      moves: 6,
+      stars: 3,
+      timeSeconds: 12,
+    }), 2, {
+      moves: 8,
+      stars: 2,
+      timeSeconds: 20,
+    });
+
+    window.localStorage.setItem('puzzle-drift:save', JSON.stringify(progress));
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /settings/i }));
+    await user.click(screen.getByRole('button', { name: /reset progress/i }));
+    await user.click(screen.getByRole('button', { name: /confirm reset/i }));
+    await user.click(screen.getByRole('button', { name: /level select/i }));
+
+    const levelOneCard = screen.getByRole('button', { name: 'Level 1: First Drift' });
+    const levelTwoCard = screen.getByRole('button', { name: 'Level 2: Corner Signal locked' });
+
+    expect(within(levelOneCard).getByText('Unlocked')).toBeInTheDocument();
+    expect(within(levelOneCard).queryByText('Completed')).not.toBeInTheDocument();
+    expect(levelTwoCard).toHaveAttribute('aria-disabled', 'true');
+    expect(within(levelTwoCard).queryByText('Completed')).not.toBeInTheDocument();
+    expect(window.localStorage.getItem('puzzle-drift:save')).toBeNull();
   });
 
   it('completion overlay shortcuts advance, retry, and open level select', async () => {

@@ -18,6 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import { LEVELS } from '../data/levels';
+import { canCompleteLevel } from '../logic/levelCompletion';
 import {
   calculateStars,
   createInitialGameState,
@@ -42,6 +43,7 @@ import { isHintTierUnlocked } from '../utils/hints';
 import { GameBoard } from './GameBoard';
 
 type CompletionPayload = {
+  completedLevelId: number;
   doorsOpened: number;
   firstTryClear: boolean;
   hintsUsed: number;
@@ -594,11 +596,21 @@ export function GameScreen({
       return;
     }
 
+    if (gameState.levelId !== level.id || !canCompleteLevel(level, gameState)) {
+      console.warn('Ignoring stale level completion state.', {
+        completedLevelId: gameState.levelId,
+        currentLevelId: level.id,
+      });
+
+      return;
+    }
+
     savedCompletionRef.current = true;
     updateHintAnalytics((currentAnalytics) =>
       recordHintAnalyticsCompletion(currentAnalytics, level.id, usedHintThisAttemptRef.current),
     );
     onCompleteLevel({
+      completedLevelId: level.id,
       doorsOpened: gameState.doorsOpenedThisAttempt,
       firstTryClear: failedResetCount === 0,
       hintsUsed: selectedHintTiersThisAttemptRef.current.size,

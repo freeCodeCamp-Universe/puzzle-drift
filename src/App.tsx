@@ -17,6 +17,18 @@ import {
 } from './utils/progressStorage';
 import type { AppView, SaveData } from './types/game';
 
+type LevelCompletionPayload = {
+  completedLevelId: number;
+  doorsOpened: number;
+  firstTryClear: boolean;
+  hintsUsed: number;
+  keysCollected: number;
+  moves: number;
+  portalsUsed: number;
+  stars: number;
+  timeSeconds: number;
+};
+
 export function App() {
   const [view, setView] = useState<AppView>('start');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -73,6 +85,21 @@ export function App() {
     setView('start');
   };
 
+  const handleLevelComplete = (completedLevelId: number, stats: Omit<LevelCompletionPayload, 'completedLevelId'>) => {
+    setSave((currentSave) => {
+      if (completedLevelId !== currentSave.currentLevel) {
+        console.warn('Ignoring stale level completion payload.', {
+          completedLevelId,
+          currentLevelId: currentSave.currentLevel,
+        });
+
+        return currentSave;
+      }
+
+      return completeLevel(currentSave, completedLevelId, stats);
+    });
+  };
+
   return (
     <main className="app-shell" data-view={view}>
       {view === 'start' && (
@@ -91,9 +118,7 @@ export function App() {
           currentLevel={save.currentLevel}
           isSettingsOpen={isSettingsOpen}
           onBack={() => setView('start')}
-          onCompleteLevel={(result) =>
-            setSave((currentSave) => completeLevel(currentSave, currentSave.currentLevel, result))
-          }
+          onCompleteLevel={({ completedLevelId, ...stats }) => handleLevelComplete(completedLevelId, stats)}
           onLevelSelect={() => setView('levels')}
           onUnlockHintTier={(levelId, tierNumber) =>
             setSave((currentSave) => unlockHintTier(currentSave, levelId, tierNumber))
