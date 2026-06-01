@@ -2310,59 +2310,45 @@ h2 {
 
 .campaign-summary-panel {
   display: grid;
-  gap: 0.85rem;
-  border: 1px solid color-mix(in srgb, var(--blue) 42%, var(--border));
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--blue) 10%, transparent), transparent 52%),
-    color-mix(in srgb, var(--surface-strong) 92%, transparent);
-  padding: 1rem;
+  gap: 0.75rem;
+  border-block: 1px solid color-mix(in srgb, var(--border) 48%, transparent);
+  background: transparent;
+  padding-block: clamp(0.9rem, 2vw, 1.15rem);
 }
 
 .campaign-summary-heading {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.65rem;
-}
-
-.campaign-summary-heading > svg {
-  flex: 0 0 auto;
-  width: 1.4rem;
-  height: 1.4rem;
-  color: var(--yellow);
-  margin-block-start: 0.1rem;
+  display: block;
 }
 
 .campaign-summary-heading h2 {
   margin: 0;
   color: var(--text);
-  font-size: 1.25rem;
-  line-height: 1.15;
+  font-size: clamp(1.35rem, 2.6vw, 2rem);
+  line-height: 1.05;
   text-align: start;
 }
 
+.campaign-summary-heading h2 span {
+  display: block;
+  margin-block-start: 0.16rem;
+  color: var(--muted);
+  font-size: clamp(0.94rem, 1.8vw, 1.12rem);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
 .campaign-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.6rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 1.1rem;
   margin: 0;
 }
 
 .campaign-summary-stat {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 0.22rem 0.5rem;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
   min-width: 0;
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--background) 34%, transparent);
-  padding: 0.65rem;
-}
-
-.campaign-summary-stat svg {
-  grid-row: span 2;
-  width: 1.05rem;
-  height: 1.05rem;
-  color: var(--blue);
 }
 
 .campaign-summary-stat dt,
@@ -2372,7 +2358,7 @@ h2 {
 
 .campaign-summary-stat dt {
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   line-height: 1.2;
 }
 
@@ -2380,16 +2366,17 @@ h2 {
   margin: 0;
   color: var(--text);
   font-family: "Fira Mono", Menlo, Consolas, monospace;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 800;
   line-height: 1.2;
 }
 
 .puzzle-journal-panel {
   display: grid;
-  gap: 0.85rem;
-  border: 1px solid color-mix(in srgb, var(--purple) 38%, var(--border));
-  background: color-mix(in srgb, var(--surface-strong) 46%, transparent);
-  padding: 1rem;
+  gap: 0.75rem;
+  border-block-start: 1px solid color-mix(in srgb, var(--border) 42%, transparent);
+  background: transparent;
+  padding-block-start: 1rem;
 }
 
 .puzzle-journal-toggle {
@@ -2410,19 +2397,30 @@ h2 {
   transform: none;
 }
 
+.puzzle-journal-toggle > span:first-child {
+  display: grid;
+  gap: 0.1rem;
+}
+
 .puzzle-journal-toggle strong {
   display: block;
   color: var(--text);
-  font-size: 1.25rem;
+  font-size: 1rem;
   line-height: 1.15;
+}
+
+.puzzle-journal-toggle > span:first-child > span:last-child {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.3;
 }
 
 .puzzle-journal-toggle > span:last-child {
   flex: 0 0 auto;
-  border: 1px solid var(--border);
-  background: var(--background);
+  border: 0;
+  background: transparent;
   color: var(--blue);
-  padding: 0.18rem 0.45rem;
+  padding: 0.18rem 0;
   font-family: "Fira Mono", Menlo, Consolas, monospace;
   font-size: 0.7rem;
   font-weight: 800;
@@ -2531,14 +2529,14 @@ h2 {
 
 .campaign-chapter-list {
   display: grid;
-  gap: 1.25rem;
+  gap: clamp(1.75rem, 4vw, 2.7rem);
 }
 
 .campaign-chapter {
   display: grid;
   gap: 0.85rem;
-  border-block-start: 1px solid var(--border);
-  padding-block-start: 1rem;
+  border-block-start: 1px solid color-mix(in srgb, var(--border) 42%, transparent);
+  padding-block-start: clamp(0.95rem, 2vw, 1.25rem);
 }
 
 .campaign-chapter:first-child {
@@ -2548,75 +2546,52 @@ h2 {
 
 .campaign-chapter-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(10rem, 13rem);
-  align-items: end;
-  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.2rem;
 }
 
 .campaign-chapter-copy {
   display: grid;
-  gap: 0.25rem;
+  gap: 0.14rem;
   min-width: 0;
 }
 
 .campaign-chapter-kicker,
 .campaign-chapter-copy h2,
-.campaign-chapter-copy p,
 .campaign-progress span {
   margin: 0;
 }
 
 .campaign-chapter-kicker {
-  color: var(--blue);
+  color: color-mix(in srgb, var(--blue) 82%, var(--muted));
   font-family: "Fira Mono", Menlo, Consolas, monospace;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
 }
 
 .campaign-chapter-copy h2 {
   color: var(--text);
-  font-size: clamp(1.35rem, 2.4vw, 1.85rem);
+  font-size: clamp(1.28rem, 2.35vw, 1.72rem);
   line-height: 1.1;
   text-align: start;
 }
 
-.campaign-chapter-copy p {
-  max-width: 48rem;
-  color: var(--muted);
-  font-size: 0.9rem;
-  line-height: 1.45;
-}
-
 .campaign-progress {
-  display: grid;
-  gap: 0.4rem;
+  display: block;
   min-width: 0;
-  color: var(--green);
+  color: color-mix(in srgb, var(--green) 86%, var(--muted));
   font-family: "Fira Mono", Menlo, Consolas, monospace;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  text-align: right;
+  text-align: left;
   text-transform: uppercase;
-}
-
-.campaign-progress-track {
-  display: block;
-  height: 0.45rem;
-  border: 1px solid var(--border);
-  background: var(--background);
-}
-
-.campaign-progress-track span {
-  display: block;
-  height: 100%;
-  background: var(--green);
 }
 
 .level-card-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.85rem;
+  gap: 0.65rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -2630,17 +2605,14 @@ h2 {
 .level-card {
   display: grid;
   width: 100%;
-  min-height: 15rem;
-  gap: 0.62rem;
+  min-height: 7.35rem;
+  gap: 0.55rem;
   align-content: start;
-  border: 1px solid var(--border);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--surface-strong) 96%, transparent), color-mix(in srgb, var(--surface) 78%, var(--background))),
-    var(--surface-strong);
+  border: 1px solid color-mix(in srgb, var(--border) 48%, transparent);
+  background: color-mix(in srgb, var(--surface-strong) 52%, transparent);
   color: var(--text);
-  padding: 0.95rem;
+  padding: 0.78rem;
   text-align: left;
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text) 6%, transparent);
   transition:
     border-color 160ms ease,
     background 160ms ease,
@@ -2652,42 +2624,29 @@ h2 {
 .level-card:hover {
   border-color: var(--blue);
   color: var(--text);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--text) 8%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--blue) 18%, transparent);
+  background: color-mix(in srgb, var(--surface-strong) 82%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--blue) 16%, transparent);
   transform: translateY(-2px);
 }
 
 .level-card.locked {
-  border-color: color-mix(in srgb, var(--purple) 42%, var(--border));
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--purple) 15%, transparent), transparent 54%),
-    linear-gradient(180deg, color-mix(in srgb, var(--surface) 88%, transparent), color-mix(in srgb, var(--background) 62%, var(--surface))),
-    color-mix(in srgb, var(--background) 48%, var(--surface));
+  border-color: color-mix(in srgb, var(--purple) 28%, var(--border));
+  background: color-mix(in srgb, var(--surface) 34%, transparent);
   color: var(--text);
 }
 
 .level-card.completed {
-  border-color: color-mix(in srgb, var(--green) 78%, var(--border));
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--green) 18%, transparent), transparent 52%),
-    color-mix(in srgb, var(--surface-strong) 94%, transparent);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--green) 24%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--text) 7%, transparent);
+  border-color: color-mix(in srgb, var(--green) 56%, var(--border));
+  background: color-mix(in srgb, var(--green) 8%, var(--surface-strong));
 }
 
 .level-card.current-objective {
   position: relative;
   border-color: var(--yellow);
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--yellow) 14%, transparent), transparent 50%),
-    color-mix(in srgb, var(--surface-strong) 94%, transparent);
+  background: color-mix(in srgb, var(--yellow) 11%, var(--surface-strong));
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--yellow) 38%, transparent),
-    0 0 1.2rem color-mix(in srgb, var(--yellow) 20%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--text) 8%, transparent);
-  animation: current-objective-pulse 2.8s ease-in-out infinite;
+    0 0 0 1px color-mix(in srgb, var(--yellow) 32%, transparent),
+    0 0 1rem color-mix(in srgb, var(--yellow) 12%, transparent);
 }
 
 .level-card.current-objective:hover {
@@ -2715,39 +2674,13 @@ h2 {
   fill: currentcolor;
 }
 
-@keyframes current-objective-pulse {
-  0%,
-  100% {
-    box-shadow:
-      0 0 0 1px color-mix(in srgb, var(--yellow) 36%, transparent),
-      0 0 1rem color-mix(in srgb, var(--yellow) 14%, transparent);
-  }
-
-  50% {
-    box-shadow:
-      0 0 0 1px color-mix(in srgb, var(--yellow) 64%, transparent),
-      0 0 1.6rem color-mix(in srgb, var(--yellow) 28%, transparent);
-  }
-}
-
-:root.reduced-motion .level-card.current-objective {
-  animation: none;
-}
-
-.level-card-status-row,
-.level-card-stats,
-.mechanic-list {
+.level-card-status-row {
   display: flex;
   align-items: center;
 }
 
-.level-number,
-.mechanic-chip,
-.level-card-stats {
-  font-family: "Fira Mono", Menlo, Consolas, monospace;
-}
-
 .level-number {
+  font-family: "Fira Mono", Menlo, Consolas, monospace;
   color: var(--blue);
   font-size: 0.78rem;
   font-weight: 800;
@@ -2763,10 +2696,10 @@ h2 {
   width: fit-content;
   align-items: center;
   gap: 0.3rem;
-  border: 1px solid var(--border);
-  background: var(--background);
+  border: 0;
+  background: transparent;
   color: var(--muted);
-  padding: 0.16rem 0.42rem;
+  padding: 0;
   font-family: "Fira Mono", Menlo, Consolas, monospace;
   font-size: 0.66rem;
   font-weight: 800;
@@ -2779,50 +2712,22 @@ h2 {
 }
 
 .level-card.completed .level-status {
-  border-color: color-mix(in srgb, var(--green) 60%, var(--border));
-  background: color-mix(in srgb, var(--green) 13%, var(--background));
   color: var(--green);
 }
 
 .level-card.locked .level-status {
-  border-color: color-mix(in srgb, var(--purple) 54%, var(--border));
-  background: color-mix(in srgb, var(--purple) 12%, var(--background));
   color: var(--purple);
 }
 
 .level-card-title {
   color: var(--text);
-  font-size: 1.32rem;
+  font-size: 1.08rem;
   font-weight: 800;
-  line-height: 1.15;
-}
-
-.level-card-description {
-  color: var(--muted);
-  font-size: 0.82rem;
-  line-height: 1.4;
-}
-
-.level-card.locked .level-card-description {
-  color: color-mix(in srgb, var(--muted) 82%, var(--purple));
-}
-
-.mechanic-list {
-  flex-wrap: wrap;
-  gap: 0.3rem;
-}
-
-.mechanic-chip {
-  border: 1px solid var(--border);
-  background: var(--background);
-  color: var(--purple);
-  padding: 0.1rem 0.32rem;
-  font-size: 0.64rem;
+  line-height: 1.18;
 }
 
 .locked-level-info {
   display: grid;
-  gap: 0.18rem;
   border-inline-start: 2px solid var(--purple);
   color: var(--muted);
   padding-inline-start: 0.55rem;
@@ -2833,170 +2738,6 @@ h2 {
 .locked-level-info span:first-child {
   color: var(--text);
   font-weight: 700;
-}
-
-.locked-level-info span:last-child {
-  color: var(--purple);
-  font-family: "Fira Mono", Menlo, Consolas, monospace;
-  font-size: 0.68rem;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.level-card-stats {
-  display: grid;
-  gap: 0.35rem;
-  min-height: 3.15rem;
-}
-
-.level-stars {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-}
-
-.best-comparison-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 0.35rem;
-  color: var(--muted);
-  font-family: "Fira Mono", Menlo, Consolas, monospace;
-  font-size: 0.68rem;
-}
-
-.best-comparison-label {
-  color: var(--muted);
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.best-comparison-value {
-  color: var(--text);
-  font-weight: 800;
-}
-
-.best-comparison-row svg {
-  width: 0.85rem;
-  height: 0.85rem;
-}
-
-.best-comparison-row.met svg {
-  color: var(--green);
-}
-
-.best-comparison-row.missed svg {
-  color: var(--red);
-}
-
-.level-card > .level-stars {
-  gap: 0.28rem;
-  margin-block: 0.05rem 0.15rem;
-}
-
-.level-card-stats svg {
-  width: 0.9rem;
-  height: 0.9rem;
-}
-
-.level-stars svg {
-  width: 1.18rem;
-  height: 1.18rem;
-  color: var(--border);
-}
-
-.level-stars .star-tooltip-trigger {
-  width: 1.34rem;
-  height: 1.34rem;
-  color: var(--border);
-}
-
-.level-stars .star-filled {
-  color: var(--yellow);
-}
-
-.level-card.completed > .level-stars svg,
-.level-card.completed > .level-stars .star-tooltip-trigger {
-  filter: drop-shadow(0 0 0.35rem color-mix(in srgb, var(--yellow) 30%, transparent));
-}
-
-.level-card.locked .level-stars svg {
-  color: color-mix(in srgb, var(--purple) 38%, var(--border));
-}
-
-.star-requirements {
-  display: grid;
-  gap: 0.28rem;
-  border: 1px solid color-mix(in srgb, var(--yellow) 58%, var(--border));
-  background: color-mix(in srgb, var(--yellow) 7%, var(--background));
-  padding: 0.5rem;
-}
-
-.star-requirements-title {
-  color: var(--yellow);
-  font-family: "Fira Mono", Menlo, Consolas, monospace;
-  font-size: 0.64rem;
-  font-weight: 800;
-  line-height: 1;
-  text-transform: uppercase;
-}
-
-.star-requirement-row {
-  display: grid;
-  grid-template-columns: 4.4rem minmax(0, 1fr);
-  align-items: center;
-  gap: 0.35rem;
-  color: var(--muted);
-  font-size: 0.72rem;
-  line-height: 1.25;
-}
-
-.star-requirement-icons {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.08rem;
-  color: var(--yellow);
-}
-
-.star-requirement-icons svg {
-  width: 0.74rem;
-  height: 0.74rem;
-  fill: currentcolor;
-}
-
-.star-requirement-icons .star-tooltip-trigger {
-  width: 1.34rem;
-  height: 1.34rem;
-}
-
-.level-card.locked .star-requirements {
-  border-color: color-mix(in srgb, var(--purple) 34%, var(--border));
-  background: color-mix(in srgb, var(--purple) 8%, var(--background));
-}
-
-.level-card.locked .star-requirements-title,
-.level-card.locked .star-requirement-icons {
-  color: color-mix(in srgb, var(--yellow) 70%, var(--purple));
-}
-
-.achievement-badge-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-}
-
-.achievement-badge {
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid color-mix(in srgb, var(--green) 42%, var(--border));
-  background: color-mix(in srgb, var(--green) 10%, var(--background));
-  color: var(--green);
-  padding: 0.12rem 0.36rem;
-  font-family: "Fira Mono", Menlo, Consolas, monospace;
-  font-size: 0.62rem;
-  font-weight: 800;
-  line-height: 1.2;
-  text-transform: uppercase;
 }
 
 .empty-state {

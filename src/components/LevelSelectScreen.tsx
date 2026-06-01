@@ -1,32 +1,20 @@
 import {
   ArrowLeft,
-  BarChart3,
-  Check,
   CheckCircle2,
-  Footprints,
   KeyRound,
   ListOrdered,
   Lock,
-  Map,
   Play,
-  Star,
-  Timer,
-  Trophy,
   Wand2,
-  X,
 } from 'lucide-react';
 import { useState } from 'react';
 import { LEVELS } from '../data/levels';
-import type { Level, SaveData, TileType } from '../types/game';
-import { Tooltip } from './Tooltip';
+import type { Level, SaveData } from '../types/game';
 import {
-  getLevelBestMoves,
-  getLevelBestTimeSeconds,
   getLevelStars,
   isLevelCompleted,
   isLevelUnlocked,
 } from '../utils/progressStorage';
-import { StarTooltip } from './StarTooltip';
 
 type LevelSelectScreenProps = {
   progress: SaveData;
@@ -35,80 +23,32 @@ type LevelSelectScreenProps = {
 };
 
 type CampaignChapter = {
-  description: string;
   endLevel: number;
   id: string;
   startLevel: number;
   title: string;
 };
 
-type AchievementBadge = {
-  readonly label: string;
-  readonly tooltip: string;
-};
-
 const CAMPAIGN_CHAPTERS: CampaignChapter[] = [
   {
-    description: 'Learn the fundamentals of drifting, keys, doors, and clean route reading.',
     endLevel: 10,
     id: 'training-grid',
     startLevel: 1,
     title: 'Training Grid',
   },
   {
-    description: 'Combine mechanics across longer routes with switches, portals, and pressure plates.',
     endLevel: 20,
     id: 'crystal-labyrinth',
     startLevel: 11,
     title: 'Crystal Labyrinth',
   },
   {
-    description: 'Solve dense late-game chambers where every route decision matters.',
     endLevel: 30,
     id: 'rift-core',
     startLevel: 21,
     title: 'Rift Core',
   },
 ];
-
-const MECHANIC_LABELS: Record<TileType, string> = {
-  cracked: 'Cracked',
-  door: 'Doors',
-  exit: 'Exit',
-  floor: 'Floor',
-  fog: 'Fog',
-  ice: 'Ice',
-  key: 'Keys',
-  laserEmitter: 'Emitter',
-  laserReceiver: 'Receiver',
-  mirror: 'Mirror',
-  oneWay: 'One-way',
-  portal: 'Portals',
-  pressurePlate: 'Plates',
-  pushBlock: 'Blocks',
-  spike: 'Spikes',
-  switch: 'Switches',
-  wall: 'Walls',
-};
-
-const ACHIEVEMENT_BADGES = {
-  firstTry: {
-    label: 'First Try Clear',
-    tooltip: 'Completed without restarting or failing the level.',
-  },
-  perfectRoute: {
-    label: 'Perfect Route',
-    tooltip: 'Completed at or under the par move target.',
-  },
-  speedSolver: {
-    label: 'Speed Solver',
-    tooltip: 'Completed at or under the par time target.',
-  },
-  threeStar: {
-    label: 'Three Star Clear',
-    tooltip: 'Earned all three stars on this level.',
-  },
-} as const;
 
 function formatTime(seconds?: number) {
   if (seconds === undefined) {
@@ -133,114 +73,12 @@ function formatCompletionDate(date?: string) {
   }).format(new Date(date));
 }
 
-function LevelStars({ count }: { count: number }) {
-  return (
-    <span className="level-stars" aria-label={`${count} stars`} data-testid="level-stars">
-      {Array.from({ length: 3 }, (_, index) => (
-        <StarTooltip
-          className={index < count ? 'star-filled' : undefined}
-          earned={index < count}
-          focusable={false}
-          key={index}
-          tier={(index + 1) as 1 | 2 | 3}
-        />
-      ))}
-    </span>
-  );
-}
-
-function BestComparisonRow({
-  actual,
-  label,
-  target,
-  targetMet,
-}: {
-  actual?: string | number;
-  label: string;
-  target: string | number;
-  targetMet: boolean;
-}) {
-  return (
-    <span className={`best-comparison-row${targetMet ? ' met' : ' missed'}`}>
-      <span className="best-comparison-label">{label}</span>
-      <span className="best-comparison-value">
-        {actual ?? '--'} / {target}
-      </span>
-      {targetMet ? <Check aria-label={`${label} target met`} /> : <X aria-label={`${label} target missed`} />}
-    </span>
-  );
-}
-
-function StarRequirementIcons({ count }: { count: number }) {
-  return (
-    <span className="star-requirement-icons">
-      {Array.from({ length: count }, (_, index) => (
-        <StarTooltip focusable={false} key={index} tier={(index + 1) as 1 | 2 | 3} />
-      ))}
-    </span>
-  );
-}
-
-function StarRequirements({ level }: { level: Level }) {
-  return (
-    <span className="star-requirements" aria-label="Star requirements">
-      <span className="star-requirements-title">Stars</span>
-      <span className="star-requirement-row">
-        <StarRequirementIcons count={1} />
-        <span>Complete</span>
-      </span>
-      <span className="star-requirement-row">
-        <StarRequirementIcons count={2} />
-        <span>{`<= ${level.targetMoves} moves`}</span>
-      </span>
-      <span className="star-requirement-row">
-        <StarRequirementIcons count={3} />
-        <span>{`<= ${level.targetMoves} moves and <= ${level.targetTimeSeconds} seconds`}</span>
-      </span>
-    </span>
-  );
-}
-
-function AchievementBadges({
-  badges,
-}: {
-  badges: AchievementBadge[];
-}) {
-  if (badges.length === 0) {
-    return null;
-  }
-
-  return (
-    <span className="achievement-badge-list" aria-label="Achievement badges">
-      {badges.map((badge) => (
-        <Tooltip content={badge.tooltip} key={badge.label}>
-          <span className="achievement-badge">{badge.label}</span>
-        </Tooltip>
-      ))}
-    </span>
-  );
-}
-
-function getAchievementDescription(badges: AchievementBadge[]) {
-  if (badges.length === 0) {
-    return undefined;
-  }
-
-  return `Achievement badges: ${badges.map((badge) => `${badge.label}, ${badge.tooltip}`).join('; ')}.`;
-}
-
-function compactAchievementBadges(badges: (AchievementBadge | null)[]) {
-  return badges.filter((badge): badge is AchievementBadge => badge !== null);
-}
-
 function LevelCard({
-  chapterTitle,
   isCurrentObjective,
   level,
   progress,
   onSelectLevel,
 }: {
-  chapterTitle: string;
   isCurrentObjective: boolean;
   level: Level;
   progress: SaveData;
@@ -248,10 +86,6 @@ function LevelCard({
 }) {
   const unlocked = isLevelUnlocked(progress, level.id);
   const completed = isLevelCompleted(progress, level.id);
-  const bestMoves = getLevelBestMoves(progress, level.id);
-  const bestTimeSeconds = getLevelBestTimeSeconds(progress, level.id);
-  const stars = getLevelStars(progress, level.id);
-  const levelStats = progress.levelStats.find((stats) => stats.levelId === level.id);
   const statusLabel = completed ? 'Completed' : unlocked ? 'Unlocked' : 'Locked';
   const lockedLabel = unlocked ? '' : ' locked';
   const stateClass = `${unlocked ? '' : ' locked'}${completed ? ' completed' : ''}`;
@@ -264,22 +98,11 @@ function LevelCard({
   ) : (
     <Lock aria-label="Locked" />
   );
-  const achievementBadges = completed
-    ? compactAchievementBadges([
-        bestMoves !== undefined && bestMoves <= level.targetMoves ? ACHIEVEMENT_BADGES.perfectRoute : null,
-        bestTimeSeconds !== undefined && bestTimeSeconds <= level.targetTimeSeconds ? ACHIEVEMENT_BADGES.speedSolver : null,
-        stars >= 3 ? ACHIEVEMENT_BADGES.threeStar : null,
-        levelStats?.firstTryClear ? ACHIEVEMENT_BADGES.firstTry : null,
-      ])
-    : [];
-  const achievementDescription = getAchievementDescription(achievementBadges);
-  const achievementDescriptionId = achievementDescription ? `level-${level.id}-achievement-description` : undefined;
 
   return (
     <button
       type="button"
       aria-disabled={!unlocked}
-      aria-describedby={achievementDescriptionId}
       aria-current={isCurrentObjective ? 'step' : undefined}
       aria-label={`Level ${level.id}: ${level.name}${lockedLabel}`}
       className={`level-card${stateClass}${currentObjectiveClass}`}
@@ -306,48 +129,9 @@ function LevelCard({
         ) : null}
       </span>
 
-      {unlocked ? <LevelStars count={stars} /> : null}
-      <AchievementBadges badges={achievementBadges} />
-      {achievementDescription ? (
-        <span className="sr-only" id={achievementDescriptionId}>
-          {achievementDescription}
-        </span>
-      ) : null}
-      <StarRequirements level={level} />
-
-      <span className="mechanic-list" aria-label={`Mechanics: ${level.mechanics.join(', ')}`}>
-        {level.mechanics
-          .filter((mechanic) => mechanic !== 'floor' && mechanic !== 'wall')
-          .map((mechanic) => (
-            <span className="mechanic-chip" key={mechanic}>
-              {MECHANIC_LABELS[mechanic]}
-            </span>
-          ))}
-      </span>
-
       {!unlocked ? (
         <span className="locked-level-info">
           <span>{unlockRequirement}</span>
-          <span>{chapterTitle}</span>
-        </span>
-      ) : null}
-
-      <span className="level-card-description">{level.description}</span>
-
-      {unlocked ? (
-        <span className="level-card-stats">
-          <BestComparisonRow
-            actual={bestMoves}
-            label="Best Moves"
-            target={level.targetMoves}
-            targetMet={bestMoves !== undefined && bestMoves <= level.targetMoves}
-          />
-          <BestComparisonRow
-            actual={bestTimeSeconds === undefined ? undefined : formatTime(bestTimeSeconds)}
-            label="Best Time"
-            target={formatTime(level.targetTimeSeconds)}
-            targetMet={bestTimeSeconds !== undefined && bestTimeSeconds <= level.targetTimeSeconds}
-          />
         </span>
       ) : null}
     </button>
@@ -375,29 +159,19 @@ function getCurrentChapterTitle(levelId: number) {
 }
 
 function getCampaignSummary(progress: SaveData, currentObjectiveLevel: number) {
+  const currentObjective = LEVELS.find((level) => level.id === currentObjectiveLevel) ?? LEVELS[0];
   const completedLevels = LEVELS.filter((level) => isLevelCompleted(progress, level.id));
   const levelsCompleted = completedLevels.length;
   const totalLevels = LEVELS.length;
   const starsEarned = LEVELS.reduce((totalStars, level) => totalStars + getLevelStars(progress, level.id), 0);
   const totalStars = totalLevels * 3;
-  const totalMoves = completedLevels.reduce(
-    (moveTotal, level) => moveTotal + (getLevelBestMoves(progress, level.id) ?? 0),
-    0,
-  );
-  const totalPlayTimeSeconds = completedLevels.reduce(
-    (timeTotal, level) => timeTotal + (getLevelBestTimeSeconds(progress, level.id) ?? 0),
-    0,
-  );
-  const completionRate = totalLevels === 0 ? 0 : Math.round((levelsCompleted / totalLevels) * 100);
 
   return {
-    completionRate,
     currentChapter: getCurrentChapterTitle(currentObjectiveLevel),
+    currentObjective,
     levelsCompleted,
     starsEarned,
     totalLevels,
-    totalMoves,
-    totalPlayTimeSeconds,
     totalStars,
   };
 }
@@ -411,11 +185,13 @@ function PuzzleJournal({ isOpen, onToggle, progress }: { isOpen: boolean; onTogg
         onClick={onToggle}
         aria-expanded={isOpen}
       >
-        <span className="campaign-summary-heading">
-          <ListOrdered aria-hidden="true" />
+        <span>
           <span>
-            <span className="campaign-chapter-kicker">Puzzle History</span>
+            <span className="campaign-chapter-kicker">Optional History</span>
             <strong>Puzzle Journal</strong>
+          </span>
+          <span>
+            Best runs, hints used, and completion dates.
           </span>
         </span>
         <span>{isOpen ? 'Hide' : 'Show'}</span>
@@ -515,60 +291,37 @@ export function LevelSelectScreen({ progress, onBack, onSelectLevel }: LevelSele
         <>
           <section className="campaign-summary-panel" aria-label="Campaign summary">
             <div className="campaign-summary-heading">
-              <Trophy aria-hidden="true" />
               <div>
-                <p className="campaign-chapter-kicker">Player Profile</p>
-                <h2>Campaign Summary</h2>
+                <p className="campaign-chapter-kicker">Current Objective</p>
+                <h2>
+                  Level {campaignSummary.currentObjective.id}
+                  <span>{campaignSummary.currentObjective.name}</span>
+                </h2>
               </div>
             </div>
             <dl className="campaign-summary-grid">
               <div className="campaign-summary-stat">
-                <CheckCircle2 aria-hidden="true" />
                 <dt>Levels Completed</dt>
                 <dd>
                   {campaignSummary.levelsCompleted} / {campaignSummary.totalLevels}
                 </dd>
               </div>
               <div className="campaign-summary-stat">
-                <Star aria-hidden="true" />
                 <dt>Stars Earned</dt>
                 <dd>
                   {campaignSummary.starsEarned} / {campaignSummary.totalStars}
                 </dd>
               </div>
               <div className="campaign-summary-stat">
-                <BarChart3 aria-hidden="true" />
-                <dt>Best Completion Rate</dt>
-                <dd>{campaignSummary.completionRate}%</dd>
-              </div>
-              <div className="campaign-summary-stat">
-                <Footprints aria-hidden="true" />
-                <dt>Total Moves</dt>
-                <dd>{campaignSummary.totalMoves}</dd>
-              </div>
-              <div className="campaign-summary-stat">
-                <Timer aria-hidden="true" />
-                <dt>Total Play Time</dt>
-                <dd>{formatTime(campaignSummary.totalPlayTimeSeconds)}</dd>
-              </div>
-              <div className="campaign-summary-stat">
-                <Map aria-hidden="true" />
                 <dt>Current Chapter</dt>
                 <dd>{campaignSummary.currentChapter}</dd>
               </div>
             </dl>
           </section>
 
-          <PuzzleJournal
-            isOpen={isPuzzleJournalOpen}
-            onToggle={() => setIsPuzzleJournalOpen((currentValue) => !currentValue)}
-            progress={progress}
-          />
-
           <div className="campaign-chapter-list" aria-label="Campaign chapters">
             {levelsByChapter.map((chapter, chapterIndex) => {
               const totalLevels = chapter.levels.length;
-              const progressPercent = totalLevels === 0 ? 0 : Math.round((chapter.completedCount / totalLevels) * 100);
 
               return (
                 <section
@@ -580,19 +333,12 @@ export function LevelSelectScreen({ progress, onBack, onSelectLevel }: LevelSele
                     <div className="campaign-chapter-copy">
                       <p className="campaign-chapter-kicker">Chapter {chapterIndex + 1}</p>
                       <h2 id={`${chapter.id}-title`}>{chapter.title}</h2>
-                      <p>{chapter.description}</p>
                     </div>
-                    <div className="campaign-progress" aria-label={`${chapter.completedCount}/${totalLevels} Complete`}>
-                      <span>{chapter.completedCount}/{totalLevels} Complete</span>
-                      <span
-                        className="campaign-progress-track"
-                        role="progressbar"
-                        aria-valuemin={0}
-                        aria-valuemax={totalLevels}
-                        aria-valuenow={chapter.completedCount}
-                      >
-                        <span style={{ width: `${progressPercent}%` }} />
-                      </span>
+                    <div
+                      className="campaign-progress"
+                      aria-label={`${chapter.completedCount} of ${totalLevels} levels complete`}
+                    >
+                      <span>{chapter.completedCount} / {totalLevels} Complete</span>
                     </div>
                   </header>
 
@@ -600,7 +346,6 @@ export function LevelSelectScreen({ progress, onBack, onSelectLevel }: LevelSele
                     {chapter.levels.map((level) => (
                       <li className="level-card-list-item" key={level.id}>
                         <LevelCard
-                          chapterTitle={chapter.title}
                           isCurrentObjective={level.id === currentObjectiveLevel}
                           level={level}
                           progress={progress}
@@ -613,6 +358,12 @@ export function LevelSelectScreen({ progress, onBack, onSelectLevel }: LevelSele
               );
             })}
           </div>
+
+          <PuzzleJournal
+            isOpen={isPuzzleJournalOpen}
+            onToggle={() => setIsPuzzleJournalOpen((currentValue) => !currentValue)}
+            progress={progress}
+          />
         </>
       ) : (
         <section

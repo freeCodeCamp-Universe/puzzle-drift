@@ -130,17 +130,16 @@ describe('App', () => {
     expect(screen.getAllByRole('button', { name: /level \d+/i })).toHaveLength(30);
   });
 
-  it('keeps level card star tooltips out of the tab order', async () => {
+  it('keeps level cards as a single streamlined tab stop', async () => {
     const user = userEvent.setup();
     render(<App />);
 
     await user.click(screen.getByRole('button', { name: /level select/i }));
 
     const firstLevelCard = screen.getByRole('button', { name: 'Level 1: First Drift' });
-    const starTooltips = firstLevelCard.querySelectorAll('.star-tooltip-trigger');
 
-    expect(starTooltips.length).toBeGreaterThan(0);
-    starTooltips.forEach((starTooltip) => expect(starTooltip).not.toHaveAttribute('tabindex'));
+    expect(firstLevelCard).toBeEnabled();
+    expect(firstLevelCard.querySelectorAll('button, a, [tabindex]')).toHaveLength(0);
   });
 
   it('does not render level preview thumbnails in level cards', async () => {
@@ -193,16 +192,20 @@ describe('App', () => {
 
     expect(screen.getByText('Chapter 1')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /training grid/i })).toBeInTheDocument();
-    expect(screen.getByText('10/10 Complete')).toBeInTheDocument();
+    expect(screen.getByText('10 / 10 Complete')).toBeInTheDocument();
+    expect(screen.getByLabelText('10 of 10 levels complete')).toBeInTheDocument();
     expect(screen.getByText('Chapter 2')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /crystal labyrinth/i })).toBeInTheDocument();
-    expect(screen.getByText('6/10 Complete')).toBeInTheDocument();
+    expect(screen.getByText('6 / 10 Complete')).toBeInTheDocument();
+    expect(screen.getByLabelText('6 of 10 levels complete')).toBeInTheDocument();
     expect(screen.getByText('Chapter 3')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /rift core/i })).toBeInTheDocument();
-    expect(screen.getByText('2/10 Complete')).toBeInTheDocument();
+    expect(screen.getByText('2 / 10 Complete')).toBeInTheDocument();
+    expect(screen.getByLabelText('2 of 10 levels complete')).toBeInTheDocument();
+    expect(screen.queryByRole('progressbar', { name: /levels complete/i })).not.toBeInTheDocument();
   });
 
-  it('shows a campaign summary calculated from saved progress', async () => {
+  it('shows a focused campaign summary calculated from saved progress', async () => {
     const user = userEvent.setup();
     let progress = createInitialSaveData();
 
@@ -229,20 +232,19 @@ describe('App', () => {
 
     const summary = screen.getByRole('region', { name: /campaign summary/i });
 
-    expect(within(summary).getAllByRole('term')).toHaveLength(6);
-    expect(within(summary).getAllByRole('definition')).toHaveLength(6);
+    expect(within(summary).getByText('Current Objective')).toBeInTheDocument();
+    expect(within(summary).getByRole('heading', { name: /level 4 door loop/i })).toBeInTheDocument();
+    expect(within(summary).getAllByRole('term')).toHaveLength(3);
+    expect(within(summary).getAllByRole('definition')).toHaveLength(3);
     expect(within(summary).getByText('Levels Completed')).toBeInTheDocument();
     expect(within(summary).getByText('3 / 30')).toBeInTheDocument();
     expect(within(summary).getByText('Stars Earned')).toBeInTheDocument();
     expect(within(summary).getByText('6 / 90')).toBeInTheDocument();
-    expect(within(summary).getByText('Best Completion Rate')).toBeInTheDocument();
-    expect(within(summary).getByText('10%')).toBeInTheDocument();
-    expect(within(summary).getByText('Total Moves')).toBeInTheDocument();
-    expect(within(summary).getByText('36')).toBeInTheDocument();
-    expect(within(summary).getByText('Total Play Time')).toBeInTheDocument();
-    expect(within(summary).getByText('1:00')).toBeInTheDocument();
     expect(within(summary).getByText('Current Chapter')).toBeInTheDocument();
     expect(within(summary).getByText('Training Grid')).toBeInTheDocument();
+    expect(within(summary).queryByText('Best Completion Rate')).not.toBeInTheDocument();
+    expect(within(summary).queryByText('Total Moves')).not.toBeInTheDocument();
+    expect(within(summary).queryByText('Total Play Time')).not.toBeInTheDocument();
 
     expect(screen.queryByRole('region', { name: /star breakdown/i })).not.toBeInTheDocument();
     expect(within(summary).queryByRole('heading', { name: /star breakdown/i })).not.toBeInTheDocument();
@@ -568,7 +570,7 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
-  it('completed levels show stars', async () => {
+  it('completed levels show only glanceable status on level cards', async () => {
     const user = userEvent.setup();
     const progress = completeLevel(createInitialSaveData(), 1, {
       moves: 6,
@@ -584,17 +586,13 @@ describe('App', () => {
     const levelCard = screen.getByRole('button', { name: 'Level 1: First Drift' });
 
     expect(within(levelCard).getByText('Completed')).toBeInTheDocument();
-    expect(within(levelCard).getByLabelText('3 stars')).toBeInTheDocument();
-    expect(within(levelCard).getAllByTestId('level-stars')[0].querySelectorAll('.star-filled')).toHaveLength(3);
-    expect(within(levelCard).getByText('Best Moves')).toBeInTheDocument();
-    expect(within(levelCard).getByText('6 / 10')).toBeInTheDocument();
-    expect(within(levelCard).getByLabelText('Best Moves target met')).toBeInTheDocument();
-    expect(within(levelCard).getByText('Best Time')).toBeInTheDocument();
-    expect(within(levelCard).getByText('0:12 / 0:25')).toBeInTheDocument();
-    expect(within(levelCard).getByLabelText('Best Time target met')).toBeInTheDocument();
+    expect(within(levelCard).queryByTestId('level-stars')).not.toBeInTheDocument();
+    expect(within(levelCard).queryByText('Best Moves')).not.toBeInTheDocument();
+    expect(within(levelCard).queryByText('Best Time')).not.toBeInTheDocument();
+    expect(within(levelCard).queryByLabelText('Star requirements')).not.toBeInTheDocument();
   });
 
-  it('level cards show when personal bests miss level targets', async () => {
+  it('level cards do not show secondary personal-best statistics', async () => {
     const user = userEvent.setup();
     const progress = completeLevel(createInitialSaveData(), 1, {
       moves: 12,
@@ -609,28 +607,25 @@ describe('App', () => {
 
     const levelCard = screen.getByRole('button', { name: 'Level 1: First Drift' });
 
-    expect(within(levelCard).getByText('12 / 10')).toBeInTheDocument();
-    expect(within(levelCard).getByLabelText('Best Moves target missed')).toBeInTheDocument();
-    expect(within(levelCard).getByText('0:31 / 0:25')).toBeInTheDocument();
-    expect(within(levelCard).getByLabelText('Best Time target missed')).toBeInTheDocument();
+    expect(within(levelCard).queryByText('12 / 10')).not.toBeInTheDocument();
+    expect(within(levelCard).queryByLabelText('Best Moves target missed')).not.toBeInTheDocument();
+    expect(within(levelCard).queryByText('0:31 / 0:25')).not.toBeInTheDocument();
+    expect(within(levelCard).queryByLabelText('Best Time target missed')).not.toBeInTheDocument();
   });
 
-  it('level cards show star requirements before entering a level', async () => {
+  it('level cards omit star requirements to stay scannable', async () => {
     const user = userEvent.setup();
     render(<App />);
 
     await user.click(screen.getByRole('button', { name: /level select/i }));
 
     const levelCard = screen.getByRole('button', { name: 'Level 1: First Drift' });
-    const starRequirements = within(levelCard).getByLabelText('Star requirements');
 
-    expect(within(starRequirements).getByText('Stars')).toBeInTheDocument();
-    expect(within(starRequirements).getByText('Complete')).toBeInTheDocument();
-    expect(within(starRequirements).getByText('<= 10 moves')).toBeInTheDocument();
-    expect(within(starRequirements).getByText('<= 10 moves and <= 25 seconds')).toBeInTheDocument();
+    expect(within(levelCard).queryByLabelText('Star requirements')).not.toBeInTheDocument();
+    expect(within(levelCard).queryByText('<= 10 moves')).not.toBeInTheDocument();
   });
 
-  it('level select stars explain star requirements on hover without adding nested tab stops', async () => {
+  it('level card stars do not add nested hover targets', async () => {
     const user = userEvent.setup();
     const progress = completeLevel(createInitialSaveData(), 1, {
       moves: 6,
@@ -644,15 +639,11 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: /level select/i }));
 
     const levelCard = screen.getByRole('button', { name: 'Level 1: First Drift' });
-    const twoStarTrigger = within(levelCard).getAllByLabelText(/2 Stars: Complete within target moves/i)[0];
 
-    await user.hover(twoStarTrigger);
-
-    expect(screen.getByRole('tooltip', { name: /2 Stars\s+Complete within target moves/i })).toBeInTheDocument();
-    expect(twoStarTrigger).not.toHaveAttribute('tabindex');
+    expect(levelCard.querySelectorAll('.star-tooltip-trigger')).toHaveLength(0);
   });
 
-  it('completed levels show earned achievement badges with tooltips', async () => {
+  it('completed level cards omit achievement badges to reduce visual clutter', async () => {
     const user = userEvent.setup();
     const progress = completeLevel(createInitialSaveData(), 1, {
       firstTryClear: true,
@@ -668,15 +659,11 @@ describe('App', () => {
 
     const levelCard = screen.getByRole('button', { name: 'Level 1: First Drift' });
 
-    expect(within(levelCard).getByText('Perfect Route')).toBeInTheDocument();
-    expect(within(levelCard).getByText('Speed Solver')).toBeInTheDocument();
-    expect(within(levelCard).getByText('Three Star Clear')).toBeInTheDocument();
-    expect(within(levelCard).getByText('First Try Clear')).toBeInTheDocument();
-    expect(levelCard).toHaveAccessibleDescription(/Perfect Route, Completed at or under the par move target/i);
-
-    await user.hover(within(levelCard).getByText('Perfect Route'));
-
-    expect(screen.getByRole('tooltip', { name: /completed at or under the par move target/i })).toBeInTheDocument();
+    expect(within(levelCard).queryByText('Perfect Route')).not.toBeInTheDocument();
+    expect(within(levelCard).queryByText('Speed Solver')).not.toBeInTheDocument();
+    expect(within(levelCard).queryByText('Three Star Clear')).not.toBeInTheDocument();
+    expect(within(levelCard).queryByText('First Try Clear')).not.toBeInTheDocument();
+    expect(levelCard).not.toHaveAccessibleDescription();
   });
 
   it('locked levels show a lock icon', async () => {
@@ -703,11 +690,11 @@ describe('App', () => {
     expect(lockedLevel).toHaveFocus();
     expect(lockedLevel).toHaveAttribute('aria-disabled', 'true');
     expect(within(lockedLevel).getByText('Complete Level 14 to unlock')).toBeInTheDocument();
-    expect(within(lockedLevel).getByText('Crystal Labyrinth')).toBeInTheDocument();
-    expect(within(lockedLevel).getByText('Ice')).toBeInTheDocument();
-    expect(within(lockedLevel).getByLabelText('Star requirements')).toBeInTheDocument();
-    expect(within(lockedLevel).getByText('<= 10 moves')).toBeInTheDocument();
-    expect(within(lockedLevel).getByText('<= 45 seconds', { exact: false })).toBeInTheDocument();
+    expect(within(lockedLevel).queryByText('Crystal Labyrinth')).not.toBeInTheDocument();
+    expect(within(lockedLevel).queryByText('Ice')).not.toBeInTheDocument();
+    expect(within(lockedLevel).queryByLabelText('Star requirements')).not.toBeInTheDocument();
+    expect(within(lockedLevel).queryByText('<= 10 moves')).not.toBeInTheDocument();
+    expect(within(lockedLevel).queryByText('<= 45 seconds', { exact: false })).not.toBeInTheDocument();
     expect(within(lockedLevel).queryByTestId('level-stars')).not.toBeInTheDocument();
     expect(lockedLevel.querySelector('.level-card-stats')).not.toBeInTheDocument();
   });
