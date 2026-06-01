@@ -107,6 +107,12 @@ export type LevelStats = {
   completed: boolean;
   bestMoves?: number;
   bestTimeSeconds?: number;
+  completionDate?: string;
+  doorsOpened?: number;
+  firstTryClear?: boolean;
+  hintsUsed?: number;
+  keysCollected?: number;
+  portalsUsed?: number;
   stars: number;
 };
 

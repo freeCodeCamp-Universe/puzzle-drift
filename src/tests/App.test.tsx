@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import { LEVELS } from '../data/levels';
+import { getChapterCompletionMilestone } from '../utils/chapterMilestones';
 import { completeLevel, createInitialSaveData, unlockHintTier } from '../utils/progressStorage';
 import { resetAppStorage } from './testStorage';
 
@@ -107,6 +108,237 @@ describe('App', () => {
 
     expect(screen.getByRole('heading', { name: /level select/i })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /level \d+/i })).toHaveLength(30);
+  });
+
+  it('renders board previews with landmark tile art', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /level select/i }));
+
+    const portalLevel = screen.getByRole('button', { name: 'Level 17: Portal Lock locked' });
+    const spikeLevel = screen.getByRole('button', { name: 'Level 11: Spike Lane locked' });
+
+    expect(within(portalLevel).getByLabelText(/portal lock board preview/i)).toBeInTheDocument();
+    expect(portalLevel.querySelector('.preview-wall')).toBeInTheDocument();
+    expect(portalLevel.querySelector('.preview-door')).toBeInTheDocument();
+    expect(portalLevel.querySelector('.preview-portal')).toBeInTheDocument();
+    expect(within(spikeLevel).getByLabelText(/spike lane board preview/i)).toBeInTheDocument();
+    expect(spikeLevel.querySelector('.preview-spike')).toBeInTheDocument();
+  });
+
+  it('groups level select cards by campaign chapter progress', async () => {
+    const user = userEvent.setup();
+    let progress = createInitialSaveData();
+
+    for (let levelId = 1; levelId <= 10; levelId += 1) {
+      progress = completeLevel(progress, levelId, {
+        moves: levelId,
+        stars: 3,
+        timeSeconds: levelId,
+      });
+    }
+
+    for (let levelId = 11; levelId <= 16; levelId += 1) {
+      progress = completeLevel(progress, levelId, {
+        moves: levelId,
+        stars: 2,
+        timeSeconds: levelId,
+      });
+    }
+
+    for (let levelId = 21; levelId <= 22; levelId += 1) {
+      progress = completeLevel(progress, levelId, {
+        moves: levelId,
+        stars: 1,
+        timeSeconds: levelId,
+      });
+    }
+
+    window.localStorage.setItem('puzzle-drift:save', JSON.stringify(progress));
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /level select/i }));
+
+    expect(screen.getByText('Chapter 1')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /training grid/i })).toBeInTheDocument();
+    expect(screen.getByText('10/10 Complete')).toBeInTheDocument();
+    expect(screen.getByText('Chapter 2')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /crystal labyrinth/i })).toBeInTheDocument();
+    expect(screen.getByText('6/10 Complete')).toBeInTheDocument();
+    expect(screen.getByText('Chapter 3')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /rift core/i })).toBeInTheDocument();
+    expect(screen.getByText('2/10 Complete')).toBeInTheDocument();
+  });
+
+  it('shows a campaign summary calculated from saved progress', async () => {
+    const user = userEvent.setup();
+    let progress = createInitialSaveData();
+
+    progress = completeLevel(progress, 1, {
+      moves: 10,
+      stars: 3,
+      timeSeconds: 10,
+    });
+    progress = completeLevel(progress, 2, {
+      moves: 12,
+      stars: 2,
+      timeSeconds: 20,
+    });
+    progress = completeLevel(progress, 3, {
+      moves: 14,
+      stars: 1,
+      timeSeconds: 30,
+    });
+
+    window.localStorage.setItem('puzzle-drift:save', JSON.stringify(progress));
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /level select/i }));
+
+    const summary = screen.getByRole('region', { name: /campaign summary/i });
+
+    expect(within(summary).getByText('Levels Completed')).toBeInTheDocument();
+    expect(within(summary).getByText('3 / 30')).toBeInTheDocument();
+    expect(within(summary).getByText('Stars Earned')).toBeInTheDocument();
+    expect(within(summary).getByText('6 / 90')).toBeInTheDocument();
+    expect(within(summary).getByText('Best Completion Rate')).toBeInTheDocument();
+    expect(within(summary).getByText('10%')).toBeInTheDocument();
+    expect(within(summary).getByText('Total Moves')).toBeInTheDocument();
+    expect(within(summary).getByText('36')).toBeInTheDocument();
+    expect(within(summary).getByText('Total Play Time')).toBeInTheDocument();
+    expect(within(summary).getByText('1:00')).toBeInTheDocument();
+    expect(within(summary).getByText('Current Chapter')).toBeInTheDocument();
+    expect(within(summary).getByText('Training Grid')).toBeInTheDocument();
+  });
+
+  it('shows puzzle journal history from saved progress', async () => {
+    const user = userEvent.setup();
+    const progress = completeLevel(createInitialSaveData(), 1, {
+      doorsOpened: 2,
+      hintsUsed: 1,
+      keysCollected: 1,
+      moves: 10,
+      portalsUsed: 0,
+      stars: 3,
+      timeSeconds: 25,
+    });
+
+    window.localStorage.setItem('puzzle-drift:save', JSON.stringify(progress));
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /level select/i }));
+
+    const journal = screen.getByRole('region', { name: /puzzle journal/i });
+    const journalToggle = within(journal).getByRole('button', { name: /puzzle journal/i });
+
+    expect(journalToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(within(journal).queryByLabelText(/first drift journal entry/i)).not.toBeInTheDocument();
+
+    await user.click(journalToggle);
+
+    const firstDriftEntry = within(journal).getByLabelText(/first drift journal entry/i);
+
+    expect(journalToggle).toHaveAttribute('aria-expanded', 'true');
+    expect(within(journal).getByText('Puzzle Journal')).toBeInTheDocument();
+    expect(within(firstDriftEntry).getByText('First Drift')).toBeInTheDocument();
+    expect(within(firstDriftEntry).getByText('Completion date')).toBeInTheDocument();
+    expect(within(firstDriftEntry).getByText('10')).toBeInTheDocument();
+    expect(within(firstDriftEntry).getByText('0:25')).toBeInTheDocument();
+    expect(within(firstDriftEntry).getByText('3 / 3')).toBeInTheDocument();
+    expect(within(firstDriftEntry).getByText('Keys 1')).toBeInTheDocument();
+    expect(within(firstDriftEntry).getByText('Doors 2')).toBeInTheDocument();
+    expect(within(firstDriftEntry).getByText('Portals 0')).toBeInTheDocument();
+  });
+
+  it('filters level select by mechanic', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /level select/i }));
+    await user.click(screen.getByRole('button', { name: 'Portals' }));
+
+    expect(screen.getByRole('button', { name: 'Level 17: Portal Lock locked' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Level 1: First Drift' })).not.toBeInTheDocument();
+  });
+
+  it('combines progress and mechanic filters', async () => {
+    const user = userEvent.setup();
+
+    unlockThroughLevel(11);
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /level select/i }));
+    await user.click(screen.getByRole('button', { name: 'Incomplete' }));
+    await user.click(screen.getByRole('button', { name: 'Spikes' }));
+
+    expect(screen.getByRole('button', { name: 'Level 11: Spike Lane' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Level 24: Spike Switch locked' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Level 1: First Drift' })).not.toBeInTheDocument();
+  });
+
+  it('persists level select filters during the browser session', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /level select/i }));
+    await user.click(screen.getByRole('button', { name: 'Portals' }));
+    await user.click(screen.getByRole('button', { name: /back to start/i }));
+    await user.click(screen.getByRole('button', { name: /level select/i }));
+
+    expect(screen.getByRole('button', { name: 'Portals' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Level 17: Portal Lock locked' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Level 1: First Drift' })).not.toBeInTheDocument();
+  });
+
+  it('highlights the highest unlocked incomplete level as the current objective', async () => {
+    const user = userEvent.setup();
+    const progress = completeLevel(createInitialSaveData(), 1, {
+      moves: 6,
+      stars: 3,
+      timeSeconds: 12,
+    });
+
+    window.localStorage.setItem('puzzle-drift:save', JSON.stringify(progress));
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /level select/i }));
+
+    const levelCard = screen.getByRole('button', { name: 'Level 2: Corner Signal' });
+
+    expect(levelCard).toHaveAttribute('aria-current', 'step');
+    expect(levelCard).toHaveClass('current-objective');
+    expect(within(levelCard).getByText(/continue adventure/i)).toBeInTheDocument();
+  });
+
+  it('highlights the most recently played incomplete level when continuing a run', async () => {
+    const user = userEvent.setup();
+    let progress = createInitialSaveData();
+
+    for (let levelId = 1; levelId <= 16; levelId += 1) {
+      progress = completeLevel(progress, levelId, {
+        moves: levelId,
+        stars: 3,
+        timeSeconds: levelId,
+      });
+    }
+
+    progress = {
+      ...progress,
+      currentLevel: 17,
+      hasActiveRun: true,
+    };
+
+    window.localStorage.setItem('puzzle-drift:save', JSON.stringify(progress));
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /level select/i }));
+
+    const levelCard = screen.getByRole('button', { name: 'Level 17: Portal Lock' });
+
+    expect(levelCard).toHaveAttribute('aria-current', 'step');
+    expect(levelCard).toHaveClass('current-objective');
+    expect(within(levelCard).getByText(/continue adventure/i)).toBeInTheDocument();
   });
 
   it('opens the settings screen after clicking Settings', async () => {
@@ -283,7 +515,7 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: /level select/i }));
 
     expect(screen.getByRole('button', { name: 'Level 1: First Drift' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: 'Level 2: Corner Signal locked' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Level 2: Corner Signal locked' })).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('level card status renders correctly', async () => {
@@ -318,6 +550,32 @@ describe('App', () => {
     expect(within(levelCard).getAllByTestId('level-stars')[0].querySelectorAll('.star-filled')).toHaveLength(3);
   });
 
+  it('completed levels show earned achievement badges with tooltips', async () => {
+    const user = userEvent.setup();
+    const progress = completeLevel(createInitialSaveData(), 1, {
+      firstTryClear: true,
+      moves: 10,
+      stars: 3,
+      timeSeconds: 25,
+    });
+
+    window.localStorage.setItem('puzzle-drift:save', JSON.stringify(progress));
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /level select/i }));
+
+    const levelCard = screen.getByRole('button', { name: 'Level 1: First Drift' });
+
+    expect(within(levelCard).getByText('Perfect Route')).toBeInTheDocument();
+    expect(within(levelCard).getByText('Speed Solver')).toBeInTheDocument();
+    expect(within(levelCard).getByText('Three Star Clear')).toBeInTheDocument();
+    expect(within(levelCard).getByText('First Try Clear')).toBeInTheDocument();
+
+    await user.hover(within(levelCard).getByText('Perfect Route'));
+
+    expect(screen.getByRole('tooltip', { name: /completed at or under the par move target/i })).toBeInTheDocument();
+  });
+
   it('locked levels show a lock icon', async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -327,6 +585,25 @@ describe('App', () => {
     expect(
       within(screen.getByRole('button', { name: 'Level 2: Corner Signal locked' })).getByLabelText('Locked'),
     ).toBeInTheDocument();
+  });
+
+  it('locked levels remain focusable and show unlock context without solution stats', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /level select/i }));
+
+    const lockedLevel = screen.getByRole('button', { name: 'Level 15: Needle Ice locked' });
+
+    lockedLevel.focus();
+
+    expect(lockedLevel).toHaveFocus();
+    expect(lockedLevel).toHaveAttribute('aria-disabled', 'true');
+    expect(within(lockedLevel).getByText('Complete Level 14 to unlock')).toBeInTheDocument();
+    expect(within(lockedLevel).getByText('Crystal Labyrinth')).toBeInTheDocument();
+    expect(within(lockedLevel).getByText('Ice')).toBeInTheDocument();
+    expect(within(lockedLevel).queryByLabelText(/stars/i)).not.toBeInTheDocument();
+    expect(lockedLevel.querySelector('.level-card-stats')).not.toBeInTheDocument();
   });
 
   it('does not open locked levels', async () => {
@@ -749,6 +1026,22 @@ describe('App', () => {
     expect(levelSelectButton.querySelector('.action-label')).toHaveTextContent('Level Select');
     expect(levelSelectButton.querySelector('.action-shortcut')).toHaveTextContent('L');
     expect(screen.getByRole('grid', { name: /first drift board/i })).toBeInTheDocument();
+  });
+
+  it('defines chapter completion milestones for campaign gates', () => {
+    expect(getChapterCompletionMilestone(10)).toEqual({
+      chapterTitle: 'Training Grid',
+      nextMessage: 'Crystal Labyrinth unlocked.',
+    });
+    expect(getChapterCompletionMilestone(20)).toEqual({
+      chapterTitle: 'Crystal Labyrinth',
+      nextMessage: 'Rift Core unlocked.',
+    });
+    expect(getChapterCompletionMilestone(30)).toEqual({
+      chapterTitle: 'Rift Core',
+      nextMessage: 'Campaign complete.',
+    });
+    expect(getChapterCompletionMilestone(9)).toBeNull();
   });
 
   it('completion overlay shortcuts advance, retry, and open level select', async () => {

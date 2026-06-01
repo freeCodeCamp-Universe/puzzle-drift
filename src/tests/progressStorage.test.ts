@@ -27,7 +27,12 @@ describe('progress storage', () => {
 
   it('saves and loads progress', () => {
     const progress = completeLevel(createInitialSaveData(), 1, {
+      doorsOpened: 2,
+      firstTryClear: true,
+      hintsUsed: 1,
+      keysCollected: 1,
       moves: 14,
+      portalsUsed: 3,
       stars: 2,
       timeSeconds: 44,
     });
@@ -38,6 +43,16 @@ describe('progress storage', () => {
       bestMoves: { 1: 14 },
       bestTimeSeconds: { 1: 44 },
       completedLevels: [1],
+      levelStats: [
+        expect.objectContaining({
+          completionDate: expect.any(String),
+          doorsOpened: 2,
+          firstTryClear: true,
+          hintsUsed: 1,
+          keysCollected: 1,
+          portalsUsed: 3,
+        }),
+      ],
       stars: { 1: 2 },
       unlockedLevels: [1, 2],
     });

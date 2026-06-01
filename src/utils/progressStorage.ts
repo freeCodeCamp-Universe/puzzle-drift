@@ -8,7 +8,12 @@ const PROGRESS_STORAGE_KEY = 'puzzle-drift:save';
 const SETTINGS_STORAGE_KEY = 'puzzle-drift:settings';
 
 type CompletionResult = {
+  doorsOpened?: number;
+  firstTryClear?: boolean;
+  hintsUsed?: number;
+  keysCollected?: number;
   moves: number;
+  portalsUsed?: number;
   timeSeconds: number;
   stars: number;
 };
@@ -143,11 +148,13 @@ export function completeLevel(
   const previousBestMoves = progress.bestMoves[levelId];
   const previousBestTime = progress.bestTimeSeconds[levelId];
   const previousStars = progress.stars[levelId] ?? 0;
+  const previousStats = progress.levelStats.find((stats) => stats.levelId === levelId);
   const bestMoves =
     previousBestMoves === undefined ? result.moves : Math.min(previousBestMoves, result.moves);
   const bestTimeSeconds =
     previousBestTime === undefined ? result.timeSeconds : Math.min(previousBestTime, result.timeSeconds);
   const stars = Math.max(previousStars, result.stars);
+  const firstTryClear = previousStats?.firstTryClear || result.firstTryClear;
   const otherStats = progress.levelStats.filter((stats) => stats.levelId !== levelId);
 
   return {
@@ -169,7 +176,13 @@ export function completeLevel(
         bestMoves,
         bestTimeSeconds,
         completed: true,
+        completionDate: new Date().toISOString(),
+        doorsOpened: result.doorsOpened,
+        firstTryClear,
+        hintsUsed: result.hintsUsed ?? 0,
+        keysCollected: result.keysCollected,
         levelId,
+        portalsUsed: result.portalsUsed,
         stars,
       },
     ].sort((a, b) => a.levelId - b.levelId),

@@ -37,11 +37,17 @@ import {
   saveHintAnalytics,
   type HintAnalyticsData,
 } from '../utils/hintAnalytics';
+import { getChapterCompletionMilestone } from '../utils/chapterMilestones';
 import { isHintTierUnlocked } from '../utils/hints';
 import { GameBoard } from './GameBoard';
 
 type CompletionPayload = {
+  doorsOpened: number;
+  firstTryClear: boolean;
+  hintsUsed: number;
+  keysCollected: number;
   moves: number;
+  portalsUsed: number;
   stars: number;
   timeSeconds: number;
 };
@@ -371,6 +377,7 @@ export function GameScreen({
   const pauseDialogRef = useRef<HTMLElement | null>(null);
   const pauseReturnFocusRef = useRef<HTMLElement | null>(null);
   const savedCompletionRef = useRef(false);
+  const selectedHintTiersThisAttemptRef = useRef<Set<number>>(new Set());
   const usedHintThisAttemptRef = useRef(false);
   const unlockedHintTiers = useMemo(
     () => progress.unlockedHints[level.id] ?? [],
@@ -423,6 +430,7 @@ export function GameScreen({
 
   const recordNewAttempt = useCallback(
     (levelId: number) => {
+      selectedHintTiersThisAttemptRef.current = new Set();
       usedHintThisAttemptRef.current = false;
       updateHintAnalytics((currentAnalytics) => recordHintAnalyticsAttempt(currentAnalytics, levelId));
     },
@@ -591,11 +599,16 @@ export function GameScreen({
       recordHintAnalyticsCompletion(currentAnalytics, level.id, usedHintThisAttemptRef.current),
     );
     onCompleteLevel({
+      doorsOpened: gameState.doorsOpenedThisAttempt,
+      firstTryClear: failedResetCount === 0,
+      hintsUsed: selectedHintTiersThisAttemptRef.current.size,
+      keysCollected: gameState.keysCollectedThisAttempt,
       moves: gameState.moves,
+      portalsUsed: gameState.portalsUsedThisAttempt,
       stars: calculateStars(level, gameState),
       timeSeconds: gameState.elapsedSeconds,
     });
-  }, [gameState, level, onCompleteLevel, updateHintAnalytics]);
+  }, [failedResetCount, gameState, level, onCompleteLevel, updateHintAnalytics]);
 
   useEffect(() => {
     if (!isPaused) {
@@ -735,6 +748,7 @@ export function GameScreen({
 
   const selectHintTier = useCallback(
     (tierNumber: number) => {
+      selectedHintTiersThisAttemptRef.current.add(tierNumber);
       updateHintAnalytics((currentAnalytics) =>
         recordHintAnalyticsTierUse(currentAnalytics, level.id, tierNumber),
       );
@@ -858,6 +872,12 @@ export function GameScreen({
   const activeHintNudge = settings.hintNudgesEnabled ? hintNudge : null;
   const isFinalLevel = level.id >= LEVELS.length;
   const completionPrimaryLabel = isFinalLevel ? 'Level Select' : 'Next Level';
+  const chapterMilestone = getChapterCompletionMilestone(level.id);
+  const completionTitle = chapterMilestone ? 'Chapter Complete' : 'Level Complete';
+  const completionSubtitle = chapterMilestone
+    ? `${chapterMilestone.chapterTitle} complete. ${chapterMilestone.nextMessage}`
+    : isFinalLevel ? 'Campaign complete.' : `Level ${level.id + 1} unlocked.`;
+  const completionAriaLabel = chapterMilestone ? 'Chapter completed' : 'Level completed';
 
   return (
     <section className={`screen game-screen${isPaused ? ' paused' : ''}`} aria-labelledby="game-screen-title">
@@ -907,23 +927,24 @@ export function GameScreen({
 
         {gameState.isComplete ? (
           <section
-            className={`completion-panel${reducedMotion ? '' : ' level-complete-pop'}`}
+            className={`completion-panel${chapterMilestone ? ' chapter-complete' : ''}${reducedMotion ? '' : ' level-complete-pop'}`}
             ref={completionPanelRef}
             role="status"
-            aria-label={`Level completed. ${starsEarned} stars earned in ${gameState.moves} moves and ${formatTime(
+            aria-label={`${completionAriaLabel}. ${starsEarned} stars earned in ${gameState.moves} moves and ${formatTime(
               gameState.elapsedSeconds,
             )}.`}
             aria-live="polite"
           >
             <p className="sr-only">
-              Level completed with {starsEarned} stars, {gameState.moves} moves, and a time of{' '}
+              {completionAriaLabel} with {starsEarned} stars, {gameState.moves} moves, and a time of{' '}
               {formatTime(gameState.elapsedSeconds)}.
             </p>
             <header className="completion-header">
               <CircleCheck aria-hidden="true" />
               <div>
-                <h2>Level Complete</h2>
-                <p>{isFinalLevel ? 'Campaign complete.' : `Level ${level.id + 1} unlocked.`}</p>
+                {chapterMilestone ? <span className="chapter-complete-badge">{chapterMilestone.chapterTitle}</span> : null}
+                <h2>{completionTitle}</h2>
+                <p>{completionSubtitle}</p>
               </div>
             </header>
 
