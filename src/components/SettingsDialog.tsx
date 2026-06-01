@@ -10,8 +10,9 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useModalAccessibility } from '../hooks/useModalAccessibility';
 import type { GameSettings } from '../types/game';
 
 type SettingsDialogProps = {
@@ -37,6 +38,8 @@ function ToggleSetting<Key extends keyof GameSettings>({
   label,
   onChange,
 }: ToggleSettingProps<Key>) {
+  const descriptionId = useId();
+
   return (
     <label className="settings-toggle-row">
       <span className="settings-toggle-copy">
@@ -44,9 +47,14 @@ function ToggleSetting<Key extends keyof GameSettings>({
           {icon}
           <strong>{label}</strong>
         </span>
-        <span>{description}</span>
+        <span id={descriptionId}>{description}</span>
       </span>
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+      <input
+        type="checkbox"
+        checked={checked}
+        aria-describedby={descriptionId}
+        onChange={(event) => onChange(event.target.checked)}
+      />
       <span className="toggle-switch" aria-hidden="true" />
     </label>
   );
@@ -61,63 +69,16 @@ export function SettingsDialog({
 }: SettingsDialogProps) {
   const [isConfirmingReset, setIsConfirmingReset] = useState(false);
   const [isShortcutListOpen, setIsShortcutListOpen] = useState(false);
-  const dialogRef = useRef<HTMLElement | null>(null);
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
+
+  useModalAccessibility({ dialogRef, isOpen, onEscape: onClose });
 
   useEffect(() => {
     if (!isOpen) {
       setIsConfirmingReset(false);
       setIsShortcutListOpen(false);
-
-      return undefined;
     }
-
-    const dialog = dialogRef.current;
-    const focusableElements = () =>
-      Array.from(
-        dialog?.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-        ) ?? [],
-      ).filter((element) => !element.hasAttribute('disabled') && element.tabIndex !== -1);
-
-    window.setTimeout(() => focusableElements()[0]?.focus(), 0);
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onClose();
-
-        return;
-      }
-
-      if (event.key !== 'Tab') {
-        return;
-      }
-
-      const elements = focusableElements();
-      const firstElement = elements[0];
-      const lastElement = elements[elements.length - 1];
-
-      if (!firstElement || !lastElement) {
-        event.preventDefault();
-
-        return;
-      }
-
-      if (event.shiftKey && document.activeElement === firstElement) {
-        event.preventDefault();
-        lastElement.focus();
-      }
-
-      if (!event.shiftKey && document.activeElement === lastElement) {
-        event.preventDefault();
-        firstElement.focus();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) {
     return null;
@@ -128,9 +89,11 @@ export function SettingsDialog({
   };
 
   return (
-    <div
-      className="dialog-backdrop"
-      role="presentation"
+    <dialog
+      className="dialog-backdrop dialog-shell"
+      ref={dialogRef}
+      aria-modal="true"
+      aria-labelledby="settings-title"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) {
           onClose();
@@ -139,10 +102,6 @@ export function SettingsDialog({
     >
       <section
         className="settings-dialog"
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="settings-title"
       >
         <header className="dialog-header settings-header">
           <div className="dialog-title">
@@ -156,14 +115,14 @@ export function SettingsDialog({
           </button>
         </header>
 
-        <div className="settings-section-card" aria-label="Accessibility settings">
-          <div className="settings-section-heading">
+        <fieldset className="settings-section-card">
+          <legend className="settings-section-heading settings-section-legend">
             <Accessibility aria-hidden="true" />
             <div>
               <h3>Accessibility</h3>
               <p>Adjust motion and contrast for a clearer play surface.</p>
             </div>
-          </div>
+          </legend>
           <ToggleSetting
             checked={settings.reducedMotion}
             description="Reduce animated movement, flashes, and completion effects."
@@ -178,16 +137,16 @@ export function SettingsDialog({
             label="High contrast"
             onChange={(value) => updateSetting('highContrast', value)}
           />
-        </div>
+        </fieldset>
 
-        <div className="settings-section-card" aria-label="Gameplay settings">
-          <div className="settings-section-heading">
+        <fieldset className="settings-section-card">
+          <legend className="settings-section-heading settings-section-legend">
             <Lightbulb aria-hidden="true" />
             <div>
               <h3>Gameplay</h3>
               <p>Choose how much guidance and confirmation you want during a run.</p>
             </div>
-          </div>
+          </legend>
           <ToggleSetting
             checked={settings.hintNudgesEnabled}
             description="Show gentle hint prompts when you seem stuck."
@@ -202,7 +161,7 @@ export function SettingsDialog({
             label="Confirm restart"
             onChange={(value) => updateSetting('confirmRestart', value)}
           />
-        </div>
+        </fieldset>
 
         <div className="settings-section-card" aria-label="Keyboard shortcuts">
           <button
@@ -251,12 +210,12 @@ export function SettingsDialog({
 
         <div className="settings-section-card settings-danger-zone" aria-label="Data settings">
           {isConfirmingReset ? (
-            <div className="confirm-reset-panel" role="alertdialog" aria-labelledby="reset-title">
+            <div className="confirm-reset-panel" aria-labelledby="reset-title" aria-describedby="reset-description">
               <div className="settings-section-heading">
                 <AlertTriangle aria-hidden="true" />
                 <div>
                   <h3 id="reset-title">Reset all progress?</h3>
-                  <p>
+                  <p id="reset-description">
                     This clears completed levels, stars, best moves, best times, and unlocked levels. Settings will be
                     preserved.
                   </p>
@@ -273,6 +232,7 @@ export function SettingsDialog({
                   onClick={() => {
                     onResetProgress();
                     setIsConfirmingReset(false);
+                    onClose();
                   }}
                 >
                   <RotateCcw aria-hidden="true" />
@@ -297,6 +257,6 @@ export function SettingsDialog({
           )}
         </div>
       </section>
-    </div>
+    </dialog>
   );
 }

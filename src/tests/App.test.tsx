@@ -86,6 +86,8 @@ describe('App', () => {
   it('renders the app', () => {
     render(<App />);
 
+    expect(screen.getByRole('link', { name: /skip to main content/i })).toHaveAttribute('href', '#main-content');
+    expect(screen.getByRole('main')).toHaveAttribute('id', 'main-content');
     expect(screen.getByRole('heading', { name: /puzzle drift/i })).toBeInTheDocument();
   });
 
@@ -104,9 +106,18 @@ describe('App', () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole('button', { name: /how to play/i }));
+    const howToPlayButton = screen.getByRole('button', { name: /how to play/i });
+    await user.click(howToPlayButton);
 
-    expect(screen.getByRole('dialog', { name: /how to play/i })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: /how to play/i }).tagName).toBe('DIALOG');
+    expect(screen.getByRole('list', { name: '' })).toBeInTheDocument();
+    expect(screen.getAllByRole('listitem')).toHaveLength(4);
+    expect(screen.getByRole('button', { name: /close how to play/i })).toHaveFocus();
+
+    await user.keyboard('{Escape}');
+
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: /how to play/i })).not.toBeInTheDocument());
+    await waitFor(() => expect(howToPlayButton).toHaveFocus());
   });
 
   it('shows all level cards after clicking Level Select', async () => {
@@ -119,7 +130,20 @@ describe('App', () => {
     expect(screen.getAllByRole('button', { name: /level \d+/i })).toHaveLength(30);
   });
 
-  it('renders board previews with landmark tile art', async () => {
+  it('keeps level card star tooltips out of the tab order', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /level select/i }));
+
+    const firstLevelCard = screen.getByRole('button', { name: 'Level 1: First Drift' });
+    const starTooltips = firstLevelCard.querySelectorAll('.star-tooltip-trigger');
+
+    expect(starTooltips.length).toBeGreaterThan(0);
+    starTooltips.forEach((starTooltip) => expect(starTooltip).not.toHaveAttribute('tabindex'));
+  });
+
+  it('does not render level preview thumbnails in level cards', async () => {
     const user = userEvent.setup();
     render(<App />);
 
@@ -128,12 +152,10 @@ describe('App', () => {
     const portalLevel = screen.getByRole('button', { name: 'Level 17: Portal Lock locked' });
     const spikeLevel = screen.getByRole('button', { name: 'Level 11: Spike Lane locked' });
 
-    expect(within(portalLevel).getByLabelText(/portal lock board preview/i)).toBeInTheDocument();
-    expect(portalLevel.querySelector('.preview-wall')).toBeInTheDocument();
-    expect(portalLevel.querySelector('.preview-door')).toBeInTheDocument();
-    expect(portalLevel.querySelector('.preview-portal')).toBeInTheDocument();
-    expect(within(spikeLevel).getByLabelText(/spike lane board preview/i)).toBeInTheDocument();
-    expect(spikeLevel.querySelector('.preview-spike')).toBeInTheDocument();
+    expect(within(portalLevel).queryByLabelText(/portal lock board preview/i)).not.toBeInTheDocument();
+    expect(portalLevel.querySelector('.level-preview')).not.toBeInTheDocument();
+    expect(within(spikeLevel).queryByLabelText(/spike lane board preview/i)).not.toBeInTheDocument();
+    expect(spikeLevel.querySelector('.level-preview')).not.toBeInTheDocument();
   });
 
   it('groups level select cards by campaign chapter progress', async () => {
@@ -207,6 +229,8 @@ describe('App', () => {
 
     const summary = screen.getByRole('region', { name: /campaign summary/i });
 
+    expect(within(summary).getAllByRole('term')).toHaveLength(6);
+    expect(within(summary).getAllByRole('definition')).toHaveLength(6);
     expect(within(summary).getByText('Levels Completed')).toBeInTheDocument();
     expect(within(summary).getByText('3 / 30')).toBeInTheDocument();
     expect(within(summary).getByText('Stars Earned')).toBeInTheDocument();
@@ -257,6 +281,8 @@ describe('App', () => {
     const firstDriftEntry = within(journal).getByLabelText(/first drift journal entry/i);
 
     expect(journalToggle).toHaveAttribute('aria-expanded', 'true');
+    expect(within(journal).getByRole('list')).toBeInTheDocument();
+    expect(within(journal).getAllByRole('listitem')).toHaveLength(30);
     expect(within(journal).getByText('Puzzle Journal')).toBeInTheDocument();
     expect(within(firstDriftEntry).getByText('First Drift')).toBeInTheDocument();
     expect(within(firstDriftEntry).getByText('Completion date')).toBeInTheDocument();
@@ -350,6 +376,14 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /keyboard shortcuts/i })).toBeInTheDocument();
     expect(screen.queryByLabelText(/theme/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^theme$/i)).not.toBeInTheDocument();
+
+    const accessibilitySettings = screen.getByRole('group', { name: /accessibility/i });
+    const gameplaySettings = screen.getByRole('group', { name: /gameplay/i });
+    const reducedMotionToggle = within(accessibilitySettings).getByRole('checkbox', { name: /reduced motion/i });
+    const hintNudgesToggle = within(gameplaySettings).getByRole('checkbox', { name: /hint nudges/i });
+
+    expect(reducedMotionToggle).toHaveAccessibleDescription(/reduce animated movement/i);
+    expect(hintNudgesToggle).toHaveAccessibleDescription(/show gentle hint prompts/i);
   });
 
   it('renders the settings modal without a header gear icon', async () => {
@@ -360,6 +394,7 @@ describe('App', () => {
 
     const settingsDialog = screen.getByRole('dialog', { name: /settings/i });
     expect(container.querySelector('.settings-dialog .lucide-settings')).not.toBeInTheDocument();
+    expect(settingsDialog.tagName).toBe('DIALOG');
     expect(within(settingsDialog).getByRole('heading', { name: /settings/i })).toBeInTheDocument();
   });
 
@@ -487,13 +522,15 @@ describe('App', () => {
 
     await user.click(screen.getByRole('button', { name: /settings/i }));
     await user.click(screen.getByRole('button', { name: /reset progress/i }));
-    expect(screen.getByRole('alertdialog', { name: /reset all progress/i })).toBeInTheDocument();
+    expect(screen.queryByRole('alertdialog', { name: /reset all progress/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/reset all progress/i)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /confirm reset/i }));
 
     await waitFor(() => {
       expect(window.localStorage.getItem('puzzle-drift:save')).toBeNull();
     });
 
+    expect(screen.getByRole('status', { name: /progress reset\. settings preserved/i })).toBeInTheDocument();
     expect(JSON.parse(window.localStorage.getItem('puzzle-drift:settings') ?? '{}')).toMatchObject({
       confirmRestart: false,
       hintNudgesEnabled: false,
@@ -585,7 +622,7 @@ describe('App', () => {
     expect(within(starRequirements).getByText('<= 10 moves and <= 25 seconds')).toBeInTheDocument();
   });
 
-  it('level select stars explain star requirements on hover and keyboard focus', async () => {
+  it('level select stars explain star requirements on hover without adding nested tab stops', async () => {
     const user = userEvent.setup();
     const progress = completeLevel(createInitialSaveData(), 1, {
       moves: 6,
@@ -600,20 +637,11 @@ describe('App', () => {
 
     const levelCard = screen.getByRole('button', { name: 'Level 1: First Drift' });
     const twoStarTrigger = within(levelCard).getAllByLabelText(/2 Stars: Complete within target moves/i)[0];
-    const threeStarTrigger = within(levelCard).getAllByLabelText(/3 Stars: Complete within target moves and target time/i)[0];
 
     await user.hover(twoStarTrigger);
 
     expect(screen.getByRole('tooltip', { name: /2 Stars\s+Complete within target moves/i })).toBeInTheDocument();
-
-    await user.unhover(twoStarTrigger);
-    act(() => {
-      threeStarTrigger.focus();
-    });
-
-    expect(
-      await screen.findByRole('tooltip', { name: /3 Stars\s+Complete within target moves and target time/i }),
-    ).toBeInTheDocument();
+    expect(twoStarTrigger).not.toHaveAttribute('tabindex');
   });
 
   it('completed levels show earned achievement badges with tooltips', async () => {
@@ -636,6 +664,7 @@ describe('App', () => {
     expect(within(levelCard).getByText('Speed Solver')).toBeInTheDocument();
     expect(within(levelCard).getByText('Three Star Clear')).toBeInTheDocument();
     expect(within(levelCard).getByText('First Try Clear')).toBeInTheDocument();
+    expect(levelCard).toHaveAccessibleDescription(/Perfect Route, Completed at or under the par move target/i);
 
     await user.hover(within(levelCard).getByText('Perfect Route'));
 
@@ -711,6 +740,8 @@ describe('App', () => {
     render(<App />);
 
     await user.click(screen.getByRole('button', { name: /new game/i }));
+    expect(screen.getAllByRole('row')).toHaveLength(7);
+    expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     expect(screen.getByLabelText('Player at 2, 1')).toBeInTheDocument();
 
@@ -738,6 +769,10 @@ describe('App', () => {
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     fireEvent.keyDown(window, { key: 'r' });
     expect(screen.getByRole('alertdialog', { name: /restart level/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /cancel/i })).toHaveFocus();
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('alertdialog', { name: /restart level/i })).not.toBeInTheDocument());
+    fireEvent.keyDown(window, { key: 'r' });
     await user.click(screen.getByRole('button', { name: /confirm restart/i }));
     expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
     expect(screen.getByLabelText('0 moves')).toBeInTheDocument();
@@ -819,9 +854,9 @@ describe('App', () => {
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     fireEvent.keyDown(window, { key: 'ArrowDown' });
     fireEvent.keyDown(window, { key: 'ArrowDown' });
-    await user.click(within(screen.getByRole('status', { name: /level completed/i })).getByRole('button', { name: /^hint journal$/i }));
+    await user.click(within(screen.getByRole('dialog', { name: /level complete/i })).getByRole('button', { name: /^hint journal$/i }));
 
-    expect(within(screen.getByRole('status', { name: /level completed/i })).getByRole('region', { name: /hint journal/i })).toBeInTheDocument();
+    expect(within(screen.getByRole('dialog', { name: /level complete/i })).getByRole('region', { name: /hint journal/i })).toBeInTheDocument();
   });
 
   it('records local hint analytics and shows the debug report', async () => {
@@ -849,9 +884,9 @@ describe('App', () => {
       tierUses: { 1: 1 },
     });
 
-    await user.click(within(screen.getByRole('status', { name: /level completed/i })).getByRole('button', { name: /hint analytics/i }));
+    await user.click(within(screen.getByRole('dialog', { name: /level complete/i })).getByRole('button', { name: /hint analytics/i }));
 
-    const report = within(screen.getByRole('status', { name: /level completed/i })).getByRole('region', {
+    const report = within(screen.getByRole('dialog', { name: /level complete/i })).getByRole('region', {
       name: /hint analytics report/i,
     });
 
@@ -875,6 +910,22 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: /tier 1 direction/i }));
 
     expect(screen.getByText(LEVELS[0].hints[0].text)).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: new RegExp(LEVELS[0].hints[0].text, 'i') })).toHaveAttribute(
+      'aria-atomic',
+      'true',
+    );
+  });
+
+  it('announces visual hint highlights politely', async () => {
+    const user = await openLevel3();
+
+    await user.click(screen.getByRole('button', { name: /open puzzle assist/i }));
+    await user.click(screen.getByRole('button', { name: /show visual hint/i }));
+
+    expect(screen.getByRole('status', { name: /related puzzle objects highlighted/i })).toHaveAttribute(
+      'aria-live',
+      'polite',
+    );
   });
 
   it('proactively shows a contextual assist nudge when the player appears stuck', async () => {
@@ -1035,8 +1086,7 @@ describe('App', () => {
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     fireEvent.keyDown(window, { key: 'ArrowDown' });
     fireEvent.keyDown(window, { key: 'ArrowDown' });
-    await user.click(screen.getByRole('button', { name: /back to start/i }));
-    await user.click(screen.getByRole('button', { name: /level select/i }));
+    await user.click(within(screen.getByRole('dialog', { name: /level complete/i })).getByRole('button', { name: /^level select$/i }));
 
     expect(screen.getByRole('button', { name: 'Level 2: Corner Signal' })).toBeEnabled();
   });
@@ -1070,7 +1120,7 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: /new game/i }));
     solveFirstDrift();
 
-    const completion = screen.getByRole('status', { name: /level completed/i });
+    const completion = screen.getByRole('dialog', { name: /level complete/i });
 
     expect(within(completion).getByRole('heading', { name: /level complete/i })).toBeInTheDocument();
     expect(within(completion).getAllByText('Time').length).toBeGreaterThan(0);
@@ -1094,7 +1144,7 @@ describe('App', () => {
     expect(within(completion).getAllByText('New Record').length).toBeGreaterThan(0);
     const nextButton = within(completion).getByRole('button', { name: /next level.*spacebar/i });
     const retryButton = within(completion).getByRole('button', { name: /retry.*r/i });
-    const levelSelectButton = within(completion).getByRole('button', { name: /level select.*l/i });
+    const levelSelectButton = within(completion).getByRole('button', { name: /^level select$/i });
 
     expect(nextButton).toHaveFocus();
     expect(nextButton).toHaveClass('completion-action');
@@ -1105,9 +1155,11 @@ describe('App', () => {
     expect(retryButton.querySelector('.action-label')).toHaveTextContent('Retry');
     expect(retryButton.querySelector('.action-shortcut')).toHaveTextContent('R');
     expect(levelSelectButton).toHaveClass('completion-action');
-    expect(levelSelectButton.querySelector('.action-label')).toHaveTextContent('Level Select');
-    expect(levelSelectButton.querySelector('.action-shortcut')).toHaveTextContent('L');
-    expect(screen.getByRole('grid', { name: /first drift board/i })).toBeInTheDocument();
+    expect(levelSelectButton).not.toHaveClass('shortcut-action');
+    expect(levelSelectButton.querySelector('.action-shortcut')).not.toBeInTheDocument();
+    expect(screen.queryByRole('grid', { name: /first drift board/i })).not.toBeInTheDocument();
+    expect(document.querySelector('.game-board-shell')).toHaveAttribute('inert');
+    expect(document.querySelector('.game-board-shell')).toHaveAttribute('aria-hidden', 'true');
   });
 
   it('completion stars explain star requirements on keyboard focus', async () => {
@@ -1117,7 +1169,7 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: /new game/i }));
     solveFirstDrift();
 
-    const completion = screen.getByRole('status', { name: /level completed/i });
+    const completion = screen.getByRole('dialog', { name: /level complete/i });
     const oneStarTrigger = within(completion).getAllByLabelText(/1 Star: Complete the level/i)[0];
 
     act(() => {
@@ -1140,7 +1192,7 @@ describe('App', () => {
     fireEvent.keyDown(window, { key: 'ArrowUp' });
     solveFirstDrift();
 
-    const completion = screen.getByRole('status', { name: /level completed/i });
+    const completion = screen.getByRole('dialog', { name: /level complete/i });
 
     expect(within(completion).getAllByText('12').length).toBeGreaterThan(0);
     expect(within(completion).getAllByText('12 / 10').length).toBeGreaterThan(0);
@@ -1165,7 +1217,7 @@ describe('App', () => {
 
     solveFirstDrift();
 
-    const completion = screen.getByRole('status', { name: /level completed/i });
+    const completion = screen.getByRole('dialog', { name: /level complete/i });
 
     expect(within(completion).getAllByText('0:31').length).toBeGreaterThan(0);
     expect(within(completion).getAllByText('0:31 / 0:25').length).toBeGreaterThan(0);
@@ -1187,7 +1239,7 @@ describe('App', () => {
 
     solveFirstDrift();
 
-    const completion = screen.getByRole('status', { name: /level completed/i });
+    const completion = screen.getByRole('dialog', { name: /level complete/i });
 
     expect(within(completion).getAllByText('0:27 / 0:25').length).toBeGreaterThan(0);
     expect(within(completion).getByText(/So Close/i)).toBeInTheDocument();
@@ -1295,7 +1347,7 @@ describe('App', () => {
     expect(window.localStorage.getItem('puzzle-drift:save')).toBeNull();
   });
 
-  it('completion overlay shortcuts advance, retry, and open level select', async () => {
+  it('completion overlay shortcuts advance and retry while level select stays keyboard reachable', async () => {
     const user = userEvent.setup();
     render(<App />);
 
@@ -1312,7 +1364,8 @@ describe('App', () => {
     expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
 
     solveFirstDrift();
-    fireEvent.keyDown(window, { key: 'l' });
+    const completion = screen.getByRole('dialog', { name: /level complete/i });
+    await user.click(within(completion).getByRole('button', { name: /^level select$/i }));
     expect(screen.getByRole('heading', { name: /level select/i })).toBeInTheDocument();
   });
 
@@ -1334,6 +1387,7 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: /new game/i }));
     solveFirstDrift();
 
+    expect(screen.getByRole('dialog', { name: /level complete/i })).toHaveAttribute('aria-modal', 'true');
     expect(screen.getByRole('status', { name: /level completed.*stars earned/i })).toBeInTheDocument();
     expect(screen.getByText(/level completed with .* stars/i)).toBeInTheDocument();
   });
@@ -1427,14 +1481,13 @@ describe('App', () => {
 
     expect(pauseDialog).toHaveAttribute('aria-modal', 'true');
     expect(backdrop).toHaveClass('pause-backdrop');
-    expect(screen.getByRole('grid', { name: /first drift board/i })).toBeInTheDocument();
+    expect(screen.queryByRole('grid', { name: /first drift board/i })).not.toBeInTheDocument();
+    expect(document.querySelector('.game-play-area')).toHaveAttribute('inert');
+    expect(document.querySelector('.game-play-area')).toHaveAttribute('aria-hidden', 'true');
     expect(document.querySelector('.game-screen')).toHaveClass('paused');
 
     fireEvent.keyDown(window, { key: 'ArrowRight' });
-    expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: /move right/i }));
-    expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /move right/i })).not.toBeInTheDocument();
 
     await user.hover(pauseButton);
     expect(screen.queryByRole('tooltip', { name: /pause game/i })).not.toBeInTheDocument();
@@ -1444,10 +1497,12 @@ describe('App', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: /paused/i })).not.toBeInTheDocument();
     });
+    expect(screen.getByRole('grid', { name: /first drift board/i })).toBeInTheDocument();
+    expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
     await waitFor(() => expect(pauseButton).toHaveFocus());
   });
 
-  it('pause modal shortcuts resume, restart, and open level select', async () => {
+  it('pause modal shortcuts resume and restart while level select stays keyboard reachable', async () => {
     const user = userEvent.setup();
     render(<App />);
 
@@ -1466,7 +1521,7 @@ describe('App', () => {
     expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: 'p' });
-    fireEvent.keyDown(window, { key: 'l' });
+    await user.click(screen.getByRole('button', { name: /^level select$/i }));
     expect(screen.getByRole('heading', { name: /level select/i })).toBeInTheDocument();
   });
 
@@ -1478,13 +1533,14 @@ describe('App', () => {
     fireEvent.keyDown(window, { key: 'p' });
     const resumeButton = screen.getByRole('button', { name: /resume.*spacebar/i });
     const restartButton = screen.getByRole('button', { name: /restart level.*r/i });
-    const levelSelectButton = screen.getByRole('button', { name: /level select.*l/i });
+    const levelSelectButton = screen.getByRole('button', { name: /^level select$/i });
 
     expect(resumeButton).toHaveClass('shortcut-action');
     expect(resumeButton.querySelector('.action-label')).toHaveTextContent('Resume');
     expect(resumeButton.querySelector('.action-shortcut')).toHaveTextContent('Spacebar');
     expect(restartButton).toHaveClass('shortcut-action');
-    expect(levelSelectButton).toHaveClass('shortcut-action');
+    expect(levelSelectButton).not.toHaveClass('shortcut-action');
+    expect(levelSelectButton.querySelector('.action-shortcut')).not.toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: ' ' });
     expect(screen.queryByRole('dialog', { name: /paused/i })).not.toBeInTheDocument();
@@ -1513,7 +1569,32 @@ describe('App', () => {
     fireEvent.keyDown(window, { key: 'r' });
 
     expect(screen.getByRole('dialog', { name: /settings/i })).toBeInTheDocument();
-    expect(screen.getByRole('dialog', { name: /paused/i })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: /settings/i })).toHaveAttribute('aria-modal', 'true');
+    expect(document.querySelector('.pause-dialog')).not.toHaveAttribute('aria-modal');
+  });
+
+  it('suppresses gameplay shortcuts inside editable targets and with modifier keys', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    fireEvent.keyDown(window, { key: 'ArrowRight', ctrlKey: true });
+    expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
+
+    const editor = document.createElement('div');
+    editor.setAttribute('contenteditable', 'true');
+    document.body.appendChild(editor);
+
+    act(() => {
+      editor.focus();
+      fireEvent.keyDown(editor, { key: 'ArrowRight' });
+      fireEvent.keyDown(editor, { key: 'r' });
+    });
+
+    expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
+    expect(screen.queryByRole('alertdialog', { name: /restart level/i })).not.toBeInTheDocument();
+
+    editor.remove();
   });
 
   it('prevents page scroll when Spacebar is used as a shortcut', async () => {
@@ -1635,6 +1716,7 @@ describe('App', () => {
     expect(screen.getByRole('alertdialog', { name: /hazard hit/i })).toBeInTheDocument();
     expect(screen.getByText(/you hit the spikes/i)).toBeInTheDocument();
     expect(screen.getByLabelText('Player at 3, 1')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /retry the level/i })).toHaveFocus();
 
     await user.click(screen.getByRole('button', { name: /retry the level/i }));
 

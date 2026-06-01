@@ -33,10 +33,12 @@ export function App() {
   const [view, setView] = useState<AppView>('start');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isHowToPlayOpen, setIsHowToPlayOpen] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
   const [save, setSave] = useState<SaveData>(() => loadProgress());
   const [settings, setSettings] = useState(() => loadSettings());
   const skipNextProgressSaveRef = useRef(false);
   const settingsReturnFocusRef = useRef<HTMLElement | null>(null);
+  const howToPlayReturnFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (skipNextProgressSaveRef.current) {
@@ -73,6 +75,20 @@ export function App() {
     }, 0);
   };
 
+  const openHowToPlay = () => {
+    howToPlayReturnFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setIsHowToPlayOpen(true);
+  };
+
+  const closeHowToPlay = () => {
+    setIsHowToPlayOpen(false);
+    window.setTimeout(() => {
+      howToPlayReturnFocusRef.current?.focus();
+      howToPlayReturnFocusRef.current = null;
+    }, 0);
+  };
+
   const startNewGame = () => {
     setSave({ ...createInitialSaveData(), hasActiveRun: true });
     setView('game');
@@ -82,6 +98,7 @@ export function App() {
     clearProgressStorage();
     skipNextProgressSaveRef.current = true;
     setSave(createInitialSaveData());
+    setStatusMessage('Progress reset. Settings preserved.');
     setView('start');
   };
 
@@ -101,17 +118,21 @@ export function App() {
   };
 
   return (
-    <main className="app-shell" data-view={view}>
-      {view === 'start' && (
-        <StartScreen
-          canContinue={save.hasActiveRun}
-          onContinue={() => setView('game')}
-          onNewGame={startNewGame}
-          onLevelSelect={() => setView('levels')}
-          onSettings={openSettings}
-          onHowToPlay={() => setIsHowToPlayOpen(true)}
-        />
-      )}
+    <>
+      <a className="skip-link" href="#main-content">
+        Skip to main content
+      </a>
+      <main className="app-shell" data-view={view} id="main-content" tabIndex={-1}>
+        {view === 'start' && (
+          <StartScreen
+            canContinue={save.hasActiveRun}
+            onContinue={() => setView('game')}
+            onNewGame={startNewGame}
+            onLevelSelect={() => setView('levels')}
+            onSettings={openSettings}
+            onHowToPlay={openHowToPlay}
+          />
+        )}
 
       {view === 'game' && (
         <GameScreen
@@ -155,7 +176,13 @@ export function App() {
         onChange={setSettings}
         onClose={closeSettings}
       />
-      <HowToPlayDialog isOpen={isHowToPlayOpen} onClose={() => setIsHowToPlayOpen(false)} />
-    </main>
+      <HowToPlayDialog isOpen={isHowToPlayOpen} onClose={closeHowToPlay} />
+      {statusMessage ? (
+        <p className="sr-only" role="status" aria-label={statusMessage} aria-live="polite" aria-atomic="true">
+          {statusMessage}
+        </p>
+      ) : null}
+      </main>
+    </>
   );
 }

@@ -27,6 +27,7 @@ import {
   movePlayer,
 } from '../logic/movement';
 import { useGameShortcuts } from '../hooks/useGameShortcuts';
+import { useModalAccessibility } from '../hooks/useModalAccessibility';
 import type { Direction, GameSettings, GameState, Level, SaveData } from '../types/game';
 import {
   createHintAnalyticsReport,
@@ -553,8 +554,13 @@ export function GameScreen({
   const lockedDoorTimeoutRef = useRef<number | null>(null);
   const completionPanelRef = useRef<HTMLElement | null>(null);
   const completionPrimaryActionRef = useRef<HTMLButtonElement | null>(null);
+  const failurePanelRef = useRef<HTMLElement | null>(null);
+  const failureRetryRef = useRef<HTMLButtonElement | null>(null);
   const pauseDialogRef = useRef<HTMLElement | null>(null);
   const pauseReturnFocusRef = useRef<HTMLElement | null>(null);
+  const restartConfirmPanelRef = useRef<HTMLElement | null>(null);
+  const restartCancelRef = useRef<HTMLButtonElement | null>(null);
+  const restartReturnFocusRef = useRef<HTMLElement | null>(null);
   const savedCompletionRef = useRef(false);
   const selectedHintTiersThisAttemptRef = useRef<Set<number>>(new Set());
   const usedHintThisAttemptRef = useRef(false);
@@ -800,52 +806,10 @@ export function GameScreen({
   }, [failedResetCount, gameState, level, onCompleteLevel, updateHintAnalytics]);
 
   useEffect(() => {
-    if (!isPaused) {
-      return undefined;
+    if (isPaused && !isSettingsOpen) {
+      setIsHintPanelOpen(false);
     }
-
-    setIsHintPanelOpen(false);
-
-    const dialog = pauseDialogRef.current;
-    const focusableElements = () =>
-      Array.from(
-        dialog?.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-        ) ?? [],
-      ).filter((element) => !element.hasAttribute('disabled') && element.tabIndex !== -1);
-
-    focusableElements()[0]?.focus();
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Tab') {
-        return;
-      }
-
-      const elements = focusableElements();
-      const firstElement = elements[0];
-      const lastElement = elements[elements.length - 1];
-
-      if (!firstElement || !lastElement) {
-        event.preventDefault();
-
-        return;
-      }
-
-      if (event.shiftKey && document.activeElement === firstElement) {
-        event.preventDefault();
-        lastElement.focus();
-      }
-
-      if (!event.shiftKey && document.activeElement === lastElement) {
-        event.preventDefault();
-        firstElement.focus();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isPaused, resumeGame]);
+  }, [isPaused, isSettingsOpen]);
 
   const resetLevel = useCallback(() => {
     if (!gameState.isComplete && (gameState.moves > 0 || gameState.elapsedSeconds > 0)) {
@@ -870,6 +834,8 @@ export function GameScreen({
 
   const requestRestart = useCallback(() => {
     if (settings.confirmRestart && !gameState.isComplete && !gameState.isFailed) {
+      restartReturnFocusRef.current =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
       setIsHintPanelOpen(false);
       setIsHintJournalOpen(false);
       setIsHintAnalyticsOpen(false);
@@ -880,6 +846,14 @@ export function GameScreen({
 
     resetLevel();
   }, [gameState.isComplete, gameState.isFailed, resetLevel, settings.confirmRestart]);
+
+  const cancelRestart = useCallback(() => {
+    setIsConfirmingRestart(false);
+    window.setTimeout(() => {
+      restartReturnFocusRef.current?.focus();
+      restartReturnFocusRef.current = null;
+    }, 0);
+  }, []);
 
   const undoMove = useCallback(() => {
     setHistory((currentHistory) => {
@@ -980,6 +954,33 @@ export function GameScreen({
     onNextLevel();
   }, [level.id, onLevelSelect, onNextLevel]);
 
+  useModalAccessibility({
+    dialogRef: pauseDialogRef,
+    isOpen: isPaused && !isSettingsOpen && !isConfirmingRestart,
+    onEscape: resumeGame,
+  });
+
+  useModalAccessibility({
+    dialogRef: completionPanelRef,
+    initialFocusRef: completionPrimaryActionRef,
+    isOpen: gameState.isComplete,
+    onEscape: goToCompletionPrimaryAction,
+  });
+
+  useModalAccessibility({
+    dialogRef: failurePanelRef,
+    initialFocusRef: failureRetryRef,
+    isOpen: gameState.isFailed,
+    onEscape: resetLevel,
+  });
+
+  useModalAccessibility({
+    dialogRef: restartConfirmPanelRef,
+    initialFocusRef: restartCancelRef,
+    isOpen: isConfirmingRestart,
+    onEscape: cancelRestart,
+  });
+
   useGameShortcuts({
     isComplete: gameState.isComplete,
     isFailed: gameState.isFailed,
@@ -995,52 +996,6 @@ export function GameScreen({
     onToggleHints: toggleHints,
     onUndo: undoMove,
   });
-
-  useEffect(() => {
-    if (!gameState.isComplete) {
-      return undefined;
-    }
-
-    completionPrimaryActionRef.current?.focus();
-
-    const panel = completionPanelRef.current;
-    const focusableElements = () =>
-      Array.from(
-        panel?.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-        ) ?? [],
-      ).filter((element) => !element.hasAttribute('disabled') && element.tabIndex !== -1);
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Tab') {
-        return;
-      }
-
-      const elements = focusableElements();
-      const firstElement = elements[0];
-      const lastElement = elements[elements.length - 1];
-
-      if (!firstElement || !lastElement) {
-        event.preventDefault();
-
-        return;
-      }
-
-      if (event.shiftKey && document.activeElement === firstElement) {
-        event.preventDefault();
-        lastElement.focus();
-      }
-
-      if (!event.shiftKey && document.activeElement === lastElement) {
-        event.preventDefault();
-        firstElement.focus();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [gameState.isComplete]);
 
   const starsEarned = calculateStars(level, gameState);
   const bestMoves = progress.bestMoves[level.id] ?? gameState.moves;
@@ -1078,7 +1033,7 @@ export function GameScreen({
         </button>
         <div>
           <p className="eyebrow">current drift</p>
-          <h2 id="game-screen-title">Level {level.id}</h2>
+          <h1 id="game-screen-title">Level {level.id}</h1>
         </div>
       </header>
 
@@ -1120,13 +1075,21 @@ export function GameScreen({
           <section
             className={`completion-panel${chapterMilestone ? ' chapter-complete' : ''}${reducedMotion ? '' : ' level-complete-pop'}`}
             ref={completionPanelRef}
-            role="status"
-            aria-label={`${completionAriaLabel}. ${starsEarned} stars earned in ${gameState.moves} moves and ${formatTime(
-              gameState.elapsedSeconds,
-            )}.`}
-            aria-live="polite"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="completion-title"
+            aria-describedby="completion-summary"
           >
-            <p className="sr-only">
+            <p
+              className="sr-only"
+              id="completion-summary"
+              role="status"
+              aria-label={`${completionAriaLabel}. ${starsEarned} stars earned in ${gameState.moves} moves and ${formatTime(
+                gameState.elapsedSeconds,
+              )}.`}
+              aria-live="polite"
+              aria-atomic="true"
+            >
               {completionAriaLabel} with {starsEarned} stars, {gameState.moves} moves, and a time of{' '}
               {formatTime(gameState.elapsedSeconds)}.
             </p>
@@ -1134,7 +1097,7 @@ export function GameScreen({
               <CircleCheck aria-hidden="true" />
               <div>
                 {chapterMilestone ? <span className="chapter-complete-badge">{chapterMilestone.chapterTitle}</span> : null}
-                <h2>{completionTitle}</h2>
+                <h2 id="completion-title">{completionTitle}</h2>
                 <p>{completionSubtitle}</p>
               </div>
             </header>
@@ -1205,12 +1168,9 @@ export function GameScreen({
                 <BarChart3 aria-hidden="true" />
                 <span>Hint Analytics</span>
               </button>
-              <button type="button" className="menu-button shortcut-action completion-action" onClick={onLevelSelect}>
-                <span className="action-label">
-                  <ListOrdered aria-hidden="true" />
-                  <span>Level Select</span>
-                </span>
-                <span className="action-shortcut">L</span>
+              <button type="button" className="menu-button completion-action" onClick={onLevelSelect}>
+                <ListOrdered aria-hidden="true" />
+                <span>Level Select</span>
               </button>
             </div>
 
@@ -1227,6 +1187,7 @@ export function GameScreen({
         {gameState.isFailed ? (
           <section
             className={`failure-panel${reducedMotion ? '' : ' hazard-failure-pop'}`}
+            ref={failurePanelRef}
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="failure-title"
@@ -1239,7 +1200,7 @@ export function GameScreen({
                 <p id="failure-description">You hit the spikes.</p>
               </div>
             </header>
-            <button type="button" className="menu-button primary" onClick={resetLevel}>
+            <button type="button" className="menu-button primary" ref={failureRetryRef} onClick={resetLevel}>
               <RotateCcw aria-hidden="true" />
               <span>Retry the level?</span>
             </button>
@@ -1249,19 +1210,21 @@ export function GameScreen({
         {isConfirmingRestart ? (
           <section
             className="restart-confirm-panel"
+            ref={restartConfirmPanelRef}
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="restart-confirm-title"
+            aria-describedby="restart-confirm-description"
           >
             <header className="failure-header">
               <AlertTriangle aria-hidden="true" />
               <div>
                 <h2 id="restart-confirm-title">Restart level?</h2>
-                <p>Your current attempt will be reset.</p>
+                <p id="restart-confirm-description">Your current attempt will be reset.</p>
               </div>
             </header>
             <div className="confirm-actions">
-              <button type="button" className="menu-button" onClick={() => setIsConfirmingRestart(false)}>
+              <button type="button" className="menu-button" ref={restartCancelRef} onClick={cancelRestart}>
                 <X aria-hidden="true" />
                 <span>Cancel</span>
               </button>
@@ -1279,6 +1242,7 @@ export function GameScreen({
             role="status"
             aria-label={feedbackMessage}
             aria-live="polite"
+            aria-atomic="true"
           >
             {feedbackMessage}
           </div>
@@ -1291,7 +1255,8 @@ export function GameScreen({
             className="pause-dialog"
             ref={pauseDialogRef}
             role="dialog"
-            aria-modal="true"
+            aria-hidden={isSettingsOpen ? true : undefined}
+            aria-modal={isSettingsOpen ? undefined : true}
             aria-labelledby="pause-title"
           >
             <header className="dialog-header">
@@ -1316,12 +1281,9 @@ export function GameScreen({
                 </span>
                 <span className="action-shortcut">R</span>
               </button>
-              <button type="button" className="menu-button shortcut-action" onClick={onLevelSelect}>
-                <span className="action-label">
-                  <ListOrdered aria-hidden="true" />
-                  <span>Level Select</span>
-                </span>
-                <span className="action-shortcut">L</span>
+              <button type="button" className="menu-button" onClick={onLevelSelect}>
+                <ListOrdered aria-hidden="true" />
+                <span>Level Select</span>
               </button>
               <button type="button" className="menu-button" onClick={onSettings}>
                 <Settings aria-hidden="true" />
@@ -1363,7 +1325,6 @@ export function GameScreen({
                   <dt>Completion</dt>
                   <dd>Next Level: Spacebar or Enter</dd>
                   <dd>Retry: R</dd>
-                  <dd>Level Select: L</dd>
                 </div>
               </dl>
             </footer>

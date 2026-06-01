@@ -254,6 +254,7 @@ export function GameBoard({
 }: GameBoardProps) {
   const [selectedHintTier, setSelectedHintTier] = useState<number | null>(null);
   const [visualHintPulseId, setVisualHintPulseId] = useState(0);
+  const [visualHintAnnouncement, setVisualHintAnnouncement] = useState('');
   const shouldShowKeys = level.mechanics.includes('key') || gameState.collectedKeys > 0;
   const visualHintPositions = getVisualHintPositions(level);
   const hasVisualHints = visualHintPositions.size > 0;
@@ -376,7 +377,7 @@ export function GameBoard({
       </section>
 
       {hintNudge ? (
-        <aside className="assist-nudge" aria-label="Puzzle assist nudge" aria-live="polite">
+        <aside className="assist-nudge" aria-label="Puzzle assist nudge" aria-live="polite" aria-atomic="true">
           <div>
             <p className="assist-kicker">Need a hint?</p>
             <p>{hintNudge.message}</p>
@@ -401,51 +402,52 @@ export function GameBoard({
         }}
       >
         {level.grid.map((row, y) =>
-          row.map((tile, x) => {
-            const hasPlayer = playerPosition.x === x && playerPosition.y === y;
-            const effectiveTile = getEffectiveTileAt(level, gameState, { x, y }) ?? tile;
-            const renderedTile = getRenderedTile(tile, effectiveTile);
-            const isActive = isActiveTile(level, gameState, x, y, renderedTile);
-            const isOpenedDoor = tile === 'door' && effectiveTile === 'floor';
-            const objectIcon = renderObjectIcon(renderedTile, isActive, isOpenedDoor);
-            const wasKeyCollected =
-              tile === 'key' && gameState.collectedKeyPositions.some((position) => positionsMatch(position, { x, y }));
-            const isVisualHinted = visualHintPulseId > 0 && visualHintPositions.has(positionKey({ x, y }));
+          <div className="board-row" key={y} role="row">
+            {row.map((tile, x) => {
+              const hasPlayer = playerPosition.x === x && playerPosition.y === y;
+              const effectiveTile = getEffectiveTileAt(level, gameState, { x, y }) ?? tile;
+              const renderedTile = getRenderedTile(tile, effectiveTile);
+              const isActive = isActiveTile(level, gameState, x, y, renderedTile);
+              const isOpenedDoor = tile === 'door' && effectiveTile === 'floor';
+              const objectIcon = renderObjectIcon(renderedTile, isActive, isOpenedDoor);
+              const wasKeyCollected =
+                tile === 'key' && gameState.collectedKeyPositions.some((position) => positionsMatch(position, { x, y }));
+              const isVisualHinted = visualHintPulseId > 0 && visualHintPositions.has(positionKey({ x, y }));
 
-            return (
-              <div
-                aria-label={`${getTileLabel(tile, renderedTile, effectiveTile)} at ${x}, ${y}`}
-                className={`board-tile tile-${renderedTile}${
-                  objectIcon ? ' tile-object' : ''
-                }${isActive ? ' tile-active' : ''}${isOpenedDoor ? ' tile-opened' : ''}${
-                  wasKeyCollected ? ' tile-key-collected' : ''
-                }${isVisualHinted ? ` visual-hint-tile visual-hint-pulse-${visualHintPulseId % 2}` : ''}${
-                  isVisualHinted && reducedMotion ? ' visual-hint-static' : ''
-                }${renderedTile === 'portal' ? getPortalPairClass(level, x, y) : ''}`}
-                data-testid="board-tile"
-                key={`${x}-${y}`}
-                role="gridcell"
-              >
-                {objectIcon ? (
-                  <span className="tile-object-icon" data-testid={`${isOpenedDoor ? 'opened-door' : renderedTile}-icon`}>
-                    {objectIcon}
-                  </span>
-                ) : null}
-                {hasPlayer ? (
-                  <span
-                    aria-label={`Player at ${x}, ${y}`}
-                    className={`player-avatar${animationClass.includes('player-move') ? ' player-moving' : ''}`}
-                    data-testid="player-avatar"
-                  >
-                    <Compass aria-hidden="true" />
-                  </span>
-                ) : null}
-              </div>
-            );
-          }),
+              return (
+                <div
+                  aria-label={`${getTileLabel(tile, renderedTile, effectiveTile)} at ${x}, ${y}`}
+                  className={`board-tile tile-${renderedTile}${
+                    objectIcon ? ' tile-object' : ''
+                  }${isActive ? ' tile-active' : ''}${isOpenedDoor ? ' tile-opened' : ''}${
+                    wasKeyCollected ? ' tile-key-collected' : ''
+                  }${isVisualHinted ? ` visual-hint-tile visual-hint-pulse-${visualHintPulseId % 2}` : ''}${
+                    isVisualHinted && reducedMotion ? ' visual-hint-static' : ''
+                  }${renderedTile === 'portal' ? getPortalPairClass(level, x, y) : ''}`}
+                  data-testid="board-tile"
+                  key={`${x}-${y}`}
+                  role="gridcell"
+                >
+                  {objectIcon ? (
+                    <span className="tile-object-icon" data-testid={`${isOpenedDoor ? 'opened-door' : renderedTile}-icon`}>
+                      {objectIcon}
+                    </span>
+                  ) : null}
+                  {hasPlayer ? (
+                    <span
+                      aria-label={`Player at ${x}, ${y}`}
+                      className={`player-avatar${animationClass.includes('player-move') ? ' player-moving' : ''}`}
+                      data-testid="player-avatar"
+                    >
+                      <Compass aria-hidden="true" />
+                    </span>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>,
         )}
       </div>
-
       {isHintPanelOpen ? (
         <section className="hint-panel assist-panel" id="hint-panel" aria-label="Puzzle assist">
           <div className="hint-panel-header">
@@ -478,7 +480,13 @@ export function GameBoard({
             ))}
           </div>
           {selectedHint ? (
-            <div className="assist-tier-answer" aria-live="polite">
+            <div
+              className="assist-tier-answer"
+              role="status"
+              aria-label={`Tier ${selectedHint.number} ${selectedHint.label} hint. ${selectedHint.text}`}
+              aria-live="polite"
+              aria-atomic="true"
+            >
               <span>
                 Tier {selectedHint.number} · {selectedHint.label}
               </span>
@@ -492,12 +500,26 @@ export function GameBoard({
               <button
                 type="button"
                 className="assist-link-button visual-hint-button"
-                onClick={() => setVisualHintPulseId((currentValue) => currentValue + 1)}
+                onClick={() => {
+                  setVisualHintPulseId((currentValue) => currentValue + 1);
+                  setVisualHintAnnouncement(`${visualHintPositions.size} related puzzle objects highlighted.`);
+                }}
               >
                 Show visual hint
               </button>
               <p>Highlights related puzzle objects once, without showing a route.</p>
             </div>
+          ) : null}
+          {visualHintAnnouncement ? (
+            <p
+              className="sr-only"
+              role="status"
+              aria-label={visualHintAnnouncement}
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              {visualHintAnnouncement}
+            </p>
           ) : null}
         </section>
       ) : null}

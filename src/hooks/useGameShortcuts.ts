@@ -19,9 +19,21 @@ type UseGameShortcutsOptions = {
 };
 
 function isFormControlTarget(target: EventTarget | null) {
-  return target instanceof HTMLElement
-    ? Boolean(target.closest('input, textarea, select, [contenteditable="true"]'))
-    : false;
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  if (target.isContentEditable) {
+    return true;
+  }
+
+  const editableElement = target.closest('input, textarea, select, [contenteditable]');
+
+  if (!(editableElement instanceof HTMLElement)) {
+    return false;
+  }
+
+  return editableElement.getAttribute('contenteditable') !== 'false';
 }
 
 function isButtonTarget(target: EventTarget | null) {
@@ -53,6 +65,10 @@ export function useGameShortcuts({
         return;
       }
 
+      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+        return;
+      }
+
       const key = event.key;
       const normalizedKey = key.toLowerCase();
       const startedOnButton = isButtonTarget(event.target);
@@ -66,11 +82,6 @@ export function useGameShortcuts({
         if (normalizedKey === 'r') {
           event.preventDefault();
           onRetry();
-        }
-
-        if (normalizedKey === 'l') {
-          event.preventDefault();
-          onLevelSelect();
         }
 
         return;
@@ -90,11 +101,6 @@ export function useGameShortcuts({
         if (normalizedKey === 'r') {
           event.preventDefault();
           onReset();
-        }
-
-        if (normalizedKey === 'l') {
-          event.preventDefault();
-          onLevelSelect();
         }
 
         return;

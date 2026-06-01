@@ -114,7 +114,7 @@ describe('final QA', () => {
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     fireEvent.keyDown(window, { key: 'ArrowDown' });
     fireEvent.keyDown(window, { key: 'ArrowDown' });
-    await user.click(within(screen.getByRole('status', { name: /level completed/i })).getByRole('button', { name: /level select/i }));
+    await user.click(within(screen.getByRole('dialog', { name: /level complete/i })).getByRole('button', { name: /level select/i }));
 
     expect(screen.getByRole('heading', { name: /level select/i })).toBeInTheDocument();
 

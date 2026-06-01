@@ -1,4 +1,6 @@
 import { ArrowRight, Diamond, KeyRound, MousePointer2, X } from 'lucide-react';
+import { useRef } from 'react';
+import { useModalAccessibility } from '../hooks/useModalAccessibility';
 
 type HowToPlayDialogProps = {
   isOpen: boolean;
@@ -29,13 +31,29 @@ const HOW_TO_PLAY_ITEMS = [
 ];
 
 export function HowToPlayDialog({ isOpen, onClose }: HowToPlayDialogProps) {
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
+
+  useModalAccessibility({ dialogRef, isOpen, onEscape: onClose });
+
   if (!isOpen) {
     return null;
   }
 
   return (
-    <div className="dialog-backdrop" role="presentation">
-      <section className="how-to-dialog" role="dialog" aria-modal="true" aria-labelledby="how-to-title">
+    <dialog
+      className="dialog-backdrop dialog-shell"
+      ref={dialogRef}
+      aria-modal="true"
+      aria-labelledby="how-to-title"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <section
+        className="how-to-dialog"
+      >
         <header className="dialog-header">
           <div className="dialog-title">
             <h2 id="how-to-title">How To Play</h2>
@@ -45,18 +63,20 @@ export function HowToPlayDialog({ isOpen, onClose }: HowToPlayDialogProps) {
           </button>
         </header>
 
-        <div className="how-to-list">
+        <ul className="how-to-list">
           {HOW_TO_PLAY_ITEMS.map(({ icon: Icon, title, description }) => (
-            <article className="how-to-item" key={title}>
-              <Icon aria-hidden="true" />
-              <div>
-                <h3>{title}</h3>
-                <p>{description}</p>
-              </div>
-            </article>
+            <li className="how-to-list-item" key={title}>
+              <article className="how-to-item">
+                <Icon aria-hidden="true" />
+                <div>
+                  <h3>{title}</h3>
+                  <p>{description}</p>
+                </div>
+              </article>
+            </li>
           ))}
-        </div>
+        </ul>
       </section>
-    </div>
+    </dialog>
   );
 }

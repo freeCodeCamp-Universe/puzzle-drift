@@ -91,8 +91,6 @@ const MECHANIC_LABELS: Record<TileType, string> = {
   wall: 'Walls',
 };
 
-const PREVIEW_TILE_TYPES = new Set<TileType>(['door', 'exit', 'key', 'portal', 'spike', 'wall']);
-
 const ACHIEVEMENT_BADGES = {
   firstTry: {
     label: 'First Try Clear',
@@ -142,6 +140,7 @@ function LevelStars({ count }: { count: number }) {
         <StarTooltip
           className={index < count ? 'star-filled' : undefined}
           earned={index < count}
+          focusable={false}
           key={index}
           tier={(index + 1) as 1 | 2 | 3}
         />
@@ -176,7 +175,7 @@ function StarRequirementIcons({ count }: { count: number }) {
   return (
     <span className="star-requirement-icons">
       {Array.from({ length: count }, (_, index) => (
-        <StarTooltip key={index} tier={(index + 1) as 1 | 2 | 3} />
+        <StarTooltip focusable={false} key={index} tier={(index + 1) as 1 | 2 | 3} />
       ))}
     </span>
   );
@@ -222,34 +221,16 @@ function AchievementBadges({
   );
 }
 
-function compactAchievementBadges(badges: (AchievementBadge | null)[]) {
-  return badges.filter((badge): badge is AchievementBadge => badge !== null);
+function getAchievementDescription(badges: AchievementBadge[]) {
+  if (badges.length === 0) {
+    return undefined;
+  }
+
+  return `Achievement badges: ${badges.map((badge) => `${badge.label}, ${badge.tooltip}`).join('; ')}.`;
 }
 
-function LevelPreview({ level }: { level: Level }) {
-  return (
-    <span
-      className="level-preview"
-      aria-label={`${level.name} board preview`}
-      style={{
-        gridTemplateColumns: `repeat(${level.width}, minmax(0, 1fr))`,
-      }}
-    >
-      {level.grid.flatMap((row, rowIndex) =>
-        row.map((tile, columnIndex) => {
-          const previewTile = PREVIEW_TILE_TYPES.has(tile) ? tile : 'floor';
-
-          return (
-            <span
-              aria-hidden="true"
-              className={`preview-tile preview-${previewTile}`}
-              key={`${rowIndex}-${columnIndex}`}
-            />
-          );
-        }),
-      )}
-    </span>
-  );
+function compactAchievementBadges(badges: (AchievementBadge | null)[]) {
+  return badges.filter((badge): badge is AchievementBadge => badge !== null);
 }
 
 function LevelCard({
@@ -291,11 +272,14 @@ function LevelCard({
         levelStats?.firstTryClear ? ACHIEVEMENT_BADGES.firstTry : null,
       ])
     : [];
+  const achievementDescription = getAchievementDescription(achievementBadges);
+  const achievementDescriptionId = achievementDescription ? `level-${level.id}-achievement-description` : undefined;
 
   return (
     <button
       type="button"
       aria-disabled={!unlocked}
+      aria-describedby={achievementDescriptionId}
       aria-current={isCurrentObjective ? 'step' : undefined}
       aria-label={`Level ${level.id}: ${level.name}${lockedLabel}`}
       className={`level-card${stateClass}${currentObjectiveClass}`}
@@ -322,9 +306,13 @@ function LevelCard({
         ) : null}
       </span>
 
-      <LevelPreview level={level} />
       {unlocked ? <LevelStars count={stars} /> : null}
       <AchievementBadges badges={achievementBadges} />
+      {achievementDescription ? (
+        <span className="sr-only" id={achievementDescriptionId}>
+          {achievementDescription}
+        </span>
+      ) : null}
       <StarRequirements level={level} />
 
       <span className="mechanic-list" aria-label={`Mechanics: ${level.mechanics.join(', ')}`}>
@@ -433,65 +421,65 @@ function PuzzleJournal({ isOpen, onToggle, progress }: { isOpen: boolean; onTogg
         <span>{isOpen ? 'Hide' : 'Show'}</span>
       </button>
       {isOpen ? (
-        <div className="puzzle-journal-list">
-        {LEVELS.map((level) => {
-          const stats = progress.levelStats.find((levelStats) => levelStats.levelId === level.id);
-          const completed = Boolean(stats?.completed);
+        <ul className="puzzle-journal-list">
+          {LEVELS.map((level) => {
+            const stats = progress.levelStats.find((levelStats) => levelStats.levelId === level.id);
+            const completed = Boolean(stats?.completed);
 
-          return (
-            <article
-              className={`puzzle-journal-entry${completed ? '' : ' pending'}`}
-              aria-label={`${level.name} journal entry`}
-              key={level.id}
-            >
-              <div className="journal-level-title">
-                <span>#{level.id.toString().padStart(2, '0')}</span>
-                <strong>{level.name}</strong>
-              </div>
-              <dl className="journal-stat-grid">
-                <div>
-                  <dt>Completion date</dt>
-                  <dd>{formatCompletionDate(stats?.completionDate)}</dd>
+            return (
+              <li
+                className={`puzzle-journal-entry${completed ? '' : ' pending'}`}
+                aria-label={`${level.name} journal entry`}
+                key={level.id}
+              >
+                <div className="journal-level-title">
+                  <span>#{level.id.toString().padStart(2, '0')}</span>
+                  <strong>{level.name}</strong>
                 </div>
-                <div>
-                  <dt>Best moves</dt>
-                  <dd>{stats?.bestMoves ?? '--'}</dd>
-                </div>
-                <div>
-                  <dt>Best time</dt>
-                  <dd>{formatTime(stats?.bestTimeSeconds)}</dd>
-                </div>
-                <div>
-                  <dt>Stars earned</dt>
-                  <dd>{completed ? `${stats?.stars ?? 0} / 3` : '--'}</dd>
-                </div>
-                <div>
-                  <dt>Hints used</dt>
-                  <dd>{completed ? stats?.hintsUsed ?? 0 : '--'}</dd>
-                </div>
-              </dl>
-              {completed ? (
-                <div className="journal-mechanic-summary" aria-label={`${level.name} mechanic history`}>
-                  <span>
-                    <KeyRound aria-hidden="true" />
-                    Keys {stats?.keysCollected ?? 0}
-                  </span>
-                  <span>
-                    <Lock aria-hidden="true" />
-                    Doors {stats?.doorsOpened ?? 0}
-                  </span>
-                  <span>
-                    <Wand2 aria-hidden="true" />
-                    Portals {stats?.portalsUsed ?? 0}
-                  </span>
-                </div>
-              ) : (
-                <p>Complete this puzzle to add it to your journal.</p>
-              )}
-            </article>
-          );
-        })}
-        </div>
+                <dl className="journal-stat-grid">
+                  <div>
+                    <dt>Completion date</dt>
+                    <dd>{formatCompletionDate(stats?.completionDate)}</dd>
+                  </div>
+                  <div>
+                    <dt>Best moves</dt>
+                    <dd>{stats?.bestMoves ?? '--'}</dd>
+                  </div>
+                  <div>
+                    <dt>Best time</dt>
+                    <dd>{formatTime(stats?.bestTimeSeconds)}</dd>
+                  </div>
+                  <div>
+                    <dt>Stars earned</dt>
+                    <dd>{completed ? `${stats?.stars ?? 0} / 3` : '--'}</dd>
+                  </div>
+                  <div>
+                    <dt>Hints used</dt>
+                    <dd>{completed ? stats?.hintsUsed ?? 0 : '--'}</dd>
+                  </div>
+                </dl>
+                {completed ? (
+                  <div className="journal-mechanic-summary" aria-label={`${level.name} mechanic history`}>
+                    <span>
+                      <KeyRound aria-hidden="true" />
+                      Keys {stats?.keysCollected ?? 0}
+                    </span>
+                    <span>
+                      <Lock aria-hidden="true" />
+                      Doors {stats?.doorsOpened ?? 0}
+                    </span>
+                    <span>
+                      <Wand2 aria-hidden="true" />
+                      Portals {stats?.portalsUsed ?? 0}
+                    </span>
+                  </div>
+                ) : (
+                  <p>Complete this puzzle to add it to your journal.</p>
+                )}
+              </li>
+            );
+          })}
+        </ul>
       ) : null}
     </section>
   );
@@ -519,7 +507,7 @@ export function LevelSelectScreen({ progress, onBack, onSelectLevel }: LevelSele
           <ArrowLeft aria-hidden="true" />
         </button>
         <div>
-          <h2 id="level-select-title">Level Select</h2>
+          <h1 id="level-select-title">Level Select</h1>
         </div>
       </header>
 
@@ -530,45 +518,45 @@ export function LevelSelectScreen({ progress, onBack, onSelectLevel }: LevelSele
               <Trophy aria-hidden="true" />
               <div>
                 <p className="campaign-chapter-kicker">Player Profile</p>
-                <h3>Campaign Summary</h3>
+                <h2>Campaign Summary</h2>
               </div>
             </div>
-            <div className="campaign-summary-grid">
+            <dl className="campaign-summary-grid">
               <div className="campaign-summary-stat">
                 <CheckCircle2 aria-hidden="true" />
-                <span>Levels Completed</span>
-                <strong>
+                <dt>Levels Completed</dt>
+                <dd>
                   {campaignSummary.levelsCompleted} / {campaignSummary.totalLevels}
-                </strong>
+                </dd>
               </div>
               <div className="campaign-summary-stat">
                 <Star aria-hidden="true" />
-                <span>Stars Earned</span>
-                <strong>
+                <dt>Stars Earned</dt>
+                <dd>
                   {campaignSummary.starsEarned} / {campaignSummary.totalStars}
-                </strong>
+                </dd>
               </div>
               <div className="campaign-summary-stat">
                 <BarChart3 aria-hidden="true" />
-                <span>Best Completion Rate</span>
-                <strong>{campaignSummary.completionRate}%</strong>
+                <dt>Best Completion Rate</dt>
+                <dd>{campaignSummary.completionRate}%</dd>
               </div>
               <div className="campaign-summary-stat">
                 <Footprints aria-hidden="true" />
-                <span>Total Moves</span>
-                <strong>{campaignSummary.totalMoves}</strong>
+                <dt>Total Moves</dt>
+                <dd>{campaignSummary.totalMoves}</dd>
               </div>
               <div className="campaign-summary-stat">
                 <Timer aria-hidden="true" />
-                <span>Total Play Time</span>
-                <strong>{formatTime(campaignSummary.totalPlayTimeSeconds)}</strong>
+                <dt>Total Play Time</dt>
+                <dd>{formatTime(campaignSummary.totalPlayTimeSeconds)}</dd>
               </div>
               <div className="campaign-summary-stat">
                 <Map aria-hidden="true" />
-                <span>Current Chapter</span>
-                <strong>{campaignSummary.currentChapter}</strong>
+                <dt>Current Chapter</dt>
+                <dd>{campaignSummary.currentChapter}</dd>
               </div>
-            </div>
+            </dl>
           </section>
 
           <PuzzleJournal
@@ -591,7 +579,7 @@ export function LevelSelectScreen({ progress, onBack, onSelectLevel }: LevelSele
                   <header className="campaign-chapter-header">
                     <div className="campaign-chapter-copy">
                       <p className="campaign-chapter-kicker">Chapter {chapterIndex + 1}</p>
-                      <h3 id={`${chapter.id}-title`}>{chapter.title}</h3>
+                      <h2 id={`${chapter.id}-title`}>{chapter.title}</h2>
                       <p>{chapter.description}</p>
                     </div>
                     <div className="campaign-progress" aria-label={`${chapter.completedCount}/${totalLevels} Complete`}>
@@ -608,27 +596,34 @@ export function LevelSelectScreen({ progress, onBack, onSelectLevel }: LevelSele
                     </div>
                   </header>
 
-                  <div className="level-card-grid" aria-label={`${chapter.title} levels`}>
+                  <ul className="level-card-grid" aria-label={`${chapter.title} levels`}>
                     {chapter.levels.map((level) => (
-                      <LevelCard
-                        key={level.id}
-                        chapterTitle={chapter.title}
-                        isCurrentObjective={level.id === currentObjectiveLevel}
-                        level={level}
-                        progress={progress}
-                        onSelectLevel={onSelectLevel}
-                      />
+                      <li className="level-card-list-item" key={level.id}>
+                        <LevelCard
+                          chapterTitle={chapter.title}
+                          isCurrentObjective={level.id === currentObjectiveLevel}
+                          level={level}
+                          progress={progress}
+                          onSelectLevel={onSelectLevel}
+                        />
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 </section>
               );
             })}
           </div>
         </>
       ) : (
-        <section className="empty-state" aria-label="No levels available">
+        <section
+          className="empty-state"
+          role="status"
+          aria-label="No levels available"
+          aria-live="polite"
+          aria-atomic="true"
+        >
           <ListOrdered aria-hidden="true" />
-          <h3>No levels loaded</h3>
+          <h2>No levels loaded</h2>
           <p>Check back after the level pack is available.</p>
         </section>
       )}

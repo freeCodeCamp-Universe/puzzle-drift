@@ -21,11 +21,12 @@ type StarTier = keyof typeof STAR_EXPLANATIONS;
 type StarTooltipProps = {
   className?: string;
   earned?: boolean;
+  focusable?: boolean;
   reducedMotion?: boolean;
   tier: StarTier;
 };
 
-export function StarTooltip({ className, earned = true, reducedMotion = false, tier }: StarTooltipProps) {
+export function StarTooltip({ className, earned = true, focusable = true, reducedMotion = false, tier }: StarTooltipProps) {
   const explanation = STAR_EXPLANATIONS[tier];
   const stateClass = earned ? 'star-earned' : 'star-empty';
 
@@ -43,7 +44,7 @@ export function StarTooltip({ className, earned = true, reducedMotion = false, t
         aria-label={`${explanation.title}: ${explanation.description}`}
         className={`star-tooltip-trigger ${stateClass}${className ? ` ${className}` : ''}`}
         role="img"
-        tabIndex={0}
+        tabIndex={focusable ? 0 : undefined}
       >
         <Star aria-hidden="true" />
       </span>
