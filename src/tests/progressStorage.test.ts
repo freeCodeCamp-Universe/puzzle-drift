@@ -6,8 +6,19 @@ import {
   loadSettings,
   saveProgress,
   saveSettings,
+  unlockHintTier,
 } from '../utils/progressStorage';
 import { resetAppStorage } from './testStorage';
+import {
+  createHintAnalyticsReport,
+  loadHintAnalytics,
+  recordHintAnalyticsAttempt,
+  recordHintAnalyticsCompletion,
+  recordHintAnalyticsOpen,
+  recordHintAnalyticsTierUse,
+  saveHintAnalytics,
+} from '../utils/hintAnalytics';
+import { LEVELS } from '../data/levels';
 
 describe('progress storage', () => {
   beforeEach(() => {
@@ -29,6 +40,44 @@ describe('progress storage', () => {
       completedLevels: [1],
       stars: { 1: 2 },
       unlockedLevels: [1, 2],
+    });
+  });
+
+  it('saves and loads unlocked hint tiers', () => {
+    const progress = unlockHintTier(unlockHintTier(createInitialSaveData(), 1, 2), 1, 1);
+
+    saveProgress(progress);
+
+    expect(loadProgress().unlockedHints).toEqual({
+      1: [1, 2],
+    });
+  });
+
+  it('saves local hint analytics and creates a debug report', () => {
+    let analytics = loadHintAnalytics();
+
+    analytics = recordHintAnalyticsAttempt(analytics, 1);
+    analytics = recordHintAnalyticsOpen(analytics, 1, 2, true);
+    analytics = recordHintAnalyticsTierUse(analytics, 1, 2);
+    analytics = recordHintAnalyticsCompletion(analytics, 1, true);
+    saveHintAnalytics(analytics);
+
+    const loadedAnalytics = loadHintAnalytics();
+
+    expect(loadedAnalytics.levels[1]).toMatchObject({
+      attempts: 1,
+      attemptsWithHint: 1,
+      completionsAfterHint: 1,
+      failuresBeforeHintSamples: 1,
+      failuresBeforeHintTotal: 2,
+      hintOpens: 1,
+      tierUses: { 2: 1 },
+    });
+    expect(createHintAnalyticsReport(loadedAnalytics, LEVELS)[0]).toMatchObject({
+      completionRate: 1,
+      hintUsageRate: 1,
+      levelId: 1,
+      levelName: LEVELS[0].name,
     });
   });
 

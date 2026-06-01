@@ -50,11 +50,30 @@ describe('level validation', () => {
       'Step on the marked object before returning. Watch what opens.',
       'After the door opens, return to the marked passage. The switch controls the required route.',
     ]);
+    expect(LEVELS[15].hints[0].text).toContain('Not every route can be walked.');
+  });
+
+  it('uses decomposition hints for late-game multi-mechanic levels', () => {
+    expect(LEVELS.slice(25, 30).every((level) => level.hints.length === 4)).toBe(true);
+    expect(LEVELS.slice(25, 30).flatMap((level) => level.hints.map((hint) => hint.text))).not.toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('Not every route can be walked.'),
+        expect.stringContaining('Switches can change the map.'),
+        expect.stringContaining('Locked doors require keys.'),
+      ]),
+    );
+
+    expect(LEVELS[25].hints.map((hint) => hint.text)).toEqual([
+      'Start by solving the key route through the hazards.',
+      'Cross the cold lane for the key before treating the door as an objective.',
+      'The safe route depends on where the ice leaves you after the key.',
+      'The final door should be approached only after the key route has a return path.',
+    ]);
     expect(LEVELS[29].hints.map((hint) => hint.text)).toEqual([
-      'Focus on one objective at a time. Not every route can be walked. Switches can change the map. Locked doors require keys.',
-      'The cargo plate must be solved before the final lock. Consider where the portal sends you. Watch what opens. The key may require backtracking.',
-      'Portal access becomes useful after the cargo gate opens. The portal is required. The switch controls the required route. The door is mandatory.',
-      'Cargo gate, portal access, key, switch gate, then final lock.',
+      'Start by opening the cargo route.',
+      'The ice section becomes useful later.',
+      'The portal is not the first objective.',
+      'The final key should be collected after the switch route is opened.',
     ]);
   });
 

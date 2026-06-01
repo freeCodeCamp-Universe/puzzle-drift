@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUp,
+  BookOpen,
   Box,
   CircleDot,
   Compass,
@@ -25,6 +26,7 @@ import {
 } from 'lucide-react';
 import { getEffectiveTileAt } from '../logic/movement';
 import type { Direction, GameState, Level, Position, TileType } from '../types/game';
+import { getHintTierStatus, isHintTierUnlocked } from '../utils/hints';
 import { Tooltip } from './Tooltip';
 
 type GameBoardProps = {
@@ -38,12 +40,15 @@ type GameBoardProps = {
   hintNudge?: {
     message: string;
   } | null;
+  unlockedHintTiers?: number[];
   isPaused?: boolean;
   reducedMotion: boolean;
   animationClass?: string;
   playerPosition: Position;
   onLevelSelect: () => void;
   onDismissHintNudge?: () => void;
+  onOpenHintJournal?: () => void;
+  onSelectHintTier?: (tierNumber: number) => void;
   onToggleHints: () => void;
   onMove: (direction: Direction) => void;
   onPause: () => void;
@@ -223,43 +228,6 @@ function getVisualHintPositions(level: Level) {
   return positions;
 }
 
-function getHintTierUnlock(tierNumber: number) {
-  switch (tierNumber) {
-    case 1:
-      return { failedAttempts: 0, seconds: 0 };
-    case 2:
-      return { failedAttempts: 2, seconds: 60 };
-    case 3:
-      return { failedAttempts: 5, seconds: 120 };
-    default:
-      return { failedAttempts: 8, seconds: 180 };
-  }
-}
-
-function isHintTierUnlocked(tierNumber: number, elapsedSeconds: number, failedAttemptCount: number) {
-  const unlock = getHintTierUnlock(tierNumber);
-
-  return elapsedSeconds >= unlock.seconds || failedAttemptCount >= unlock.failedAttempts;
-}
-
-function formatUnlockTime(seconds: number) {
-  return `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
-}
-
-function getHintTierStatus(tierNumber: number, elapsedSeconds: number, failedAttemptCount: number) {
-  const unlock = getHintTierUnlock(tierNumber);
-
-  if (tierNumber === 1) {
-    return 'Available now';
-  }
-
-  if (isHintTierUnlocked(tierNumber, elapsedSeconds, failedAttemptCount)) {
-    return 'Available now';
-  }
-
-  return `Unlocks at ${formatUnlockTime(unlock.seconds)} or ${unlock.failedAttempts} failed attempts`;
-}
-
 export function GameBoard({
   level,
   moves,
@@ -269,12 +237,15 @@ export function GameBoard({
   failedAttemptCount = 0,
   isHintPanelOpen,
   hintNudge = null,
+  unlockedHintTiers = [],
   isPaused = false,
   reducedMotion,
   animationClass = '',
   playerPosition,
   onLevelSelect,
   onDismissHintNudge,
+  onOpenHintJournal = () => undefined,
+  onSelectHintTier = () => undefined,
   onToggleHints,
   onMove,
   onPause,
@@ -287,10 +258,17 @@ export function GameBoard({
   const visualHintPositions = getVisualHintPositions(level);
   const hasVisualHints = visualHintPositions.size > 0;
   const hintTiers = level.hints.map((hint, hintIndex) => ({
-    isUnlocked: isHintTierUnlocked(hintIndex + 1, elapsedSeconds, failedAttemptCount),
+    isUnlocked:
+      unlockedHintTiers.includes(hintIndex + 1) ||
+      isHintTierUnlocked(hintIndex + 1, elapsedSeconds, failedAttemptCount),
     label: ['Direction', 'Mechanic', 'Route', 'Plan'][hintIndex] ?? `Step ${hintIndex + 1}`,
     number: hintIndex + 1,
-    status: getHintTierStatus(hintIndex + 1, elapsedSeconds, failedAttemptCount),
+    status: getHintTierStatus(
+      hintIndex + 1,
+      elapsedSeconds,
+      failedAttemptCount,
+      unlockedHintTiers.includes(hintIndex + 1),
+    ),
     text: hint.text,
   }));
   const selectedHint = hintTiers.find((hintTier) => hintTier.number === selectedHintTier && hintTier.isUnlocked);
@@ -360,6 +338,17 @@ export function GameBoard({
               disabled={isPaused}
             >
               <ListOrdered aria-hidden="true" />
+            </button>
+          </Tooltip>
+          <Tooltip content="Hint Journal" disabled={isPaused} reducedMotion={reducedMotion}>
+            <button
+              type="button"
+              className="icon-button"
+              onClick={onOpenHintJournal}
+              aria-label="Open hint journal"
+              disabled={isPaused}
+            >
+              <BookOpen aria-hidden="true" />
             </button>
           </Tooltip>
           <Tooltip content={isHintPanelOpen ? 'Close Assist' : 'Open Assist'} disabled={isPaused} reducedMotion={reducedMotion}>
@@ -476,7 +465,10 @@ export function GameBoard({
                 className="assist-tier-button"
                 disabled={!hintTier.isUnlocked}
                 key={hintTier.number}
-                onClick={() => setSelectedHintTier(hintTier.number)}
+                onClick={() => {
+                  setSelectedHintTier(hintTier.number);
+                  onSelectHintTier(hintTier.number);
+                }}
                 aria-pressed={selectedHintTier === hintTier.number}
               >
                 <span>Tier {hintTier.number}</span>

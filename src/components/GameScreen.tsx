@@ -1,15 +1,20 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
+  BarChart3,
+  BookOpen,
+  Check,
   CircleCheck,
   Footprints,
   ListOrdered,
+  LockKeyhole,
   Play,
   RotateCcw,
   Settings,
   Star,
   Timer,
   TriangleAlert,
+  X,
 } from 'lucide-react';
 import { LEVELS } from '../data/levels';
 import {
@@ -21,6 +26,17 @@ import {
 } from '../logic/movement';
 import { useGameShortcuts } from '../hooks/useGameShortcuts';
 import type { Direction, GameState, Level, SaveData } from '../types/game';
+import {
+  createHintAnalyticsReport,
+  loadHintAnalytics,
+  recordHintAnalyticsAttempt,
+  recordHintAnalyticsCompletion,
+  recordHintAnalyticsOpen,
+  recordHintAnalyticsTierUse,
+  saveHintAnalytics,
+  type HintAnalyticsData,
+} from '../utils/hintAnalytics';
+import { isHintTierUnlocked } from '../utils/hints';
 import { GameBoard } from './GameBoard';
 
 type CompletionPayload = {
@@ -37,6 +53,7 @@ type GameScreenProps = {
   onLevelSelect: () => void;
   onNextLevel: () => void;
   onSettings: () => void;
+  onUnlockHintTier: (levelId: number, tierNumber: number) => void;
   progress: SaveData;
   reducedMotion: boolean;
 };
@@ -217,6 +234,105 @@ function CompletionStars({
   );
 }
 
+function HintJournal({
+  level,
+  onClose,
+  unlockedHintTiers,
+}: {
+  level: Level;
+  onClose: () => void;
+  unlockedHintTiers: number[];
+}) {
+  return (
+    <section className="hint-journal" aria-label="Hint journal">
+      <header className="hint-journal-header">
+        <div className="dialog-title">
+          <BookOpen aria-hidden="true" />
+          <div>
+            <p className="eyebrow">hint journal</p>
+            <h3>{level.name}</h3>
+          </div>
+        </div>
+        <button type="button" className="icon-button" onClick={onClose} aria-label="Close hint journal">
+          <X aria-hidden="true" />
+        </button>
+      </header>
+
+      <ul className="hint-journal-list">
+        {level.hints.map((hint, hintIndex) => {
+          const tierNumber = hintIndex + 1;
+          const isUnlocked = unlockedHintTiers.includes(tierNumber);
+
+          return (
+            <li className={`hint-journal-item${isUnlocked ? ' unlocked' : ' locked'}`} key={tierNumber}>
+              <div className="hint-journal-tier">
+                {isUnlocked ? <Check aria-hidden="true" /> : <LockKeyhole aria-hidden="true" />}
+                <span>{isUnlocked ? 'Unlocked' : 'Locked'}</span>
+                <strong>Hint {tierNumber}</strong>
+              </div>
+              {isUnlocked ? <p>{hint.text}</p> : <p>Keep exploring to unlock this hint.</p>}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+function formatPercent(value: number) {
+  return `${Math.round(value * 100)}%`;
+}
+
+function HintAnalyticsReport({
+  analytics,
+  onClose,
+}: {
+  analytics: HintAnalyticsData;
+  onClose: () => void;
+}) {
+  const reportRows = createHintAnalyticsReport(analytics, LEVELS);
+
+  return (
+    <section className="hint-analytics-report" aria-label="Hint analytics report">
+      <header className="hint-journal-header">
+        <div className="dialog-title">
+          <BarChart3 aria-hidden="true" />
+          <div>
+            <p className="eyebrow">developer debug</p>
+            <h3>Hint Analytics</h3>
+          </div>
+        </div>
+        <button type="button" className="icon-button" onClick={onClose} aria-label="Close hint analytics">
+          <X aria-hidden="true" />
+        </button>
+      </header>
+
+      <div className="analytics-table-wrap">
+        <table className="analytics-table">
+          <thead>
+            <tr>
+              <th scope="col">Level</th>
+              <th scope="col">Hint Usage %</th>
+              <th scope="col">Completion Rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            {reportRows.map((row) => (
+              <tr key={row.levelId}>
+                <td>
+                  Level {row.levelId}: {row.levelName}
+                </td>
+                <td>{formatPercent(row.hintUsageRate)}</td>
+                <td>{formatPercent(row.completionRate)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 export function GameScreen({
   currentLevel,
   isSettingsOpen,
@@ -225,6 +341,7 @@ export function GameScreen({
   onLevelSelect,
   onNextLevel,
   onSettings,
+  onUnlockHintTier,
   progress,
   reducedMotion,
 }: GameScreenProps) {
@@ -236,6 +353,9 @@ export function GameScreen({
   const [failedRouteCount, setFailedRouteCount] = useState(0);
   const [failedResetCount, setFailedResetCount] = useState(0);
   const [isHintPanelOpen, setIsHintPanelOpen] = useState(false);
+  const [isHintJournalOpen, setIsHintJournalOpen] = useState(false);
+  const [isHintAnalyticsOpen, setIsHintAnalyticsOpen] = useState(false);
+  const [hintAnalytics, setHintAnalytics] = useState<HintAnalyticsData>(() => loadHintAnalytics());
   const [dismissedHintNudgeKey, setDismissedHintNudgeKey] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [positionTrail, setPositionTrail] = useState<string[]>(() => [positionKey(level.playerStart)]);
@@ -247,6 +367,11 @@ export function GameScreen({
   const pauseDialogRef = useRef<HTMLElement | null>(null);
   const pauseReturnFocusRef = useRef<HTMLElement | null>(null);
   const savedCompletionRef = useRef(false);
+  const usedHintThisAttemptRef = useRef(false);
+  const unlockedHintTiers = useMemo(
+    () => progress.unlockedHints[level.id] ?? [],
+    [level.id, progress.unlockedHints],
+  );
 
   const clearFeedbackMessage = useCallback(() => {
     if (lockedDoorTimeoutRef.current !== null) {
@@ -280,6 +405,24 @@ export function GameScreen({
       setBoardAnimationClass(animationClass);
     },
     [reducedMotion],
+  );
+
+  const updateHintAnalytics = useCallback((update: (analytics: HintAnalyticsData) => HintAnalyticsData) => {
+    setHintAnalytics((currentAnalytics) => {
+      const nextAnalytics = update(currentAnalytics);
+
+      saveHintAnalytics(nextAnalytics);
+
+      return nextAnalytics;
+    });
+  }, []);
+
+  const recordNewAttempt = useCallback(
+    (levelId: number) => {
+      usedHintThisAttemptRef.current = false;
+      updateHintAnalytics((currentAnalytics) => recordHintAnalyticsAttempt(currentAnalytics, levelId));
+    },
+    [updateHintAnalytics],
   );
 
   const moveInDirection = useCallback(
@@ -391,12 +534,15 @@ export function GameScreen({
     setFailedRouteCount(0);
     setFailedResetCount(0);
     setIsHintPanelOpen(false);
+    setIsHintJournalOpen(false);
+    setIsHintAnalyticsOpen(false);
     setDismissedHintNudgeKey(null);
     setIsPaused(false);
     setPositionTrail([positionKey(level.playerStart)]);
     setSpikeDeathCount(0);
     savedCompletionRef.current = false;
-  }, [clearFeedbackMessage, level]);
+    recordNewAttempt(level.id);
+  }, [clearFeedbackMessage, level, recordNewAttempt]);
 
   useEffect(() => clearFeedbackMessage, [clearFeedbackMessage]);
 
@@ -416,17 +562,33 @@ export function GameScreen({
   }, [gameState.isComplete, gameState.isFailed, isPaused]);
 
   useEffect(() => {
+    level.hints.forEach((_, hintIndex) => {
+      const tierNumber = hintIndex + 1;
+
+      if (
+        !unlockedHintTiers.includes(tierNumber) &&
+        isHintTierUnlocked(tierNumber, gameState.elapsedSeconds, failedResetCount)
+      ) {
+        onUnlockHintTier(level.id, tierNumber);
+      }
+    });
+  }, [failedResetCount, gameState.elapsedSeconds, level, onUnlockHintTier, unlockedHintTiers]);
+
+  useEffect(() => {
     if (!gameState.isComplete || savedCompletionRef.current) {
       return;
     }
 
     savedCompletionRef.current = true;
+    updateHintAnalytics((currentAnalytics) =>
+      recordHintAnalyticsCompletion(currentAnalytics, level.id, usedHintThisAttemptRef.current),
+    );
     onCompleteLevel({
       moves: gameState.moves,
       stars: calculateStars(level, gameState),
       timeSeconds: gameState.elapsedSeconds,
     });
-  }, [gameState, level, onCompleteLevel]);
+  }, [gameState, level, onCompleteLevel, updateHintAnalytics]);
 
   useEffect(() => {
     if (!isPaused) {
@@ -487,11 +649,14 @@ export function GameScreen({
     setBoardAnimationClass('');
     setFailedRouteCount(0);
     clearFeedbackMessage();
+    setIsHintJournalOpen(false);
+    setIsHintAnalyticsOpen(false);
     setDismissedHintNudgeKey(null);
     setIsPaused(false);
     setPositionTrail([positionKey(level.playerStart)]);
     savedCompletionRef.current = false;
-  }, [clearFeedbackMessage, gameState.elapsedSeconds, gameState.isComplete, gameState.moves, level]);
+    recordNewAttempt(level.id);
+  }, [clearFeedbackMessage, gameState.elapsedSeconds, gameState.isComplete, gameState.moves, level, recordNewAttempt]);
 
   const undoMove = useCallback(() => {
     setHistory((currentHistory) => {
@@ -509,8 +674,52 @@ export function GameScreen({
   }, []);
 
   const toggleHints = useCallback(() => {
-    setIsHintPanelOpen((currentValue) => !currentValue);
+    setIsHintJournalOpen(false);
+    setIsHintAnalyticsOpen(false);
+    setIsHintPanelOpen((currentValue) => {
+      const shouldOpen = !currentValue;
+
+      if (shouldOpen) {
+        const isFirstHintThisAttempt = !usedHintThisAttemptRef.current;
+
+        usedHintThisAttemptRef.current = true;
+        updateHintAnalytics((currentAnalytics) =>
+          recordHintAnalyticsOpen(currentAnalytics, level.id, failedResetCount, isFirstHintThisAttempt),
+        );
+      }
+
+      return shouldOpen;
+    });
+  }, [failedResetCount, level.id, updateHintAnalytics]);
+
+  const toggleHintJournal = useCallback(() => {
+    setIsHintPanelOpen(false);
+    setIsHintAnalyticsOpen(false);
+    setIsHintJournalOpen((currentValue) => !currentValue);
   }, []);
+
+  const closeHintJournal = useCallback(() => {
+    setIsHintJournalOpen(false);
+  }, []);
+
+  const toggleHintAnalytics = useCallback(() => {
+    setIsHintPanelOpen(false);
+    setIsHintJournalOpen(false);
+    setIsHintAnalyticsOpen((currentValue) => !currentValue);
+  }, []);
+
+  const closeHintAnalytics = useCallback(() => {
+    setIsHintAnalyticsOpen(false);
+  }, []);
+
+  const selectHintTier = useCallback(
+    (tierNumber: number) => {
+      updateHintAnalytics((currentAnalytics) =>
+        recordHintAnalyticsTierUse(currentAnalytics, level.id, tierNumber),
+      );
+    },
+    [level.id, updateHintAnalytics],
+  );
 
   const dismissHintNudge = useCallback(() => {
     const nudge = getStuckNudge({
@@ -653,15 +862,26 @@ export function GameScreen({
           level={level}
           moves={gameState.moves}
           reducedMotion={reducedMotion}
+          unlockedHintTiers={unlockedHintTiers}
           onLevelSelect={onLevelSelect}
           onMove={moveInDirection}
+          onOpenHintJournal={toggleHintJournal}
           onPause={pauseGame}
           onReset={resetLevel}
           onDismissHintNudge={dismissHintNudge}
+          onSelectHintTier={selectHintTier}
           onToggleHints={toggleHints}
           onUndo={undoMove}
           playerPosition={gameState.playerPosition}
         />
+
+        {isHintJournalOpen && !isPaused && !gameState.isComplete ? (
+          <HintJournal level={level} unlockedHintTiers={unlockedHintTiers} onClose={closeHintJournal} />
+        ) : null}
+
+        {isHintAnalyticsOpen && !isPaused && !gameState.isComplete ? (
+          <HintAnalyticsReport analytics={hintAnalytics} onClose={closeHintAnalytics} />
+        ) : null}
 
         {gameState.isComplete ? (
           <section
@@ -727,6 +947,24 @@ export function GameScreen({
                 </span>
                 <span className="action-shortcut">R</span>
               </button>
+              <button
+                type="button"
+                className="menu-button completion-action"
+                onClick={toggleHintJournal}
+                aria-expanded={isHintJournalOpen}
+              >
+                <BookOpen aria-hidden="true" />
+                <span>Hint Journal</span>
+              </button>
+              <button
+                type="button"
+                className="menu-button completion-action"
+                onClick={toggleHintAnalytics}
+                aria-expanded={isHintAnalyticsOpen}
+              >
+                <BarChart3 aria-hidden="true" />
+                <span>Hint Analytics</span>
+              </button>
               <button type="button" className="menu-button shortcut-action completion-action" onClick={onLevelSelect}>
                 <span className="action-label">
                   <ListOrdered aria-hidden="true" />
@@ -735,6 +973,14 @@ export function GameScreen({
                 <span className="action-shortcut">L</span>
               </button>
             </div>
+
+            {isHintJournalOpen ? (
+              <HintJournal level={level} unlockedHintTiers={unlockedHintTiers} onClose={closeHintJournal} />
+            ) : null}
+
+            {isHintAnalyticsOpen ? (
+              <HintAnalyticsReport analytics={hintAnalytics} onClose={closeHintAnalytics} />
+            ) : null}
           </section>
         ) : null}
 
@@ -814,7 +1060,23 @@ export function GameScreen({
                 <Settings aria-hidden="true" />
                 <span>Settings</span>
               </button>
+              <button type="button" className="menu-button" onClick={toggleHintJournal} aria-expanded={isHintJournalOpen}>
+                <BookOpen aria-hidden="true" />
+                <span>Hint Journal</span>
+              </button>
+              <button type="button" className="menu-button" onClick={toggleHintAnalytics} aria-expanded={isHintAnalyticsOpen}>
+                <BarChart3 aria-hidden="true" />
+                <span>Hint Analytics</span>
+              </button>
             </div>
+
+            {isHintJournalOpen ? (
+              <HintJournal level={level} unlockedHintTiers={unlockedHintTiers} onClose={closeHintJournal} />
+            ) : null}
+
+            {isHintAnalyticsOpen ? (
+              <HintAnalyticsReport analytics={hintAnalytics} onClose={closeHintAnalytics} />
+            ) : null}
 
             <footer className="shortcut-help" aria-label="Keyboard shortcuts">
               <h3>Shortcuts</h3>

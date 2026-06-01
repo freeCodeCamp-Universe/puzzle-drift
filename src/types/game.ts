@@ -118,6 +118,7 @@ export type SaveData = {
   bestMoves: Record<number, number>;
   bestTimeSeconds: Record<number, number>;
   stars: Record<number, number>;
+  unlockedHints: Record<number, number[]>;
   levelStats: LevelStats[];
 };
 

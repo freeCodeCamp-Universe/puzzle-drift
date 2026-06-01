@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import { LEVELS } from '../data/levels';
-import { completeLevel, createInitialSaveData } from '../utils/progressStorage';
+import { completeLevel, createInitialSaveData, unlockHintTier } from '../utils/progressStorage';
 import { resetAppStorage } from './testStorage';
 
 function unlockThroughLevel(levelId: number) {
@@ -393,6 +393,81 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: /new game/i }));
 
     expect(screen.getByRole('button', { name: /open puzzle assist/i })).toBeInTheDocument();
+  });
+
+  it('opens a hint journal from the HUD with saved unlocked hints', async () => {
+    const user = userEvent.setup();
+    const progress = unlockHintTier(createInitialSaveData(), 1, 1);
+
+    window.localStorage.setItem('puzzle-drift:save', JSON.stringify({ ...progress, hasActiveRun: true }));
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /continue/i }));
+    await user.click(screen.getByRole('button', { name: /open hint journal/i }));
+
+    const journal = screen.getByRole('region', { name: /hint journal/i });
+
+    expect(within(journal).getByRole('heading', { name: LEVELS[0].name })).toBeInTheDocument();
+    expect(within(journal).getByText(LEVELS[0].hints[0].text)).toBeInTheDocument();
+    expect(within(journal).getAllByText(/keep exploring to unlock this hint/i)).toHaveLength(2);
+  });
+
+  it('opens the hint journal from the pause menu and completion screen', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    await user.click(screen.getByRole('button', { name: /pause game/i }));
+    await user.click(within(screen.getByRole('dialog', { name: /paused/i })).getByRole('button', { name: /hint journal/i }));
+
+    expect(within(screen.getByRole('dialog', { name: /paused/i })).getByRole('region', { name: /hint journal/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /restart level/i }));
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    await user.click(within(screen.getByRole('status', { name: /level completed/i })).getByRole('button', { name: /hint journal/i }));
+
+    expect(within(screen.getByRole('status', { name: /level completed/i })).getByRole('region', { name: /hint journal/i })).toBeInTheDocument();
+  });
+
+  it('records local hint analytics and shows the debug report', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    await user.click(screen.getByRole('button', { name: /open puzzle assist/i }));
+    await user.click(screen.getByRole('button', { name: /tier 1 direction/i }));
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+
+    const analytics = JSON.parse(window.localStorage.getItem('puzzle-drift:hint-analytics') ?? '{}');
+
+    expect(analytics.levels['1']).toMatchObject({
+      attempts: 1,
+      attemptsWithHint: 1,
+      completionsAfterHint: 1,
+      hintOpens: 1,
+      tierUses: { 1: 1 },
+    });
+
+    await user.click(within(screen.getByRole('status', { name: /level completed/i })).getByRole('button', { name: /hint analytics/i }));
+
+    const report = within(screen.getByRole('status', { name: /level completed/i })).getByRole('region', {
+      name: /hint analytics report/i,
+    });
+
+    expect(within(report).getByText(`Level 1: ${LEVELS[0].name}`)).toBeInTheDocument();
+    expect(within(report).getAllByText('100%')).toHaveLength(2);
   });
 
   it('lets players choose a hint tier before showing help text', async () => {

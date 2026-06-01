@@ -13,6 +13,7 @@ import {
   loadSettings,
   saveProgress,
   saveSettings,
+  unlockHintTier,
 } from './utils/progressStorage';
 import type { AppView, SaveData } from './types/game';
 
@@ -78,6 +79,9 @@ export function App() {
             setSave((currentSave) => completeLevel(currentSave, currentSave.currentLevel, result))
           }
           onLevelSelect={() => setView('levels')}
+          onUnlockHintTier={(levelId, tierNumber) =>
+            setSave((currentSave) => unlockHintTier(currentSave, levelId, tierNumber))
+          }
           onNextLevel={() =>
             setSave((currentSave) => ({
               ...currentSave,

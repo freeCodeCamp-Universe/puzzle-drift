@@ -17,6 +17,16 @@ function uniqueSortedLevels(levels: number[]) {
   return [...new Set(levels)].sort((a, b) => a - b);
 }
 
+function uniqueSortedHintTiers(tiers: number[]) {
+  return [...new Set(tiers)].filter((tier) => Number.isInteger(tier) && tier > 0).sort((a, b) => a - b);
+}
+
+function normalizeUnlockedHints(unlockedHints: SaveData['unlockedHints'] = {}) {
+  return Object.fromEntries(
+    Object.entries(unlockedHints).map(([levelId, tiers]) => [levelId, uniqueSortedHintTiers(tiers)]),
+  );
+}
+
 export function createInitialSaveData(): SaveData {
   return {
     ...INITIAL_SAVE,
@@ -25,6 +35,7 @@ export function createInitialSaveData(): SaveData {
     completedLevels: [...INITIAL_SAVE.completedLevels],
     levelStats: [...INITIAL_SAVE.levelStats],
     stars: { ...INITIAL_SAVE.stars },
+    unlockedHints: normalizeUnlockedHints(INITIAL_SAVE.unlockedHints),
     unlockedLevels: [...INITIAL_SAVE.unlockedLevels],
   };
 }
@@ -36,6 +47,7 @@ export function loadProgress(): SaveData {
   const completedLevels = storedProgress.completedLevels ?? [];
   const levelStats = storedProgress.levelStats ?? [];
   const stars = storedProgress.stars ?? {};
+  const unlockedHints = storedProgress.unlockedHints ?? {};
   const unlockedLevels = storedProgress.unlockedLevels ?? [1];
 
   return {
@@ -46,6 +58,7 @@ export function loadProgress(): SaveData {
     completedLevels: uniqueSortedLevels(completedLevels),
     levelStats: [...levelStats],
     stars: { ...stars },
+    unlockedHints: normalizeUnlockedHints(unlockedHints),
     unlockedLevels: uniqueSortedLevels(unlockedLevels.length ? unlockedLevels : [1]),
   };
 }
@@ -96,6 +109,23 @@ export function getLevelBestTimeSeconds(progress: SaveData, levelId: number) {
 
 export function getLevelStars(progress: SaveData, levelId: number) {
   return progress.stars[levelId] ?? 0;
+}
+
+export function unlockHintTier(progress: SaveData, levelId: number, tierNumber: number): SaveData {
+  const currentTiers = progress.unlockedHints[levelId] ?? [];
+  const unlockedTiers = uniqueSortedHintTiers([...currentTiers, tierNumber]);
+
+  if (unlockedTiers.length === currentTiers.length) {
+    return progress;
+  }
+
+  return {
+    ...progress,
+    unlockedHints: {
+      ...progress.unlockedHints,
+      [levelId]: unlockedTiers,
+    },
+  };
 }
 
 export function completeLevel(

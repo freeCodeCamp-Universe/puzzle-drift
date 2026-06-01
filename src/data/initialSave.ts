@@ -8,5 +8,6 @@ export const INITIAL_SAVE: SaveState = {
   hasActiveRun: false,
   levelStats: [],
   stars: {},
+  unlockedHints: {},
   unlockedLevels: [1],
 };
