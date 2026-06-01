@@ -83,21 +83,21 @@ describe('progress storage', () => {
 
   it('saves and loads settings', () => {
     saveSettings({
+      confirmRestart: false,
       highContrast: true,
-      musicEnabled: false,
+      hintNudgesEnabled: false,
       reducedMotion: true,
-      soundEnabled: false,
     });
 
     expect(loadSettings()).toEqual({
+      confirmRestart: false,
       highContrast: true,
-      musicEnabled: false,
+      hintNudgesEnabled: false,
       reducedMotion: true,
-      soundEnabled: false,
     });
   });
 
-  it('drops legacy theme settings when loading settings', () => {
+  it('drops legacy theme and audio settings when loading settings', () => {
     window.localStorage.setItem(
       'puzzle-drift:settings',
       JSON.stringify({
@@ -110,10 +110,10 @@ describe('progress storage', () => {
     );
 
     expect(loadSettings()).toEqual({
+      confirmRestart: true,
       highContrast: true,
-      musicEnabled: false,
+      hintNudgesEnabled: true,
       reducedMotion: true,
-      soundEnabled: false,
     });
   });
 

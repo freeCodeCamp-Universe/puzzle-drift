@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
+  AlertTriangle,
   BarChart3,
   BookOpen,
   Check,
@@ -25,7 +26,7 @@ import {
   movePlayer,
 } from '../logic/movement';
 import { useGameShortcuts } from '../hooks/useGameShortcuts';
-import type { Direction, GameState, Level, SaveData } from '../types/game';
+import type { Direction, GameSettings, GameState, Level, SaveData } from '../types/game';
 import {
   createHintAnalyticsReport,
   loadHintAnalytics,
@@ -56,6 +57,7 @@ type GameScreenProps = {
   onUnlockHintTier: (levelId: number, tierNumber: number) => void;
   progress: SaveData;
   reducedMotion: boolean;
+  settings: GameSettings;
 };
 
 const LOCKED_DOOR_MESSAGE = 'Locked. Find a key.';
@@ -344,6 +346,7 @@ export function GameScreen({
   onUnlockHintTier,
   progress,
   reducedMotion,
+  settings,
 }: GameScreenProps) {
   const level = LEVELS.find((candidate) => candidate.id === currentLevel) ?? LEVELS[0];
   const [gameState, setGameState] = useState<GameState>(() => createInitialGameState(level));
@@ -355,6 +358,7 @@ export function GameScreen({
   const [isHintPanelOpen, setIsHintPanelOpen] = useState(false);
   const [isHintJournalOpen, setIsHintJournalOpen] = useState(false);
   const [isHintAnalyticsOpen, setIsHintAnalyticsOpen] = useState(false);
+  const [isConfirmingRestart, setIsConfirmingRestart] = useState(false);
   const [hintAnalytics, setHintAnalytics] = useState<HintAnalyticsData>(() => loadHintAnalytics());
   const [dismissedHintNudgeKey, setDismissedHintNudgeKey] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
@@ -518,6 +522,8 @@ export function GameScreen({
   }, [gameState.isComplete, gameState.isFailed, isPaused]);
 
   const resumeGame = useCallback(() => {
+    setIsHintJournalOpen(false);
+    setIsHintAnalyticsOpen(false);
     setIsPaused(false);
     window.setTimeout(() => {
       pauseReturnFocusRef.current?.focus();
@@ -536,6 +542,7 @@ export function GameScreen({
     setIsHintPanelOpen(false);
     setIsHintJournalOpen(false);
     setIsHintAnalyticsOpen(false);
+    setIsConfirmingRestart(false);
     setDismissedHintNudgeKey(null);
     setIsPaused(false);
     setPositionTrail([positionKey(level.playerStart)]);
@@ -651,12 +658,26 @@ export function GameScreen({
     clearFeedbackMessage();
     setIsHintJournalOpen(false);
     setIsHintAnalyticsOpen(false);
+    setIsConfirmingRestart(false);
     setDismissedHintNudgeKey(null);
     setIsPaused(false);
     setPositionTrail([positionKey(level.playerStart)]);
     savedCompletionRef.current = false;
     recordNewAttempt(level.id);
   }, [clearFeedbackMessage, gameState.elapsedSeconds, gameState.isComplete, gameState.moves, level, recordNewAttempt]);
+
+  const requestRestart = useCallback(() => {
+    if (settings.confirmRestart && !gameState.isComplete && !gameState.isFailed) {
+      setIsHintPanelOpen(false);
+      setIsHintJournalOpen(false);
+      setIsHintAnalyticsOpen(false);
+      setIsConfirmingRestart(true);
+
+      return;
+    }
+
+    resetLevel();
+  }, [gameState.isComplete, gameState.isFailed, resetLevel, settings.confirmRestart]);
 
   const undoMove = useCallback(() => {
     setHistory((currentHistory) => {
@@ -765,7 +786,7 @@ export function GameScreen({
     onMove: moveInDirection,
     onNextLevel: goToCompletionPrimaryAction,
     onPause: pauseGame,
-    onReset: resetLevel,
+    onReset: requestRestart,
     onResume: resumeGame,
     onRetry: resetLevel,
     onToggleHints: toggleHints,
@@ -834,6 +855,7 @@ export function GameScreen({
     positionTrail,
     spikeDeathCount,
   });
+  const activeHintNudge = settings.hintNudgesEnabled ? hintNudge : null;
   const isFinalLevel = level.id >= LEVELS.length;
   const completionPrimaryLabel = isFinalLevel ? 'Level Select' : 'Next Level';
 
@@ -856,7 +878,7 @@ export function GameScreen({
           animationClass={boardAnimationClass}
           gameState={gameState}
           hazardFlash={hazardFlashCount > 0 && !reducedMotion}
-          hintNudge={hintNudge}
+          hintNudge={activeHintNudge}
           isHintPanelOpen={isHintPanelOpen}
           isPaused={isPaused}
           level={level}
@@ -867,7 +889,7 @@ export function GameScreen({
           onMove={moveInDirection}
           onOpenHintJournal={toggleHintJournal}
           onPause={pauseGame}
-          onReset={resetLevel}
+          onReset={requestRestart}
           onDismissHintNudge={dismissHintNudge}
           onSelectHintTier={selectHintTier}
           onToggleHints={toggleHints}
@@ -1006,6 +1028,33 @@ export function GameScreen({
           </section>
         ) : null}
 
+        {isConfirmingRestart ? (
+          <section
+            className="restart-confirm-panel"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="restart-confirm-title"
+          >
+            <header className="failure-header">
+              <AlertTriangle aria-hidden="true" />
+              <div>
+                <h2 id="restart-confirm-title">Restart level?</h2>
+                <p>Your current attempt will be reset.</p>
+              </div>
+            </header>
+            <div className="confirm-actions">
+              <button type="button" className="menu-button" onClick={() => setIsConfirmingRestart(false)}>
+                <X aria-hidden="true" />
+                <span>Cancel</span>
+              </button>
+              <button type="button" className="menu-button danger" onClick={resetLevel}>
+                <RotateCcw aria-hidden="true" />
+                <span>Confirm Restart</span>
+              </button>
+            </div>
+          </section>
+        ) : null}
+
         {feedbackMessage ? (
           <div
             className={`locked-door-message${reducedMotion ? ' no-motion' : ''}`}
@@ -1042,7 +1091,7 @@ export function GameScreen({
                 </span>
                 <span className="action-shortcut">Spacebar</span>
               </button>
-              <button type="button" className="menu-button shortcut-action" onClick={resetLevel}>
+              <button type="button" className="menu-button shortcut-action" onClick={requestRestart}>
                 <span className="action-label">
                   <RotateCcw aria-hidden="true" />
                   <span>Restart Level</span>

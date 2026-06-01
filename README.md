@@ -223,11 +223,10 @@ Saved progress includes:
 
 Settings include:
 
-- sound effects toggle
-- music toggle
 - reduced motion toggle
 - high contrast flag
-- selected theme
+- hint nudges toggle
+- restart confirmation toggle
 
 Resetting progress clears only saved progress. Settings are intentionally preserved.
 
@@ -267,7 +266,7 @@ Primary test areas:
 - ice sliding
 - portals
 - hint rendering and unlock conditions
-- settings persistence and global theme/reduced-motion classes
+- settings persistence and global reduced-motion/high-contrast classes
 - accessible button labels and completion status
 - console-error smoke checks during common navigation
 - Lucide React icon dependency and lack of backend dependencies
@@ -294,7 +293,6 @@ Puzzle Drift is intentionally frontend-only. It does not depend on Express, data
 
 ## Known Limitations
 
-- Sound and music settings are currently persisted toggles; no audio assets are implemented yet.
 - The app does not sync progress across browsers or devices.
 - Level hints are static level data rather than adaptive solver-generated hints.
 - Some tile types are defined for future expansion but are not active mechanics yet.

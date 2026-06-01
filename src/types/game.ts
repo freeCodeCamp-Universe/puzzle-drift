@@ -126,7 +126,7 @@ export type SaveState = SaveData;
 
 export type GameSettings = {
   reducedMotion: boolean;
-  soundEnabled: boolean;
-  musicEnabled: boolean;
   highContrast: boolean;
+  hintNudgesEnabled: boolean;
+  confirmRestart: boolean;
 };

@@ -24,6 +24,7 @@ export function App() {
   const [save, setSave] = useState<SaveData>(() => loadProgress());
   const [settings, setSettings] = useState(() => loadSettings());
   const skipNextProgressSaveRef = useRef(false);
+  const settingsReturnFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (skipNextProgressSaveRef.current) {
@@ -43,7 +44,22 @@ export function App() {
     const root = document.documentElement;
 
     root.classList.toggle('reduced-motion', settings.reducedMotion);
-  }, [settings.reducedMotion]);
+    root.classList.toggle('high-contrast', settings.highContrast);
+  }, [settings.highContrast, settings.reducedMotion]);
+
+  const openSettings = () => {
+    settingsReturnFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setIsSettingsOpen(true);
+  };
+
+  const closeSettings = () => {
+    setIsSettingsOpen(false);
+    window.setTimeout(() => {
+      settingsReturnFocusRef.current?.focus();
+      settingsReturnFocusRef.current = null;
+    }, 0);
+  };
 
   const startNewGame = () => {
     setSave({ ...createInitialSaveData(), hasActiveRun: true });
@@ -65,7 +81,7 @@ export function App() {
           onContinue={() => setView('game')}
           onNewGame={startNewGame}
           onLevelSelect={() => setView('levels')}
-          onSettings={() => setIsSettingsOpen(true)}
+          onSettings={openSettings}
           onHowToPlay={() => setIsHowToPlayOpen(true)}
         />
       )}
@@ -89,7 +105,8 @@ export function App() {
               hasActiveRun: true,
             }))
           }
-          onSettings={() => setIsSettingsOpen(true)}
+          onSettings={openSettings}
+          settings={settings}
           progress={save}
           reducedMotion={settings.reducedMotion}
         />
@@ -111,7 +128,7 @@ export function App() {
         onResetProgress={resetProgress}
         settings={settings}
         onChange={setSettings}
-        onClose={() => setIsSettingsOpen(false)}
+        onClose={closeSettings}
       />
       <HowToPlayDialog isOpen={isHowToPlayOpen} onClose={() => setIsHowToPlayOpen(false)} />
     </main>

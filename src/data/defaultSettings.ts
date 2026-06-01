@@ -1,8 +1,8 @@
 import type { GameSettings } from '../types/game';
 
 export const DEFAULT_SETTINGS: GameSettings = {
+  confirmRestart: true,
   highContrast: false,
-  musicEnabled: true,
+  hintNudgesEnabled: true,
   reducedMotion: false,
-  soundEnabled: true,
 };

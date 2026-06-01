@@ -35,6 +35,22 @@
   transition-duration: 0.001ms !important;
 }
 
+:root.high-contrast {
+  --background: #050510;
+  --surface: #111126;
+  --surface-strong: #232345;
+  --border: #7070a3;
+  --border-strong: #f5f6f7;
+  --text: #ffffff;
+  --muted: #f5f6f7;
+  --dim: #d0d0d5;
+  --blue: #cbe4ff;
+  --yellow: #ffd65a;
+  --green: #d4f678;
+  --purple: #ead2ff;
+  --red: #ffd0d0;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -996,7 +1012,8 @@ h2 {
   transform: translate(-50%, -50%);
 }
 
-.failure-panel {
+.failure-panel,
+.restart-confirm-panel {
   position: absolute;
   inset: 50% auto auto 50%;
   z-index: var(--z-modal);
@@ -1063,7 +1080,8 @@ h2 {
 }
 
 .completion-panel p,
-.failure-panel p {
+.failure-panel p,
+.restart-confirm-panel p {
   margin: 0;
   color: var(--muted);
 }
@@ -1736,6 +1754,37 @@ h2 {
   background: linear-gradient(90deg, var(--surface-strong), color-mix(in srgb, var(--blue) 34%, #15375c));
 }
 
+:root.high-contrast .board-tile {
+  border-color: var(--border-strong);
+}
+
+:root.high-contrast .tile-floor {
+  background: #0f0f2d;
+}
+
+:root.high-contrast .tile-wall {
+  background: #5f5f89;
+  filter: none;
+}
+
+:root.high-contrast .tile-door,
+:root.high-contrast .tile-key,
+:root.high-contrast .tile-switch,
+:root.high-contrast .tile-pressurePlate,
+:root.high-contrast .tile-pushBlock,
+:root.high-contrast .tile-portal,
+:root.high-contrast .tile-spike,
+:root.high-contrast .tile-ice,
+:root.high-contrast .menu-button,
+:root.high-contrast .icon-button,
+:root.high-contrast .settings-dialog,
+:root.high-contrast .pause-dialog,
+:root.high-contrast .completion-panel,
+:root.high-contrast .failure-panel,
+:root.high-contrast .restart-confirm-panel {
+  border-color: var(--border-strong);
+}
+
 .tile-mirror {
   border-color: color-mix(in srgb, var(--blue) 76%, var(--border));
   background: linear-gradient(135deg, #f5f6f7, #99c9ff 42%, #2a2a40 48%);
@@ -2008,6 +2057,204 @@ h2 {
   padding: 1rem;
 }
 
+.settings-dialog {
+  display: grid;
+  gap: 0.8rem;
+  width: min(100%, 38rem);
+  max-height: min(44rem, calc(100dvh - 2rem));
+  overflow: auto;
+  border-color: color-mix(in srgb, var(--blue) 42%, var(--border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--blue) 8%, transparent), transparent 18rem),
+    var(--surface);
+}
+
+.settings-header {
+  margin-block-end: 0;
+}
+
+.settings-section-card {
+  display: grid;
+  gap: 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  background: color-mix(in srgb, var(--surface-strong) 46%, transparent);
+  padding: 0.8rem;
+}
+
+.settings-section-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.settings-section-heading > svg {
+  flex: 0 0 auto;
+  width: 1.15rem;
+  height: 1.15rem;
+  color: var(--blue);
+  margin-block-start: 0.1rem;
+}
+
+.settings-section-heading h3,
+.settings-section-heading p,
+.settings-section-heading em {
+  margin: 0;
+}
+
+.settings-section-heading h3,
+.settings-section-heading strong {
+  color: var(--text);
+  font-size: 0.92rem;
+  line-height: 1.15;
+}
+
+.settings-section-heading p,
+.settings-section-heading em {
+  display: block;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-style: normal;
+  line-height: 1.35;
+}
+
+.settings-toggle-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--border) 56%, transparent);
+  background: color-mix(in srgb, var(--background) 32%, transparent);
+  padding: 0.75rem;
+}
+
+.settings-toggle-row input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  opacity: 0;
+}
+
+.settings-toggle-copy {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
+.settings-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.settings-toggle-label svg {
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+  color: var(--yellow);
+}
+
+.settings-toggle-label strong {
+  color: var(--text);
+  font-size: 0.86rem;
+  line-height: 1.2;
+}
+
+.settings-toggle-copy > span:last-child {
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.toggle-switch {
+  position: relative;
+  width: 3rem;
+  height: 1.55rem;
+  border: 1px solid var(--border-strong);
+  background: var(--background);
+}
+
+.toggle-switch::after {
+  position: absolute;
+  inset-block-start: 0.22rem;
+  inset-inline-start: 0.22rem;
+  width: 1rem;
+  height: 1rem;
+  background: var(--muted);
+  content: "";
+  transition:
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.settings-toggle-row input:checked + .toggle-switch {
+  border-color: var(--green);
+  background: color-mix(in srgb, var(--green) 22%, var(--background));
+}
+
+.settings-toggle-row input:checked + .toggle-switch::after {
+  background: var(--green);
+  transform: translateX(1.42rem);
+}
+
+.settings-toggle-row input:focus-visible + .toggle-switch {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.settings-collapse-button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  text-align: start;
+}
+
+.settings-collapse-button:hover {
+  color: var(--blue);
+  transform: none;
+}
+
+.settings-shortcut-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.settings-shortcut-list div {
+  border: 1px solid color-mix(in srgb, var(--border) 56%, transparent);
+  background: color-mix(in srgb, var(--background) 32%, transparent);
+  padding: 0.5rem;
+}
+
+.settings-shortcut-list dt {
+  color: var(--yellow);
+  font-family: "Fira Mono", Menlo, Consolas, monospace;
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.settings-shortcut-list dd {
+  margin: 0.1rem 0 0;
+  color: var(--text);
+  font-size: 0.78rem;
+}
+
+.settings-danger-zone {
+  border-color: color-mix(in srgb, var(--red) 46%, var(--border));
+  background: color-mix(in srgb, var(--red) 8%, var(--surface-strong));
+}
+
+.settings-danger-zone .settings-section-heading > svg {
+  color: var(--red);
+}
+
 .pause-dialog {
   border: 1px solid color-mix(in srgb, var(--yellow) 58%, var(--border));
   background: var(--surface);
@@ -2138,10 +2385,14 @@ h2 {
 .confirm-reset-panel {
   display: grid;
   gap: 0.85rem;
-  margin-block-start: 1rem;
-  border: 1px solid var(--red);
-  background: color-mix(in srgb, var(--red) 10%, var(--surface));
-  padding: 1rem;
+  margin: 0;
+  border: 1px solid color-mix(in srgb, var(--red) 64%, var(--border));
+  background: color-mix(in srgb, var(--red) 12%, var(--surface));
+  padding: 0.85rem;
+}
+
+.confirm-reset-panel .settings-section-heading > svg {
+  color: var(--red);
 }
 
 .confirm-reset-panel p {

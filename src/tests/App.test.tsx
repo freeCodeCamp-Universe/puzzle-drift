@@ -116,9 +116,13 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: /settings/i }));
 
     expect(screen.getByRole('dialog', { name: /settings/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(/sound effects/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/music/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/sound effects/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/music/i)).not.toBeInTheDocument();
     expect(screen.getByLabelText(/reduced motion/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/high contrast/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/hint nudges/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/confirm restart/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /keyboard shortcuts/i })).toBeInTheDocument();
     expect(screen.queryByLabelText(/theme/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^theme$/i)).not.toBeInTheDocument();
   });
@@ -134,34 +138,6 @@ describe('App', () => {
     expect(within(settingsDialog).getByRole('heading', { name: /settings/i })).toBeInTheDocument();
   });
 
-  it('toggling sound saves the setting', async () => {
-    const user = userEvent.setup();
-    render(<App />);
-
-    await user.click(screen.getByRole('button', { name: /settings/i }));
-    await user.click(screen.getByLabelText(/sound effects/i));
-
-    await waitFor(() => {
-      const savedSettings = JSON.parse(window.localStorage.getItem('puzzle-drift:settings') ?? '{}');
-
-      expect(savedSettings.soundEnabled).toBe(false);
-    });
-  });
-
-  it('toggling music saves the setting', async () => {
-    const user = userEvent.setup();
-    render(<App />);
-
-    await user.click(screen.getByRole('button', { name: /settings/i }));
-    await user.click(screen.getByLabelText(/music/i));
-
-    await waitFor(() => {
-      const savedSettings = JSON.parse(window.localStorage.getItem('puzzle-drift:settings') ?? '{}');
-
-      expect(savedSettings.musicEnabled).toBe(false);
-    });
-  });
-
   it('reduced motion setting applies a global class', async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -174,12 +150,73 @@ describe('App', () => {
     });
   });
 
-  it('removes legacy theme settings from persisted settings', async () => {
+  it('high contrast setting applies a global class and persists', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /settings/i }));
+    await user.click(screen.getByLabelText(/high contrast/i));
+
+    await waitFor(() => {
+      const savedSettings = JSON.parse(window.localStorage.getItem('puzzle-drift:settings') ?? '{}');
+
+      expect(document.documentElement).toHaveClass('high-contrast');
+      expect(savedSettings.highContrast).toBe(true);
+    });
+  });
+
+  it('hint nudges and confirm restart settings persist', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /settings/i }));
+    await user.click(screen.getByLabelText(/hint nudges/i));
+    await user.click(screen.getByLabelText(/confirm restart/i));
+
+    await waitFor(() => {
+      const savedSettings = JSON.parse(window.localStorage.getItem('puzzle-drift:settings') ?? '{}');
+
+      expect(savedSettings.hintNudgesEnabled).toBe(false);
+      expect(savedSettings.confirmRestart).toBe(false);
+    });
+  });
+
+  it('renders the keyboard shortcuts section', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /settings/i }));
+    await user.click(screen.getByRole('button', { name: /keyboard shortcuts/i }));
+
+    expect(screen.getByText('Arrow Keys / WASD')).toBeInTheDocument();
+    expect(screen.getByText('U / Backspace')).toBeInTheDocument();
+    expect(screen.getByText('Spacebar / Enter')).toBeInTheDocument();
+  });
+
+  it('Escape closes settings and returns focus', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const settingsButton = screen.getByRole('button', { name: /settings/i });
+    await user.click(settingsButton);
+
+    const settingsDialog = screen.getByRole('dialog', { name: /settings/i });
+    expect(settingsDialog).toHaveAttribute('aria-modal', 'true');
+
+    await user.keyboard('{Escape}');
+
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: /settings/i })).not.toBeInTheDocument());
+    await waitFor(() => expect(settingsButton).toHaveFocus());
+  });
+
+  it('removes legacy theme and audio settings from persisted settings', async () => {
     const user = userEvent.setup();
     window.localStorage.setItem(
       'puzzle-drift:settings',
       JSON.stringify({
+        confirmRestart: false,
         highContrast: false,
+        hintNudgesEnabled: false,
         musicEnabled: true,
         reducedMotion: false,
         soundEnabled: true,
@@ -189,11 +226,15 @@ describe('App', () => {
     render(<App />);
 
     await user.click(screen.getByRole('button', { name: /settings/i }));
-    await user.click(screen.getByLabelText(/sound effects/i));
+    await user.click(screen.getByLabelText(/reduced motion/i));
 
     await waitFor(() => {
       const savedSettings = JSON.parse(window.localStorage.getItem('puzzle-drift:settings') ?? '{}');
 
+      expect(savedSettings.confirmRestart).toBe(false);
+      expect(savedSettings.hintNudgesEnabled).toBe(false);
+      expect(savedSettings.musicEnabled).toBeUndefined();
+      expect(savedSettings.soundEnabled).toBeUndefined();
       expect(savedSettings.theme).toBeUndefined();
       expect(document.documentElement.className).not.toMatch(/theme-/);
     });
@@ -211,17 +252,17 @@ describe('App', () => {
     window.localStorage.setItem(
       'puzzle-drift:settings',
       JSON.stringify({
+        confirmRestart: false,
         highContrast: false,
-        musicEnabled: false,
+        hintNudgesEnabled: false,
         reducedMotion: true,
-        soundEnabled: false,
       }),
     );
     render(<App />);
 
     await user.click(screen.getByRole('button', { name: /settings/i }));
     await user.click(screen.getByRole('button', { name: /reset progress/i }));
-    expect(screen.getByRole('alertdialog', { name: /reset progress/i })).toBeInTheDocument();
+    expect(screen.getByRole('alertdialog', { name: /reset all progress/i })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /confirm reset/i }));
 
     await waitFor(() => {
@@ -229,9 +270,9 @@ describe('App', () => {
     });
 
     expect(JSON.parse(window.localStorage.getItem('puzzle-drift:settings') ?? '{}')).toMatchObject({
-      musicEnabled: false,
+      confirmRestart: false,
+      hintNudgesEnabled: false,
       reducedMotion: true,
-      soundEnabled: false,
     });
   });
 
@@ -350,6 +391,8 @@ describe('App', () => {
 
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     fireEvent.keyDown(window, { key: 'r' });
+    expect(screen.getByRole('alertdialog', { name: /restart level/i })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /confirm restart/i }));
     expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
     expect(screen.getByLabelText('0 moves')).toBeInTheDocument();
 
@@ -422,7 +465,7 @@ describe('App', () => {
 
     expect(within(screen.getByRole('dialog', { name: /paused/i })).getByRole('region', { name: /hint journal/i })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /restart level/i }));
+    await user.click(screen.getByRole('button', { name: /resume/i }));
 
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     fireEvent.keyDown(window, { key: 'ArrowRight' });
@@ -430,7 +473,7 @@ describe('App', () => {
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     fireEvent.keyDown(window, { key: 'ArrowDown' });
     fireEvent.keyDown(window, { key: 'ArrowDown' });
-    await user.click(within(screen.getByRole('status', { name: /level completed/i })).getByRole('button', { name: /hint journal/i }));
+    await user.click(within(screen.getByRole('status', { name: /level completed/i })).getByRole('button', { name: /^hint journal$/i }));
 
     expect(within(screen.getByRole('status', { name: /level completed/i })).getByRole('region', { name: /hint journal/i })).toBeInTheDocument();
   });
@@ -506,6 +549,28 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /more help/i }));
 
     expect(screen.getByRole('region', { name: /puzzle assist/i })).toBeInTheDocument();
+  });
+
+  it('does not show contextual assist nudges when disabled', async () => {
+    window.localStorage.setItem(
+      'puzzle-drift:settings',
+      JSON.stringify({
+        confirmRestart: true,
+        highContrast: false,
+        hintNudgesEnabled: false,
+        reducedMotion: false,
+      }),
+    );
+    vi.useFakeTimers();
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /new game/i }));
+
+    act(() => {
+      vi.advanceTimersByTime(35000);
+    });
+
+    expect(screen.queryByRole('complementary', { name: /puzzle assist nudge/i })).not.toBeInTheDocument();
   });
 
   it('detects repeated movement loops before offering puzzle assist', async () => {
@@ -740,9 +805,31 @@ describe('App', () => {
     expect(screen.getByText('1')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /reset level/i }));
+    await user.click(screen.getByRole('button', { name: /confirm restart/i }));
 
     expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
     expect(screen.getByLabelText('0 moves')).toBeInTheDocument();
+  });
+
+  it('restarts immediately when confirm restart is disabled', async () => {
+    const user = userEvent.setup();
+    window.localStorage.setItem(
+      'puzzle-drift:settings',
+      JSON.stringify({
+        confirmRestart: false,
+        highContrast: false,
+        hintNudgesEnabled: true,
+        reducedMotion: false,
+      }),
+    );
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    await user.click(screen.getByRole('button', { name: /reset level/i }));
+
+    expect(screen.queryByRole('alertdialog', { name: /restart level/i })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
   });
 
   it('undo restores previous player position and decrements move count', async () => {
@@ -829,6 +916,8 @@ describe('App', () => {
     expect(screen.getByText('Undo: U or Backspace')).toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: 'r' });
+    expect(screen.getByRole('alertdialog', { name: /restart level/i })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /confirm restart/i }));
     expect(screen.queryByRole('dialog', { name: /paused/i })).not.toBeInTheDocument();
     expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
 
@@ -985,6 +1074,7 @@ describe('App', () => {
     fireEvent.keyDown(window, { key: 'ArrowRight' });
 
     await user.click(screen.getByRole('button', { name: /reset level/i }));
+    await user.click(screen.getByRole('button', { name: /confirm restart/i }));
 
     expect(screen.getByLabelText('Player at 1, 3')).toBeInTheDocument();
     expect(screen.getByLabelText('0 keys')).toBeInTheDocument();
@@ -1057,9 +1147,7 @@ describe('App', () => {
       'puzzle-drift:settings',
       JSON.stringify({
         highContrast: false,
-        musicEnabled: true,
         reducedMotion: true,
-        soundEnabled: true,
       }),
     );
 
@@ -1080,9 +1168,7 @@ describe('App', () => {
       'puzzle-drift:settings',
       JSON.stringify({
         highContrast: false,
-        musicEnabled: true,
         reducedMotion: true,
-        soundEnabled: true,
       }),
     );
     render(<App />);
@@ -1105,9 +1191,7 @@ describe('App', () => {
       'puzzle-drift:settings',
       JSON.stringify({
         highContrast: false,
-        musicEnabled: true,
         reducedMotion: true,
-        soundEnabled: true,
       }),
     );
     render(<App />);

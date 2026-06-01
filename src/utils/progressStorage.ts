@@ -71,19 +71,19 @@ export function loadSettings(): GameSettings {
   const storedSettings = readStorageValue<Partial<GameSettings>>(SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS);
 
   return {
+    confirmRestart: storedSettings.confirmRestart ?? DEFAULT_SETTINGS.confirmRestart,
     highContrast: storedSettings.highContrast ?? DEFAULT_SETTINGS.highContrast,
-    musicEnabled: storedSettings.musicEnabled ?? DEFAULT_SETTINGS.musicEnabled,
+    hintNudgesEnabled: storedSettings.hintNudgesEnabled ?? DEFAULT_SETTINGS.hintNudgesEnabled,
     reducedMotion: storedSettings.reducedMotion ?? DEFAULT_SETTINGS.reducedMotion,
-    soundEnabled: storedSettings.soundEnabled ?? DEFAULT_SETTINGS.soundEnabled,
   };
 }
 
 export function saveSettings(settings: GameSettings) {
   writeStorageValue(SETTINGS_STORAGE_KEY, {
+    confirmRestart: settings.confirmRestart,
     highContrast: settings.highContrast,
-    musicEnabled: settings.musicEnabled,
+    hintNudgesEnabled: settings.hintNudgesEnabled,
     reducedMotion: settings.reducedMotion,
-    soundEnabled: settings.soundEnabled,
   });
 }
 
