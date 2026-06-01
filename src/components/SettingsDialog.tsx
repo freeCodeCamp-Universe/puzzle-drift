@@ -120,7 +120,6 @@ export function SettingsDialog({
             <Accessibility aria-hidden="true" />
             <div>
               <h3>Accessibility</h3>
-              <p>Adjust motion and contrast for a clearer play surface.</p>
             </div>
           </legend>
           <ToggleSetting
@@ -144,7 +143,6 @@ export function SettingsDialog({
             <Lightbulb aria-hidden="true" />
             <div>
               <h3>Gameplay</h3>
-              <p>Choose how much guidance and confirmation you want during a run.</p>
             </div>
           </legend>
           <ToggleSetting
