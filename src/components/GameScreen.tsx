@@ -46,6 +46,12 @@ const LINKED_DOOR_MESSAGE = 'Door closed. Use the switch.';
 const DOOR_OPENED_MESSAGE = 'Door opened.';
 const BLOCK_MOVED_MESSAGE = 'Block moved.';
 const LOCKED_DOOR_MESSAGE_MS = 1400;
+const STUCK_NUDGE_SECONDS = 35;
+
+type StuckNudge = {
+  key: string;
+  message: string;
+};
 
 function formatTime(seconds: number) {
   const minutes = Math.floor(seconds / 60);
@@ -64,18 +70,127 @@ function isLinkedDoor(level: Level, position: { x: number; y: number }) {
   return Boolean(doorId && level.links?.some((link) => link.targetId === doorId));
 }
 
-function getUnlockedHintCount(level: (typeof LEVELS)[number], elapsedSeconds: number, failedResetCount: number) {
-  return level.hints.filter((hint, hintIndex) => {
-    if (hintIndex === 0) {
-      return true;
-    }
+function getTrailStats(positionTrail: string[]) {
+  const visits = positionTrail.reduce<Record<string, number>>((counts, position) => {
+    counts[position] = (counts[position] ?? 0) + 1;
 
-    const unlockedByReset =
-      hint.unlockAfterFailedResets !== undefined && failedResetCount >= hint.unlockAfterFailedResets;
-    const unlockedByTime = hint.unlockAfterSeconds !== undefined && elapsedSeconds >= hint.unlockAfterSeconds;
+    return counts;
+  }, {});
+  const uniqueTiles = Object.keys(visits).length;
+  const highestVisitCount = Math.max(0, ...Object.values(visits));
 
-    return unlockedByReset || unlockedByTime;
-  }).length;
+  return {
+    highestVisitCount,
+    uniqueTiles,
+  };
+}
+
+function hasRecentMovementLoop(positionTrail: string[]) {
+  if (positionTrail.length < 6) {
+    return false;
+  }
+
+  const recent = positionTrail.slice(-6);
+  const alternatesBetweenTwoTiles =
+    recent[0] === recent[2] &&
+    recent[2] === recent[4] &&
+    recent[1] === recent[3] &&
+    recent[3] === recent[5] &&
+    recent[0] !== recent[1];
+  const repeatsThreeStepLoop =
+    recent[0] === recent[3] &&
+    recent[1] === recent[4] &&
+    recent[2] === recent[5] &&
+    new Set(recent.slice(0, 3)).size > 1;
+
+  return alternatesBetweenTwoTiles || repeatsThreeStepLoop;
+}
+
+function getStuckNudge({
+  failedRouteCount,
+  failedResetCount,
+  gameState,
+  isHintNudgeDismissed,
+  isHintPanelOpen,
+  isPaused,
+  level,
+  positionTrail,
+  spikeDeathCount,
+}: {
+  failedRouteCount: number;
+  failedResetCount: number;
+  gameState: GameState;
+  isHintNudgeDismissed: string | null;
+  isHintPanelOpen: boolean;
+  isPaused: boolean;
+  level: Level;
+  positionTrail: string[];
+  spikeDeathCount: number;
+}): StuckNudge | null {
+  if (gameState.isComplete || gameState.isFailed || isPaused || isHintPanelOpen) {
+    return null;
+  }
+
+  const candidates: StuckNudge[] = [];
+  const trailStats = getTrailStats(positionTrail);
+
+  if (spikeDeathCount >= 3) {
+    candidates.push({
+      key: 'spike-deaths',
+      message: 'You seem to be running into hazards.',
+    });
+  }
+
+  if (level.mechanics.includes('portal') && gameState.elapsedSeconds >= 90 && gameState.portalsUsedThisAttempt === 0) {
+    candidates.push({
+      key: 'unused-portal',
+      message: 'The portal may be more important than it looks.',
+    });
+  }
+
+  if (hasRecentMovementLoop(positionTrail)) {
+    candidates.push({
+      key: 'movement-loop',
+      message: 'You are circling the same few tiles.',
+    });
+  }
+
+  if (gameState.moves >= 14 && trailStats.uniqueTiles <= Math.ceil(gameState.moves * 0.45)) {
+    candidates.push({
+      key: 'revisited-tiles',
+      message: 'You keep revisiting the same area.',
+    });
+  }
+
+  if (gameState.moves >= 12 && trailStats.highestVisitCount >= 4) {
+    candidates.push({
+      key: 'backtracking',
+      message: 'This route is causing a lot of backtracking.',
+    });
+  }
+
+  if (failedRouteCount >= 4) {
+    candidates.push({
+      key: 'failed-routes',
+      message: 'That path keeps getting blocked.',
+    });
+  }
+
+  if (failedResetCount >= 3) {
+    candidates.push({
+      key: 'repeated-resets',
+      message: 'A small nudge may help you reset your plan.',
+    });
+  }
+
+  if (gameState.elapsedSeconds >= STUCK_NUDGE_SECONDS && gameState.moves <= 2) {
+    candidates.push({
+      key: 'slow-start',
+      message: 'Take a moment to read the board before committing.',
+    });
+  }
+
+  return candidates.find((candidate) => candidate.key !== isHintNudgeDismissed) ?? null;
 }
 
 function CompletionStars({
@@ -118,9 +233,13 @@ export function GameScreen({
   const [, setHistory] = useState<GameState[]>([]);
   const [hazardFlashCount, setHazardFlashCount] = useState(0);
   const [boardAnimationClass, setBoardAnimationClass] = useState('');
+  const [failedRouteCount, setFailedRouteCount] = useState(0);
   const [failedResetCount, setFailedResetCount] = useState(0);
   const [isHintPanelOpen, setIsHintPanelOpen] = useState(false);
+  const [dismissedHintNudgeKey, setDismissedHintNudgeKey] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
+  const [positionTrail, setPositionTrail] = useState<string[]>(() => [positionKey(level.playerStart)]);
+  const [spikeDeathCount, setSpikeDeathCount] = useState(0);
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const lockedDoorTimeoutRef = useRef<number | null>(null);
   const completionPanelRef = useRef<HTMLElement | null>(null);
@@ -192,12 +311,15 @@ export function GameScreen({
           setHistory([]);
           setHazardFlashCount((currentCount) => currentCount + 1);
           setFailedResetCount((currentCount) => currentCount + 1);
+          setSpikeDeathCount((currentCount) => currentCount + 1);
           savedCompletionRef.current = false;
 
           return nextState;
         }
 
         if (nextState === currentState || nextState.moves === currentState.moves) {
+          setFailedRouteCount((currentCount) => currentCount + 1);
+
           return nextState;
         }
 
@@ -232,6 +354,7 @@ export function GameScreen({
 
         triggerBoardAnimation(animationClass);
         setHistory((currentHistory) => [...currentHistory, currentState]);
+        setPositionTrail((currentTrail) => [...currentTrail, positionKey(nextState.playerPosition)]);
 
         return nextState;
       });
@@ -265,9 +388,13 @@ export function GameScreen({
     setHistory([]);
     setHazardFlashCount(0);
     setBoardAnimationClass('');
+    setFailedRouteCount(0);
     setFailedResetCount(0);
     setIsHintPanelOpen(false);
+    setDismissedHintNudgeKey(null);
     setIsPaused(false);
+    setPositionTrail([positionKey(level.playerStart)]);
+    setSpikeDeathCount(0);
     savedCompletionRef.current = false;
   }, [clearFeedbackMessage, level]);
 
@@ -358,8 +485,11 @@ export function GameScreen({
     setHistory([]);
     setHazardFlashCount(0);
     setBoardAnimationClass('');
+    setFailedRouteCount(0);
     clearFeedbackMessage();
+    setDismissedHintNudgeKey(null);
     setIsPaused(false);
+    setPositionTrail([positionKey(level.playerStart)]);
     savedCompletionRef.current = false;
   }, [clearFeedbackMessage, gameState.elapsedSeconds, gameState.isComplete, gameState.moves, level]);
 
@@ -372,6 +502,7 @@ export function GameScreen({
       }
 
       setGameState(previousState);
+      setPositionTrail((currentTrail) => currentTrail.slice(0, -1));
 
       return currentHistory.slice(0, -1);
     });
@@ -380,6 +511,31 @@ export function GameScreen({
   const toggleHints = useCallback(() => {
     setIsHintPanelOpen((currentValue) => !currentValue);
   }, []);
+
+  const dismissHintNudge = useCallback(() => {
+    const nudge = getStuckNudge({
+      failedRouteCount,
+      failedResetCount,
+      gameState,
+      isHintNudgeDismissed: null,
+      isHintPanelOpen,
+      isPaused,
+      level,
+      positionTrail,
+      spikeDeathCount,
+    });
+
+    setDismissedHintNudgeKey(nudge?.key ?? null);
+  }, [
+    failedRouteCount,
+    failedResetCount,
+    gameState,
+    isHintPanelOpen,
+    isPaused,
+    level,
+    positionTrail,
+    spikeDeathCount,
+  ]);
 
   const goToCompletionPrimaryAction = useCallback(() => {
     if (level.id >= LEVELS.length) {
@@ -458,7 +614,17 @@ export function GameScreen({
   const bestTimeSeconds = progress.bestTimeSeconds[level.id] ?? gameState.elapsedSeconds;
   const isMoveRecord = gameState.isComplete && gameState.moves <= bestMoves;
   const isTimeRecord = gameState.isComplete && gameState.elapsedSeconds <= bestTimeSeconds;
-  const unlockedHintCount = getUnlockedHintCount(level, gameState.elapsedSeconds, failedResetCount);
+  const hintNudge = getStuckNudge({
+    failedRouteCount,
+    failedResetCount,
+    gameState,
+    isHintNudgeDismissed: dismissedHintNudgeKey,
+    isHintPanelOpen,
+    isPaused,
+    level,
+    positionTrail,
+    spikeDeathCount,
+  });
   const isFinalLevel = level.id >= LEVELS.length;
   const completionPrimaryLabel = isFinalLevel ? 'Level Select' : 'Next Level';
 
@@ -477,9 +643,11 @@ export function GameScreen({
       <div className={`game-play-area${gameState.isComplete ? ' complete' : ''}${gameState.isFailed ? ' failed' : ''}`}>
         <GameBoard
           elapsedSeconds={gameState.elapsedSeconds}
+          failedAttemptCount={failedResetCount}
           animationClass={boardAnimationClass}
           gameState={gameState}
           hazardFlash={hazardFlashCount > 0 && !reducedMotion}
+          hintNudge={hintNudge}
           isHintPanelOpen={isHintPanelOpen}
           isPaused={isPaused}
           level={level}
@@ -489,10 +657,10 @@ export function GameScreen({
           onMove={moveInDirection}
           onPause={pauseGame}
           onReset={resetLevel}
+          onDismissHintNudge={dismissHintNudge}
           onToggleHints={toggleHints}
           onUndo={undoMove}
           playerPosition={gameState.playerPosition}
-          unlockedHintCount={unlockedHintCount}
         />
 
         {gameState.isComplete ? (

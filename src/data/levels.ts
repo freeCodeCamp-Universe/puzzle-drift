@@ -19,6 +19,27 @@ type LevelInput = Omit<Level, 'grid' | 'hints'> & {
 };
 
 type LevelDefinition = Omit<Level, 'hints'>;
+type HintTexts = readonly [string, string, string, ...string[]];
+
+const MECHANIC_HINTS = {
+  keys: [
+    'Locked doors require keys.',
+    'The key may require backtracking.',
+    'The door is mandatory.',
+  ],
+  portals: [
+    'Not every route can be walked.',
+    'Consider where the portal sends you.',
+    'The portal is required.',
+  ],
+  switches: [
+    'Switches can change the map.',
+    'Watch what opens.',
+    'The switch controls the required route.',
+  ],
+} as const;
+
+type MechanicHintKey = keyof typeof MECHANIC_HINTS;
 
 function position(x: number, y: number): Position {
   return { x, y };
@@ -45,144 +66,176 @@ function defineLevel(level: LevelInput): LevelDefinition {
   };
 }
 
+function composeLevelHints(levelHints: HintTexts, mechanicHintKeys: MechanicHintKey[] = []): LevelHint[] {
+  return levelHints.map((levelHint, hintIndex) => {
+    const mechanicHints = mechanicHintKeys.flatMap((mechanicHintKey) => {
+      const mechanicHint = MECHANIC_HINTS[mechanicHintKey][hintIndex];
+
+      return mechanicHint ? [mechanicHint] : [];
+    });
+
+    return {
+      text: [levelHint, ...mechanicHints].join(' '),
+    };
+  });
+}
+
 const LEVEL_HINTS: Record<number, LevelHint[]> = {
-  1: [
-    { text: 'Follow the open corridor before cutting toward the exit.' },
-    { text: 'The shortest route uses the top hallway first.', unlockAfterFailedResets: 1 },
-    { text: 'Approach the exit from the tile directly to its left.', unlockAfterSeconds: 20 },
-  ],
-  2: [
-    { text: 'Use the outer path to route around the blocked center.' },
-    { text: 'The exit wing opens from the left side.', unlockAfterFailedResets: 1 },
-  ],
-  3: [
-    { text: 'The locked door blocks the only route forward.' },
-    { text: 'Look for something that can open the gate.', unlockAfterFailedResets: 1 },
-    { text: 'You may need to backtrack after finding the key.', unlockAfterSeconds: 25 },
-  ],
-  4: [
-    { text: 'The straight path should be blocked until you unlock the door.' },
-    { text: 'The side hall exists for a reason.', unlockAfterFailedResets: 1 },
-    { text: 'Return to the locked door after collecting the key.', unlockAfterSeconds: 30 },
-  ],
-  5: [
-    { text: 'The open-looking edge path should not be the solution.' },
-    { text: 'Find the key before committing to the final corridor.', unlockAfterFailedResets: 1 },
-    { text: 'The last door is the only clean way out.', unlockAfterSeconds: 35 },
-  ],
-  6: [
-    { text: 'The closed door blocks the only path forward.' },
-    { text: 'Step on the switch and watch what changes.', unlockAfterFailedResets: 1 },
-    { text: 'After the door opens, return to the marked passage.', unlockAfterSeconds: 35 },
-  ],
-  7: [
-    { text: 'The exit path only opens after the block moves.' },
-    { text: 'Push the block once, then take the route around it.', unlockAfterFailedResets: 1 },
-    { text: 'A single nudge is enough.', unlockAfterSeconds: 30 },
-  ],
-  8: [
-    { text: 'The plate must stay held down after you leave.' },
-    { text: 'Use the block, not the player, to keep the door open.', unlockAfterFailedResets: 1 },
-  ],
-  9: [
-    { text: 'The key is behind the switch gate.' },
-    { text: 'Use the switch before looking for the key.', unlockAfterFailedResets: 1 },
-    { text: 'Save the key for the final locked door.', unlockAfterSeconds: 40 },
-  ],
-  10: [
-    { text: 'The cargo gate will not open by itself.' },
-    { text: 'The block belongs on the marked plate.', unlockAfterFailedResets: 1 },
-    { text: 'After the gate opens, find the key for the final door.', unlockAfterSeconds: 45 },
-  ],
-  11: [
-    { text: 'Shorter is not always safer.' },
-    { text: 'Study the spike clusters before moving.', unlockAfterFailedResets: 1 },
-    { text: 'The exit is safest when approached from the side.', unlockAfterSeconds: 35 },
-  ],
-  12: [
-    { text: 'The open line near the top is bait.' },
-    { text: 'Trace the lower bend before committing to the exit.', unlockAfterFailedResets: 1 },
-    { text: 'The safe route wraps under the spike wall.', unlockAfterSeconds: 40 },
-  ],
-  13: [
-    { text: 'Enter the ice lane in the direction you want to keep moving.' },
-    { text: 'Sliding can replace several normal steps with one move.', unlockAfterFailedResets: 1 },
-  ],
-  14: [
-    { text: 'Use the slide to reach the key before the door.' },
-    { text: 'The key and door sit on the same frozen approach.', unlockAfterFailedResets: 1 },
-  ],
-  15: [
-    { text: 'Plan where each ice slide stops before moving.' },
-    { text: 'On ice, a spike at the end of a lane is already too late.', unlockAfterFailedResets: 1 },
-    { text: 'Use floor pockets to line up safe slides.', unlockAfterSeconds: 45 },
-  ],
-  16: [
-    { text: 'Use the portal before committing to the exit wing.' },
-    { text: 'Collect the wing key before opening the final door.', unlockAfterFailedResets: 1 },
-  ],
-  17: [
-    { text: 'Warp to reach the key chamber before opening the lock.' },
-    { text: 'The same portal pair can help both directions of the route.', unlockAfterSeconds: 45 },
-  ],
-  18: [
-    { text: 'Use the portal to get on the useful side of the block.' },
-    { text: 'The block must activate the plate before the door matters.', unlockAfterFailedResets: 1 },
-  ],
-  19: [
-    { text: 'Treat the portal as a relay into the block room.' },
-    { text: 'The plate-linked door opens only while the plate is active.', unlockAfterFailedResets: 1 },
-  ],
-  20: [
-    { text: 'The portal crossing is only the first step.' },
-    { text: 'After warping, collect the key before the exit lane.', unlockAfterSeconds: 50 },
-  ],
-  21: [
-    { text: 'Use ice to reach the switch pocket efficiently.' },
-    { text: 'Once the switch is active, the center door becomes usable.', unlockAfterFailedResets: 1 },
-  ],
-  22: [
-    { text: 'Collect the frozen key before aiming for the locked lane.' },
-    { text: 'Ice changes your stopping point; aim for a floor pocket.', unlockAfterSeconds: 50 },
-  ],
-  23: [
-    { text: 'Circle around until you can push the block toward the plate.' },
-    { text: 'The block needs room behind it before it can move.', unlockAfterFailedResets: 1 },
-  ],
-  24: [
-    { text: 'The switch matters, but the top lane is not the way back.' },
-    { text: 'After toggling the gate, route around the spike strip.', unlockAfterFailedResets: 1 },
-    { text: 'Approach the switch door from below.', unlockAfterSeconds: 55 },
-  ],
-  25: [
-    { text: 'Warp around the room to set up the block push.' },
-    { text: 'Keep the remote plate active before heading for the door.', unlockAfterSeconds: 55 },
-  ],
-  26: [
-    { text: 'The key route crosses the cold hazard lane.' },
-    { text: 'Collect the key before approaching the final door.', unlockAfterFailedResets: 1 },
-    { text: 'Use the ice pocket, then return through the safe bend.', unlockAfterSeconds: 70 },
-  ],
-  27: [
-    { text: 'The cargo gate must open before the key matters.' },
-    { text: 'Push the block onto the marked plate, then backtrack to the door.', unlockAfterSeconds: 70 },
-    { text: 'Save the key for the final lock.', unlockAfterFailedResets: 1 },
-  ],
-  28: [
-    { text: 'The portal drops you near the hazardous shortcut.' },
-    { text: 'Reach the key without stepping into the spike row.', unlockAfterFailedResets: 1 },
-    { text: 'The lock near the exit is the final check.', unlockAfterSeconds: 75 },
-  ],
-  29: [
-    { text: 'Use the lower portal to reach the switch side.' },
-    { text: 'The switch gate opens before the key-door finish.', unlockAfterFailedResets: 1 },
-    { text: 'Do not spend time circling the outer wall.', unlockAfterSeconds: 75 },
-  ],
-  30: [
-    { text: 'Solve the cargo plate before taking the portal.' },
-    { text: 'Use the ice pocket to complete the setup path.', unlockAfterFailedResets: 1 },
-    { text: 'After the portal, collect the key, switch the gate, and unlock the last door.', unlockAfterSeconds: 90 },
-  ],
+  1: composeLevelHints([
+    'Follow the open corridor before cutting toward the exit.',
+    'The shortest route uses the top hallway first.',
+    'Approach the exit from the tile directly to its left.',
+  ]),
+  2: composeLevelHints([
+    'Use the outer path to route around the blocked center.',
+    'The exit wing opens from the left side.',
+    'Loop around the lower corridor before turning into the exit pocket.',
+  ]),
+  3: composeLevelHints([
+    'The locked door blocks the only route forward.',
+    'Look for the item before returning to the gate.',
+    'Collect the item, then come back to the lock.',
+  ], ['keys']),
+  4: composeLevelHints([
+    'The straight path is blocked at first.',
+    'The side hall exists for the return trip.',
+    'Return to the lower corridor after the side loop.',
+  ], ['keys']),
+  5: composeLevelHints([
+    'The open-looking edge path should not be the solution.',
+    'Check the upper lane before committing to the final corridor.',
+    'The last gate is the only clean way out.',
+  ], ['keys']),
+  6: composeLevelHints([
+    'The closed door blocks the only path forward.',
+    'Step on the marked object before returning.',
+    'After the door opens, return to the marked passage.',
+  ], ['switches']),
+  7: composeLevelHints([
+    'The exit path only opens after the block moves.',
+    'Push the block once, then take the route around it.',
+    'A single nudge is enough.',
+  ]),
+  8: composeLevelHints([
+    'The plate must stay held down after you leave.',
+    'Use the block, not the player, to keep the door open.',
+    'Push the block onto the plate, then route through the opened door.',
+  ]),
+  9: composeLevelHints([
+    'The item sits behind the first gate.',
+    'Open the gate before searching the upper lane.',
+    'Save the item for the final lock.',
+  ], ['switches', 'keys']),
+  10: composeLevelHints([
+    'The cargo gate will not open by itself.',
+    'The block belongs on the marked plate.',
+    'After the gate opens, find the key for the final door.',
+  ]),
+  11: composeLevelHints([
+    'The shortest route is not the safest.',
+    'Spikes block the most direct-looking corridor.',
+    'Approach the exit from the lower route.',
+  ]),
+  12: composeLevelHints([
+    'The open line near the top is bait.',
+    'Trace the lower bend before committing to the exit.',
+    'The safe route wraps under the spike wall.',
+  ]),
+  13: composeLevelHints([
+    'Enter the ice lane in the direction you want to keep moving.',
+    'Sliding can replace several normal steps with one move.',
+    'Line up with the frozen corridor before committing to the exit.',
+  ]),
+  14: composeLevelHints([
+    'Use the slide to reach the item before the gate.',
+    'Both objects sit on the same frozen approach.',
+    'Slide through the item lane, then spend it at the gate.',
+  ], ['keys']),
+  15: composeLevelHints([
+    'Plan where each ice slide stops before moving.',
+    'On ice, a spike at the end of a lane is already too late.',
+    'Use floor pockets to line up safe slides.',
+  ]),
+  16: composeLevelHints([
+    'Use the shortcut before committing to the exit wing.',
+    'Collect the wing item before opening the final gate.',
+    'Warp first, collect the item, then return to the exit path.',
+  ], ['portals', 'keys']),
+  17: composeLevelHints([
+    'Warp to reach the item chamber before opening the lock.',
+    'The same pair can help both directions of the route.',
+    'Use the remote route to reach the item, then come back.',
+  ], ['portals', 'keys']),
+  18: composeLevelHints([
+    'Use the warp to get on the useful side of the block.',
+    'The block must activate the plate before the door matters.',
+    'Warp into position, push the block onto the plate, then head for the opened lane.',
+  ], ['portals']),
+  19: composeLevelHints([
+    'Treat the warp as a relay into the block room.',
+    'The plate-linked door opens only while the plate is active.',
+    'Set the block on the plate before routing back toward the exit door.',
+  ], ['portals']),
+  20: composeLevelHints([
+    'The warp crossing is only the first step.',
+    'After crossing, collect the item before the exit lane.',
+    'Use the remote side to reach the item, then unlock the final corridor.',
+  ], ['portals', 'keys']),
+  21: composeLevelHints([
+    'Use ice to reach the switch pocket efficiently.',
+    'Once the switch is active, the center door becomes usable.',
+    'Slide to the switch, then return through the newly opened passage.',
+  ], ['switches']),
+  22: composeLevelHints([
+    'Collect the frozen item before aiming for the locked lane.',
+    'Ice changes your stopping point; aim for a floor pocket.',
+    'Stop in the pocket near the item, then line up with the gate.',
+  ], ['keys']),
+  23: composeLevelHints([
+    'Circle around until you can push the block toward the plate.',
+    'The block needs room behind it before it can move.',
+    'Approach the block from the side that pushes it into the plate lane.',
+  ]),
+  24: composeLevelHints([
+    'The switch matters, but the top lane is not the way back.',
+    'After toggling the gate, route around the spike strip.',
+    'Approach the switch door from below.',
+  ], ['switches']),
+  25: composeLevelHints([
+    'Warp around the room to set up the block push.',
+    'Keep the remote plate active before heading for the door.',
+    'Use the warp to reposition, set the block, then leave through the opened gate.',
+  ], ['portals']),
+  26: composeLevelHints([
+    'The item route crosses the cold hazard lane.',
+    'Collect the item before approaching the final door.',
+    'Use the ice pocket, then return through the safe bend.',
+    'Secure the key first, then treat the final door as the last step.',
+  ], ['keys']),
+  27: composeLevelHints([
+    'The cargo gate must open before the item matters.',
+    'Push the block onto the marked plate, then backtrack to the door.',
+    'Save the item for the final lock.',
+    'Solve cargo, collect the key, then unlock the exit in that order.',
+  ], ['keys']),
+  28: composeLevelHints([
+    'The warp drops you near the hazardous shortcut.',
+    'Reach the item without stepping into the spike row.',
+    'The lock near the exit is the final check.',
+    'Use the portal for access, avoid the spike row, then spend the key at the lock.',
+  ], ['portals', 'keys']),
+  29: composeLevelHints([
+    'Use the lower warp to reach the switch side.',
+    'The gate opens before the item-door finish.',
+    'Do not spend time circling the outer wall.',
+    'Portal to the switch side, open the gate, then finish with the key door.',
+  ], ['portals', 'switches', 'keys']),
+  30: composeLevelHints([
+    'Focus on one objective at a time.',
+    'The cargo plate must be solved before the final lock.',
+    'Portal access becomes useful after the cargo gate opens.',
+    'Cargo gate, portal access, key, switch gate, then final lock.',
+  ], ['portals', 'switches', 'keys']),
 };
 
 const LEVEL_DEFINITIONS: Level[] = [

@@ -216,10 +216,12 @@ export function validateLevel(level: Level): LevelValidationIssue[] {
     });
   }
 
-  if (!Array.isArray(level.hints) || level.hints.length < 1 || level.hints.length > 3) {
+  const maximumHintTiers = level.id >= 26 && level.id <= 30 ? 4 : 3;
+
+  if (!Array.isArray(level.hints) || level.hints.length < 1 || level.hints.length > maximumHintTiers) {
     issues.push({
       levelId: level.id,
-      message: 'Level must define between 1 and 3 hints.',
+      message: `Level must define between 1 and ${maximumHintTiers} hints.`,
     });
   }
 

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   ArrowDown,
   ArrowLeft,
@@ -32,13 +33,17 @@ type GameBoardProps = {
   elapsedSeconds: number;
   gameState: GameState;
   hazardFlash: boolean;
+  failedAttemptCount?: number;
   isHintPanelOpen: boolean;
+  hintNudge?: {
+    message: string;
+  } | null;
   isPaused?: boolean;
   reducedMotion: boolean;
   animationClass?: string;
   playerPosition: Position;
-  unlockedHintCount: number;
   onLevelSelect: () => void;
+  onDismissHintNudge?: () => void;
   onToggleHints: () => void;
   onMove: (direction: Direction) => void;
   onPause: () => void;
@@ -84,6 +89,30 @@ function getPortalPairClass(level: Level, x: number, y: number) {
 
 function positionsMatch(first: Position, second: Position) {
   return first.x === second.x && first.y === second.y;
+}
+
+function positionKey(position: Position) {
+  return `${position.x},${position.y}`;
+}
+
+function getTileId(level: Level, position: Position) {
+  return level.tileIds?.[positionKey(position)];
+}
+
+function getPositionByTileId(level: Level, tileId: string): Position | null {
+  const matchingEntry = Object.entries(level.tileIds ?? {}).find(([, id]) => id === tileId);
+
+  if (!matchingEntry) {
+    return null;
+  }
+
+  const [x, y] = matchingEntry[0].split(',').map(Number);
+
+  return { x, y };
+}
+
+function getTileAt(level: Level, position: Position) {
+  return level.grid[position.y]?.[position.x] ?? null;
 }
 
 function isActiveTile(level: Level, gameState: GameState, x: number, y: number, tile: TileType) {
@@ -133,26 +162,138 @@ function renderObjectIcon(tile: TileType, isActive: boolean, isOpenedDoor: boole
   }
 }
 
+function addVisualHintPosition(positions: Map<string, Position>, position: Position | null) {
+  if (position) {
+    positions.set(positionKey(position), position);
+  }
+}
+
+function getVisualHintPositions(level: Level) {
+  const positions = new Map<string, Position>();
+  const linkedDoorIds = new Set(level.links?.map((link) => link.targetId) ?? []);
+
+  level.grid.forEach((row, y) => {
+    row.forEach((tile, x) => {
+      const position = { x, y };
+
+      if (tile === 'portal') {
+        const tileId = getTileId(level, position);
+        const portalLink = level.links?.find(
+          (link) => tileId && (link.sourceId === tileId || link.targetId === tileId),
+        );
+
+        if (portalLink) {
+          addVisualHintPosition(positions, position);
+          addVisualHintPosition(
+            positions,
+            getPositionByTileId(
+              level,
+              portalLink.sourceId === tileId ? portalLink.targetId : portalLink.sourceId,
+            ),
+          );
+        }
+      }
+
+      if (tile === 'door' && level.mechanics.includes('key')) {
+        const tileId = getTileId(level, position);
+
+        if (!tileId || !linkedDoorIds.has(tileId)) {
+          addVisualHintPosition(positions, position);
+        }
+      }
+
+      if (tile !== 'switch' && tile !== 'pressurePlate') {
+        return;
+      }
+
+      const tileId = getTileId(level, position);
+
+      level.links
+        ?.filter((link) => link.sourceId === tileId)
+        .forEach((link) => {
+          const linkedPosition = getPositionByTileId(level, link.targetId);
+
+          if (linkedPosition && getTileAt(level, linkedPosition) === 'door') {
+            addVisualHintPosition(positions, linkedPosition);
+          }
+        });
+    });
+  });
+
+  return positions;
+}
+
+function getHintTierUnlock(tierNumber: number) {
+  switch (tierNumber) {
+    case 1:
+      return { failedAttempts: 0, seconds: 0 };
+    case 2:
+      return { failedAttempts: 2, seconds: 60 };
+    case 3:
+      return { failedAttempts: 5, seconds: 120 };
+    default:
+      return { failedAttempts: 8, seconds: 180 };
+  }
+}
+
+function isHintTierUnlocked(tierNumber: number, elapsedSeconds: number, failedAttemptCount: number) {
+  const unlock = getHintTierUnlock(tierNumber);
+
+  return elapsedSeconds >= unlock.seconds || failedAttemptCount >= unlock.failedAttempts;
+}
+
+function formatUnlockTime(seconds: number) {
+  return `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
+}
+
+function getHintTierStatus(tierNumber: number, elapsedSeconds: number, failedAttemptCount: number) {
+  const unlock = getHintTierUnlock(tierNumber);
+
+  if (tierNumber === 1) {
+    return 'Available now';
+  }
+
+  if (isHintTierUnlocked(tierNumber, elapsedSeconds, failedAttemptCount)) {
+    return 'Available now';
+  }
+
+  return `Unlocks at ${formatUnlockTime(unlock.seconds)} or ${unlock.failedAttempts} failed attempts`;
+}
+
 export function GameBoard({
   level,
   moves,
   elapsedSeconds,
   gameState,
   hazardFlash,
+  failedAttemptCount = 0,
   isHintPanelOpen,
+  hintNudge = null,
   isPaused = false,
   reducedMotion,
   animationClass = '',
   playerPosition,
-  unlockedHintCount,
   onLevelSelect,
+  onDismissHintNudge,
   onToggleHints,
   onMove,
   onPause,
   onReset,
   onUndo,
 }: GameBoardProps) {
+  const [selectedHintTier, setSelectedHintTier] = useState<number | null>(null);
+  const [visualHintPulseId, setVisualHintPulseId] = useState(0);
   const shouldShowKeys = level.mechanics.includes('key') || gameState.collectedKeys > 0;
+  const visualHintPositions = getVisualHintPositions(level);
+  const hasVisualHints = visualHintPositions.size > 0;
+  const hintTiers = level.hints.map((hint, hintIndex) => ({
+    isUnlocked: isHintTierUnlocked(hintIndex + 1, elapsedSeconds, failedAttemptCount),
+    label: ['Direction', 'Mechanic', 'Route', 'Plan'][hintIndex] ?? `Step ${hintIndex + 1}`,
+    number: hintIndex + 1,
+    status: getHintTierStatus(hintIndex + 1, elapsedSeconds, failedAttemptCount),
+    text: hint.text,
+  }));
+  const selectedHint = hintTiers.find((hintTier) => hintTier.number === selectedHintTier && hintTier.isUnlocked);
 
   return (
     <section
@@ -221,12 +362,12 @@ export function GameBoard({
               <ListOrdered aria-hidden="true" />
             </button>
           </Tooltip>
-          <Tooltip content={isHintPanelOpen ? 'Hide Hints' : 'Show Hints'} disabled={isPaused} reducedMotion={reducedMotion}>
+          <Tooltip content={isHintPanelOpen ? 'Close Assist' : 'Open Assist'} disabled={isPaused} reducedMotion={reducedMotion}>
             <button
               type="button"
-              className="icon-button"
+              className={`icon-button assist-button${hintNudge ? ' assist-ready' : ''}`}
               onClick={onToggleHints}
-              aria-label={isHintPanelOpen ? 'Hide hints' : 'Show hints'}
+              aria-label={isHintPanelOpen ? 'Close puzzle assist' : 'Open puzzle assist'}
               aria-expanded={isHintPanelOpen}
               aria-controls="hint-panel"
               disabled={isPaused}
@@ -244,6 +385,23 @@ export function GameBoard({
         </div>
         <p>{level.description}</p>
       </section>
+
+      {hintNudge ? (
+        <aside className="assist-nudge" aria-label="Puzzle assist nudge" aria-live="polite">
+          <div>
+            <p className="assist-kicker">Need a hint?</p>
+            <p>{hintNudge.message}</p>
+          </div>
+          <div className="assist-nudge-actions">
+            <button type="button" className="assist-link-button" onClick={onToggleHints}>
+              More help
+            </button>
+            <button type="button" className="icon-button" onClick={onDismissHintNudge} aria-label="Dismiss assist nudge">
+              <X aria-hidden="true" />
+            </button>
+          </div>
+        </aside>
+      ) : null}
 
       <div
         className="game-board"
@@ -263,6 +421,7 @@ export function GameBoard({
             const objectIcon = renderObjectIcon(renderedTile, isActive, isOpenedDoor);
             const wasKeyCollected =
               tile === 'key' && gameState.collectedKeyPositions.some((position) => positionsMatch(position, { x, y }));
+            const isVisualHinted = visualHintPulseId > 0 && visualHintPositions.has(positionKey({ x, y }));
 
             return (
               <div
@@ -271,6 +430,8 @@ export function GameBoard({
                   objectIcon ? ' tile-object' : ''
                 }${isActive ? ' tile-active' : ''}${isOpenedDoor ? ' tile-opened' : ''}${
                   wasKeyCollected ? ' tile-key-collected' : ''
+                }${isVisualHinted ? ` visual-hint-tile visual-hint-pulse-${visualHintPulseId % 2}` : ''}${
+                  isVisualHinted && reducedMotion ? ' visual-hint-static' : ''
                 }${renderedTile === 'portal' ? getPortalPairClass(level, x, y) : ''}`}
                 data-testid="board-tile"
                 key={`${x}-${y}`}
@@ -297,27 +458,54 @@ export function GameBoard({
       </div>
 
       {isHintPanelOpen ? (
-        <section className="hint-panel" id="hint-panel" aria-label="Level hints">
+        <section className="hint-panel assist-panel" id="hint-panel" aria-label="Puzzle assist">
           <div className="hint-panel-header">
             <Lightbulb aria-hidden="true" />
             <div>
-              <p className="eyebrow">hints</p>
-              <h3>Signal Boost</h3>
+              <p className="eyebrow">choose your help level</p>
+              <h3>Puzzle Assist</h3>
             </div>
-            <button type="button" className="icon-button" onClick={onToggleHints} aria-label="Close hints">
+            <button type="button" className="icon-button" onClick={onToggleHints} aria-label="Close puzzle assist">
               <X aria-hidden="true" />
             </button>
           </div>
-          <ol>
-            {level.hints.slice(0, unlockedHintCount).map((hint) => (
-              <li key={hint.text}>{hint.text}</li>
+          <div className="assist-tier-picker" aria-label="Hint tiers">
+            {hintTiers.map((hintTier) => (
+              <button
+                type="button"
+                className="assist-tier-button"
+                disabled={!hintTier.isUnlocked}
+                key={hintTier.number}
+                onClick={() => setSelectedHintTier(hintTier.number)}
+                aria-pressed={selectedHintTier === hintTier.number}
+              >
+                <span>Tier {hintTier.number}</span>
+                {hintTier.label}
+                <em>{hintTier.status}</em>
+              </button>
             ))}
-          </ol>
-          {unlockedHintCount < level.hints.length ? (
-            <p className="hint-locked" aria-live="polite">
-              {level.hints.length - unlockedHintCount} more{' '}
-              {level.hints.length - unlockedHintCount === 1 ? 'hint' : 'hints'} locked.
-            </p>
+          </div>
+          {selectedHint ? (
+            <div className="assist-tier-answer" aria-live="polite">
+              <span>
+                Tier {selectedHint.number} · {selectedHint.label}
+              </span>
+              <p>{selectedHint.text}</p>
+            </div>
+          ) : (
+            <p className="assist-tier-prompt">Start with Direction for a gentle nudge, or jump ahead if you want more help.</p>
+          )}
+          {hasVisualHints ? (
+            <div className="visual-hint-controls">
+              <button
+                type="button"
+                className="assist-link-button visual-hint-button"
+                onClick={() => setVisualHintPulseId((currentValue) => currentValue + 1)}
+              >
+                Show visual hint
+              </button>
+              <p>Highlights related puzzle objects once, without showing a route.</p>
+            </div>
           ) : null}
         </section>
       ) : null}

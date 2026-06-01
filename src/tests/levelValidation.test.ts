@@ -18,12 +18,44 @@ describe('level validation', () => {
     expect(validateLevels(LEVELS)).toEqual([]);
   });
 
-  it('defines one to three hints for every level', () => {
+  it('defines three standard hint tiers and a late-game fourth tier', () => {
     LEVELS.forEach((level) => {
-      expect(level.hints.length).toBeGreaterThanOrEqual(1);
-      expect(level.hints.length).toBeLessThanOrEqual(3);
+      expect(level.hints).toHaveLength(level.id >= 26 ? 4 : 3);
       expect(level.hints.every((hint) => hint.text.trim().length > 0)).toBe(true);
     });
+
+    expect(LEVELS.filter((level) => level.hints.length === 4).map((level) => level.id)).toEqual([
+      26,
+      27,
+      28,
+      29,
+      30,
+    ]);
+  });
+
+  it('uses reusable mechanic hints in composed campaign hints', () => {
+    expect(LEVELS[10].hints.map((hint) => hint.text)).toEqual([
+      'The shortest route is not the safest.',
+      'Spikes block the most direct-looking corridor.',
+      'Approach the exit from the lower route.',
+    ]);
+
+    expect(LEVELS[2].hints.map((hint) => hint.text)).toEqual([
+      'The locked door blocks the only route forward. Locked doors require keys.',
+      'Look for the item before returning to the gate. The key may require backtracking.',
+      'Collect the item, then come back to the lock. The door is mandatory.',
+    ]);
+    expect(LEVELS[5].hints.map((hint) => hint.text)).toEqual([
+      'The closed door blocks the only path forward. Switches can change the map.',
+      'Step on the marked object before returning. Watch what opens.',
+      'After the door opens, return to the marked passage. The switch controls the required route.',
+    ]);
+    expect(LEVELS[29].hints.map((hint) => hint.text)).toEqual([
+      'Focus on one objective at a time. Not every route can be walked. Switches can change the map. Locked doors require keys.',
+      'The cargo plate must be solved before the final lock. Consider where the portal sends you. Watch what opens. The key may require backtracking.',
+      'Portal access becomes useful after the cargo gate opens. The portal is required. The switch controls the required route. The door is mandatory.',
+      'Cargo gate, portal access, key, switch gate, then final lock.',
+    ]);
   });
 
   it('enforces tiered meaningful decision minimums for levels 11-30', () => {

@@ -45,8 +45,6 @@ export type Level = {
 
 export type LevelHint = {
   text: string;
-  unlockAfterFailedResets?: number;
-  unlockAfterSeconds?: number;
 };
 
 export type LevelLink = {

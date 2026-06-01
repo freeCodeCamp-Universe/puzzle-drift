@@ -1207,7 +1207,6 @@ describe('level pack', () => {
           onToggleHints={vi.fn()}
           onUndo={vi.fn()}
           playerPosition={level.playerStart}
-          unlockedHintCount={1}
         />,
       );
 

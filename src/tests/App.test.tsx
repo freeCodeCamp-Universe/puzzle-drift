@@ -354,9 +354,9 @@ describe('App', () => {
     expect(screen.getByLabelText('0 moves')).toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: 'h' });
-    expect(screen.getByRole('region', { name: /level hints/i })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /puzzle assist/i })).toBeInTheDocument();
     fireEvent.keyDown(window, { key: 'h' });
-    expect(screen.queryByRole('region', { name: /level hints/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: /puzzle assist/i })).not.toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: 'p' });
     expect(screen.getByRole('dialog', { name: /paused/i })).toBeInTheDocument();
@@ -392,37 +392,129 @@ describe('App', () => {
 
     await user.click(screen.getByRole('button', { name: /new game/i }));
 
-    expect(screen.getByRole('button', { name: /show hints/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /open puzzle assist/i })).toBeInTheDocument();
   });
 
-  it('displays the first hint for free', async () => {
+  it('lets players choose a hint tier before showing help text', async () => {
     const user = userEvent.setup();
     render(<App />);
 
     await user.click(screen.getByRole('button', { name: /new game/i }));
-    await user.click(screen.getByRole('button', { name: /show hints/i }));
+    await user.click(screen.getByRole('button', { name: /open puzzle assist/i }));
 
-    expect(screen.getByRole('region', { name: /level hints/i })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /puzzle assist/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /tier 1 direction/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /tier 2 mechanic/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /tier 3 route/i })).toBeInTheDocument();
+    expect(screen.queryByText(LEVELS[0].hints[0].text)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /tier 1 direction/i }));
+
     expect(screen.getByText(LEVELS[0].hints[0].text)).toBeInTheDocument();
-    expect(screen.queryByText(LEVELS[0].hints[1].text)).not.toBeInTheDocument();
   });
 
-  it('unlocks later hints after failed resets and time thresholds', async () => {
+  it('proactively shows a contextual assist nudge when the player appears stuck', async () => {
     vi.useFakeTimers();
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: /new game/i }));
-    fireEvent.click(screen.getByRole('button', { name: /show hints/i }));
-    expect(screen.queryByText(LEVELS[0].hints[1].text)).not.toBeInTheDocument();
-
-    fireEvent.keyDown(window, { key: 'ArrowRight' });
-    fireEvent.click(screen.getByRole('button', { name: /reset level/i }));
-    expect(screen.getByText(LEVELS[0].hints[1].text)).toBeInTheDocument();
 
     act(() => {
-      vi.advanceTimersByTime(20000);
+      vi.advanceTimersByTime(35000);
     });
 
+    expect(screen.getByRole('complementary', { name: /puzzle assist nudge/i })).toBeInTheDocument();
+    expect(screen.getByText(/need a hint/i)).toBeInTheDocument();
+    expect(screen.getByText(/read the board/i)).toBeInTheDocument();
+    expect(screen.queryByText(LEVELS[0].hints[0].text)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /more help/i }));
+
+    expect(screen.getByRole('region', { name: /puzzle assist/i })).toBeInTheDocument();
+  });
+
+  it('detects repeated movement loops before offering puzzle assist', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowLeft' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: 'ArrowLeft' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+
+    expect(screen.getByRole('complementary', { name: /puzzle assist nudge/i })).toBeInTheDocument();
+    expect(screen.getByText(/circling the same few tiles/i)).toBeInTheDocument();
+  });
+
+  it('detects repeated spike deaths before offering puzzle assist', async () => {
+    const user = await openSpikeLane();
+
+    for (let deathCount = 0; deathCount < 3; deathCount += 1) {
+      fireEvent.keyDown(window, { key: 'ArrowRight' });
+      fireEvent.keyDown(window, { key: 'ArrowRight' });
+      await user.click(screen.getByRole('button', { name: /retry the level/i }));
+    }
+
+    expect(screen.getByRole('complementary', { name: /puzzle assist nudge/i })).toBeInTheDocument();
+    expect(screen.getByText(/running into hazards/i)).toBeInTheDocument();
+  });
+
+  it('detects an unused portal on portal lessons before offering puzzle assist', async () => {
+    let progress = createInitialSaveData();
+
+    for (let currentLevel = 1; currentLevel < 16; currentLevel += 1) {
+      progress = completeLevel(progress, currentLevel, {
+        moves: 1,
+        stars: 3,
+        timeSeconds: 1,
+      });
+    }
+
+    window.localStorage.setItem(
+      'puzzle-drift:save',
+      JSON.stringify({
+        ...progress,
+        currentLevel: 16,
+        hasActiveRun: true,
+      }),
+    );
+    vi.useFakeTimers();
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+
+    act(() => {
+      vi.advanceTimersByTime(90000);
+    });
+
+    expect(screen.getByRole('complementary', { name: /puzzle assist nudge/i })).toBeInTheDocument();
+    expect(screen.getByText(/portal may be more important/i)).toBeInTheDocument();
+  });
+
+  it('reveals mechanic and route tiers on demand', async () => {
+    vi.useFakeTimers();
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /new game/i }));
+    fireEvent.click(screen.getByRole('button', { name: /open puzzle assist/i }));
+
+    expect(screen.getByRole('button', { name: /tier 2 mechanic/i })).toBeDisabled();
+
+    act(() => {
+      vi.advanceTimersByTime(60000);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /tier 2 mechanic/i }));
+    expect(screen.getByText(LEVELS[0].hints[1].text)).toBeInTheDocument();
+
+    expect(screen.getByRole('button', { name: /tier 3 route/i })).toBeDisabled();
+
+    act(() => {
+      vi.advanceTimersByTime(60000);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /tier 3 route/i }));
     expect(screen.getByText(LEVELS[0].hints[2].text)).toBeInTheDocument();
   });
 
@@ -439,7 +531,8 @@ describe('App', () => {
 
     await user.click(screen.getByRole('button', { name: /level select/i }));
     await user.click(screen.getByRole('button', { name: 'Level 2: Corner Signal' }));
-    await user.click(screen.getByRole('button', { name: /show hints/i }));
+    await user.click(screen.getByRole('button', { name: /open puzzle assist/i }));
+    await user.click(screen.getByRole('button', { name: /tier 1 direction/i }));
 
     expect(screen.getByText(LEVELS[1].hints[0].text)).toBeInTheDocument();
     expect(screen.queryByText(LEVELS[0].hints[0].text)).not.toBeInTheDocument();

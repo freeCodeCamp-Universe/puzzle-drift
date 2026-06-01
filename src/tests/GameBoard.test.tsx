@@ -7,6 +7,10 @@ import { createInitialGameState } from '../logic/movement';
 
 const level = LEVELS[0];
 const keyline = LEVELS[2];
+const switchPrimer = LEVELS[5];
+const plateHold = LEVELS[7];
+const portalPair = LEVELS[15];
+const finalDrift = LEVELS[29];
 const noop = vi.fn();
 const gameState = createInitialGameState(level);
 const renderBoard = (overrides = {}) =>
@@ -26,7 +30,6 @@ const renderBoard = (overrides = {}) =>
       onToggleHints={noop}
       onUndo={noop}
       playerPosition={level.playerStart}
-      unlockedHintCount={1}
       {...overrides}
     />,
   );
@@ -38,6 +41,17 @@ const renderKeyline = (overrides = {}) => {
     gameState: keylineState,
     level: keyline,
     playerPosition: keyline.playerStart,
+    ...overrides,
+  });
+};
+
+const renderLevel = (targetLevel: typeof LEVELS[number], overrides = {}) => {
+  const targetState = createInitialGameState(targetLevel);
+
+  return renderBoard({
+    gameState: targetState,
+    level: targetLevel,
+    playerPosition: targetLevel.playerStart,
     ...overrides,
   });
 };
@@ -75,7 +89,7 @@ describe('GameBoard', () => {
     expect(within(controls).getByRole('button', { name: /reset level/i })).toBeInTheDocument();
     expect(within(controls).getByRole('button', { name: /pause game/i })).toBeInTheDocument();
     expect(within(controls).getByRole('button', { name: /open level select/i })).toBeInTheDocument();
-    expect(within(controls).getByRole('button', { name: /show hints/i })).toBeInTheDocument();
+    expect(within(controls).getByRole('button', { name: /open puzzle assist/i })).toBeInTheDocument();
   });
 
   it('renders objective text once in a separate section below the HUD', () => {
@@ -88,10 +102,10 @@ describe('GameBoard', () => {
     expect(screen.getAllByText(level.description)).toHaveLength(1);
   });
 
-  it('keeps hints collapsed by default and exposes a quick dismiss control when open', () => {
+  it('keeps puzzle assist collapsed by default and exposes a quick dismiss control when open', () => {
     const { rerender } = renderBoard();
 
-    expect(screen.queryByRole('region', { name: /level hints/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: /puzzle assist/i })).not.toBeInTheDocument();
 
     rerender(
       <GameBoard
@@ -109,13 +123,12 @@ describe('GameBoard', () => {
         onToggleHints={noop}
         onUndo={noop}
         playerPosition={level.playerStart}
-        unlockedHintCount={1}
       />,
     );
 
-    const hints = screen.getByRole('region', { name: /level hints/i });
+    const hints = screen.getByRole('region', { name: /puzzle assist/i });
 
-    expect(within(hints).getByRole('button', { name: /close hints/i })).toBeInTheDocument();
+    expect(within(hints).getByRole('button', { name: /close puzzle assist/i })).toBeInTheDocument();
   });
 
   it('renders directional buttons for touch controls', () => {
@@ -134,7 +147,7 @@ describe('GameBoard', () => {
     expect(screen.getByRole('button', { name: /undo move/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /pause game/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /open level select/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /show hints/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /open puzzle assist/i })).toBeInTheDocument();
   });
 
   it('shows and hides HUD tooltips on hover', async () => {
@@ -175,10 +188,10 @@ describe('GameBoard', () => {
     const user = userEvent.setup();
     const { rerender } = renderBoard();
 
-    await user.hover(screen.getByRole('button', { name: /show hints/i }));
-    expect(screen.getByRole('tooltip', { name: 'Show Hints' })).toBeInTheDocument();
+    await user.hover(screen.getByRole('button', { name: /open puzzle assist/i }));
+    expect(screen.getByRole('tooltip', { name: 'Open Assist' })).toBeInTheDocument();
 
-    await user.unhover(screen.getByRole('button', { name: /show hints/i }));
+    await user.unhover(screen.getByRole('button', { name: /open puzzle assist/i }));
     rerender(
       <GameBoard
         elapsedSeconds={0}
@@ -195,12 +208,11 @@ describe('GameBoard', () => {
         onToggleHints={noop}
         onUndo={noop}
         playerPosition={level.playerStart}
-        unlockedHintCount={1}
       />,
     );
 
-    await user.hover(screen.getByRole('button', { name: /hide hints/i }));
-    expect(screen.getByRole('tooltip', { name: 'Hide Hints' })).toBeInTheDocument();
+    await user.hover(within(screen.getByLabelText('Game controls')).getByRole('button', { name: /close puzzle assist/i }));
+    expect(screen.getByRole('tooltip', { name: 'Close Assist' })).toBeInTheDocument();
   });
 
   it('removes tooltip animation when reduced motion is enabled', async () => {
@@ -211,11 +223,171 @@ describe('GameBoard', () => {
     expect(screen.getByRole('tooltip', { name: 'Level Select' })).toHaveClass('no-motion');
   });
 
-  it('renders the unlocked level hints when the hint panel is open', () => {
-    renderBoard({ isHintPanelOpen: true, unlockedHintCount: 1 });
+  it('renders tiered puzzle assist choices when the hint panel is open', async () => {
+    const user = userEvent.setup();
+    renderBoard({ isHintPanelOpen: true });
 
-    expect(screen.getByRole('region', { name: /level hints/i })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /puzzle assist/i })).toBeInTheDocument();
+    expect(screen.getByText(/choose your help level/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /tier 1 direction/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /tier 2 mechanic/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /tier 3 route/i })).toBeDisabled();
+    expect(screen.queryByText(level.hints[0].text)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /tier 1 direction/i }));
+
     expect(screen.getByText(level.hints[0].text)).toBeInTheDocument();
+  });
+
+  it('unlocks hint tiers by time or failed attempts', async () => {
+    const user = userEvent.setup();
+    const { rerender } = renderBoard({ elapsedSeconds: 59, failedAttemptCount: 1, isHintPanelOpen: true });
+
+    expect(screen.getByRole('button', { name: /tier 2 mechanic/i })).toBeDisabled();
+
+    rerender(
+      <GameBoard
+        elapsedSeconds={60}
+        failedAttemptCount={1}
+        gameState={gameState}
+        hazardFlash={false}
+        isHintPanelOpen={true}
+        level={level}
+        moves={0}
+        reducedMotion={false}
+        onLevelSelect={noop}
+        onMove={noop}
+        onPause={noop}
+        onReset={noop}
+        onToggleHints={noop}
+        onUndo={noop}
+        playerPosition={level.playerStart}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: /tier 2 mechanic/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /tier 3 route/i })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: /tier 2 mechanic/i }));
+    expect(screen.getByText(level.hints[1].text)).toBeInTheDocument();
+
+    rerender(
+      <GameBoard
+        elapsedSeconds={0}
+        failedAttemptCount={5}
+        gameState={gameState}
+        hazardFlash={false}
+        isHintPanelOpen={true}
+        level={level}
+        moves={0}
+        reducedMotion={false}
+        onLevelSelect={noop}
+        onMove={noop}
+        onPause={noop}
+        onReset={noop}
+        onToggleHints={noop}
+        onUndo={noop}
+        playerPosition={level.playerStart}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: /tier 3 route/i })).toBeEnabled();
+  });
+
+  it('shows tier 4 only on late-game levels and unlocks it later', async () => {
+    const user = userEvent.setup();
+
+    const { unmount } = renderBoard({ isHintPanelOpen: true });
+    expect(screen.queryByRole('button', { name: /tier 4/i })).not.toBeInTheDocument();
+
+    unmount();
+    const { rerender } = renderLevel(finalDrift, { elapsedSeconds: 179, failedAttemptCount: 7, isHintPanelOpen: true });
+
+    expect(screen.getByRole('button', { name: /tier 4 plan/i })).toBeDisabled();
+
+    rerender(
+      <GameBoard
+        elapsedSeconds={180}
+        failedAttemptCount={7}
+        gameState={createInitialGameState(finalDrift)}
+        hazardFlash={false}
+        isHintPanelOpen={true}
+        level={finalDrift}
+        moves={0}
+        reducedMotion={false}
+        onLevelSelect={noop}
+        onMove={noop}
+        onPause={noop}
+        onReset={noop}
+        onToggleHints={noop}
+        onUndo={noop}
+        playerPosition={finalDrift.playerStart}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /tier 4 plan/i }));
+
+    expect(screen.getByText(finalDrift.hints[3].text)).toBeInTheDocument();
+  });
+
+  it('only shows visual hints after the player explicitly requests them', async () => {
+    const user = userEvent.setup();
+    renderKeyline({ isHintPanelOpen: true });
+
+    const lockedDoor = screen.getByLabelText('Locked door at 3, 3');
+
+    expect(lockedDoor).not.toHaveClass('visual-hint-tile');
+
+    await user.click(screen.getByRole('button', { name: /show visual hint/i }));
+
+    expect(lockedDoor).toHaveClass('visual-hint-tile');
+    expect(lockedDoor).toHaveClass('visual-hint-pulse-1');
+    expect(screen.getByLabelText('Player at 1, 3')).not.toHaveClass('visual-hint-tile');
+  });
+
+  it('visually hints portal pairs without drawing a route', async () => {
+    const user = userEvent.setup();
+    renderLevel(portalPair, { isHintPanelOpen: true });
+
+    await user.click(screen.getByRole('button', { name: /show visual hint/i }));
+
+    expect(screen.getByLabelText('Portal at 3, 1')).toHaveClass('visual-hint-tile');
+    expect(screen.getByLabelText('Portal at 5, 5')).toHaveClass('visual-hint-tile');
+    expect(screen.getByLabelText('Floor at 2, 1')).not.toHaveClass('visual-hint-tile');
+  });
+
+  it('visually hints switch-linked and pressure-plate-linked gates', async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderLevel(switchPrimer, { isHintPanelOpen: true });
+
+    await user.click(screen.getByRole('button', { name: /show visual hint/i }));
+    expect(screen.getByLabelText('Locked door at 6, 1')).toHaveClass('visual-hint-tile');
+
+    unmount();
+    renderLevel(plateHold, { isHintPanelOpen: true });
+
+    await user.click(screen.getByRole('button', { name: /show visual hint/i }));
+    expect(screen.getByLabelText('Locked door at 6, 1')).toHaveClass('visual-hint-tile');
+  });
+
+  it('uses a static visual hint state when reduced motion is enabled', async () => {
+    const user = userEvent.setup();
+    renderKeyline({ isHintPanelOpen: true, reducedMotion: true });
+
+    await user.click(screen.getByRole('button', { name: /show visual hint/i }));
+
+    expect(screen.getByLabelText('Locked door at 3, 3')).toHaveClass('visual-hint-static');
+  });
+
+  it('renders a contextual assist nudge without opening the full panel', () => {
+    renderBoard({ hintNudge: { message: 'You are circling the same few tiles.' } });
+
+    expect(screen.getByRole('complementary', { name: /puzzle assist nudge/i })).toBeInTheDocument();
+    expect(screen.getByText(/need a hint/i)).toBeInTheDocument();
+    expect(screen.getByText(/circling the same few tiles/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /more help/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /dismiss assist nudge/i })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: /puzzle assist/i })).not.toBeInTheDocument();
   });
 
   it('renders key and door Lucide object icons with clear labels', () => {
