@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowDown,
   ArrowLeft,
@@ -56,6 +56,32 @@ type GameBoardProps = {
   onUndo: () => void;
 };
 
+type SafeRect = {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+  width: number;
+  height: number;
+};
+
+type OverlaySize = {
+  width: number;
+  height: number;
+};
+
+export type HintOverlayPlacement = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'hud-docked';
+
+type HintOverlayCandidate = Exclude<HintOverlayPlacement, 'hud-docked'>;
+
+type SafeHintPlacementOptions = {
+  containerRect: SafeRect;
+  importantRects: SafeRect[];
+  overlaySize: OverlaySize;
+  playerRect: SafeRect;
+  safePadding?: number;
+};
+
 const TILE_LABELS: Record<TileType, string> = {
   cracked: 'Cracked tile',
   door: 'Locked door',
@@ -75,6 +101,83 @@ const TILE_LABELS: Record<TileType, string> = {
   switch: 'Switch',
   wall: 'Wall',
 };
+
+const SAFE_HINT_PADDING = 12;
+const HINT_OVERLAY_CORNERS: HintOverlayCandidate[] = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+const VISUAL_HINT_DURATION_MS = 2600;
+
+function rectsOverlap(first: SafeRect, second: SafeRect, padding = 0) {
+  return !(
+    first.right + padding <= second.left ||
+    first.left - padding >= second.right ||
+    first.bottom + padding <= second.top ||
+    first.top - padding >= second.bottom
+  );
+}
+
+function getRectCenter(rect: SafeRect) {
+  return {
+    x: rect.left + rect.width / 2,
+    y: rect.top + rect.height / 2,
+  };
+}
+
+function getCandidateRect(
+  placement: HintOverlayCandidate,
+  containerRect: SafeRect,
+  overlaySize: OverlaySize,
+  safePadding: number,
+): SafeRect {
+  const left = placement.endsWith('left')
+    ? containerRect.left + safePadding
+    : containerRect.right - overlaySize.width - safePadding;
+  const top = placement.startsWith('top')
+    ? containerRect.top + safePadding
+    : containerRect.bottom - overlaySize.height - safePadding;
+
+  return {
+    bottom: top + overlaySize.height,
+    height: overlaySize.height,
+    left,
+    right: left + overlaySize.width,
+    top,
+    width: overlaySize.width,
+  };
+}
+
+function getDistanceBetweenRects(first: SafeRect, second: SafeRect) {
+  const firstCenter = getRectCenter(first);
+  const secondCenter = getRectCenter(second);
+  const deltaX = firstCenter.x - secondCenter.x;
+  const deltaY = firstCenter.y - secondCenter.y;
+
+  return Math.hypot(deltaX, deltaY);
+}
+
+export function chooseSafeHintPlacement({
+  containerRect,
+  importantRects,
+  overlaySize,
+  playerRect,
+  safePadding = SAFE_HINT_PADDING,
+}: SafeHintPlacementOptions): HintOverlayPlacement {
+  const sortedCorners = [...HINT_OVERLAY_CORNERS].sort((firstCorner, secondCorner) => {
+    const firstRect = getCandidateRect(firstCorner, containerRect, overlaySize, safePadding);
+    const secondRect = getCandidateRect(secondCorner, containerRect, overlaySize, safePadding);
+
+    return getDistanceBetweenRects(secondRect, playerRect) - getDistanceBetweenRects(firstRect, playerRect);
+  });
+
+  const allImportantRects = [playerRect, ...importantRects];
+
+  return (
+    sortedCorners.find((corner) => {
+      const candidateRect = getCandidateRect(corner, containerRect, overlaySize, safePadding);
+
+      return !allImportantRects.some((importantRect) => rectsOverlap(candidateRect, importantRect, safePadding));
+    }) ?? 'hud-docked'
+  );
+}
 
 function formatElapsedTime(seconds: number) {
   const minutes = Math.floor(seconds / 60);
@@ -256,7 +359,7 @@ export function GameBoard({
   const [visualHintPulseId, setVisualHintPulseId] = useState(0);
   const [visualHintAnnouncement, setVisualHintAnnouncement] = useState('');
   const shouldShowKeys = level.mechanics.includes('key') || gameState.collectedKeys > 0;
-  const visualHintPositions = getVisualHintPositions(level);
+  const visualHintPositions = useMemo(() => getVisualHintPositions(level), [level]);
   const hasVisualHints = visualHintPositions.size > 0;
   const hintTiers = level.hints.map((hint, hintIndex) => ({
     isUnlocked:
@@ -274,9 +377,25 @@ export function GameBoard({
   }));
   const selectedHint = hintTiers.find((hintTier) => hintTier.number === selectedHintTier && hintTier.isUnlocked);
 
+  useEffect(() => {
+    if (visualHintPulseId === 0) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setVisualHintPulseId(0);
+    }, VISUAL_HINT_DURATION_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [visualHintPulseId]);
+
   return (
     <section
       className={`game-board-shell${hazardFlash ? ' hazard-flash' : ''}${
+        isHintPanelOpen ? ' assist-drawer-open' : ''
+      }${
         animationClass ? ` ${animationClass}` : ''
       }`}
       aria-labelledby="game-board-title"
@@ -366,6 +485,29 @@ export function GameBoard({
             </button>
           </Tooltip>
         </nav>
+
+        {hintNudge ? (
+          <aside
+            className="assist-nudge"
+            aria-label="Puzzle assist nudge"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            <Lightbulb className="assist-nudge-icon" aria-hidden="true" />
+            <div className="assist-nudge-copy">
+              <p className="assist-kicker">Need a nudge?</p>
+              <p className="assist-nudge-message">{hintNudge.message}</p>
+            </div>
+            <div className="assist-nudge-actions">
+              <button type="button" className="assist-link-button" onClick={onToggleHints}>
+                View Hint
+              </button>
+              <button type="button" className="icon-button" onClick={onDismissHintNudge} aria-label="Dismiss assist nudge">
+                <X aria-hidden="true" />
+              </button>
+            </div>
+          </aside>
+        ) : null}
       </header>
 
       <section className="objective-panel" aria-label="Level objective">
@@ -376,153 +518,138 @@ export function GameBoard({
         <p>{level.description}</p>
       </section>
 
-      {hintNudge ? (
-        <aside className="assist-nudge" aria-label="Puzzle assist nudge" aria-live="polite" aria-atomic="true">
-          <div>
-            <p className="assist-kicker">Need a hint?</p>
-            <p>{hintNudge.message}</p>
-          </div>
-          <div className="assist-nudge-actions">
-            <button type="button" className="assist-link-button" onClick={onToggleHints}>
-              More help
-            </button>
-            <button type="button" className="icon-button" onClick={onDismissHintNudge} aria-label="Dismiss assist nudge">
-              <X aria-hidden="true" />
-            </button>
-          </div>
-        </aside>
-      ) : null}
+      <div className={`game-board-assist-layout${isHintPanelOpen ? ' assist-drawer-open' : ''}`}>
+        <div
+          className="game-board"
+          role="grid"
+          aria-label={`${level.name} board`}
+          style={{
+            gridTemplateColumns: `repeat(${level.width}, minmax(0, 1fr))`,
+          }}
+        >
+          {level.grid.map((row, y) =>
+            <div className="board-row" key={y} role="row">
+              {row.map((tile, x) => {
+                const hasPlayer = playerPosition.x === x && playerPosition.y === y;
+                const effectiveTile = getEffectiveTileAt(level, gameState, { x, y }) ?? tile;
+                const renderedTile = getRenderedTile(tile, effectiveTile);
+                const isActive = isActiveTile(level, gameState, x, y, renderedTile);
+                const isOpenedDoor = tile === 'door' && effectiveTile === 'floor';
+                const objectIcon = renderObjectIcon(renderedTile, isActive, isOpenedDoor);
+                const wasKeyCollected =
+                  tile === 'key' && gameState.collectedKeyPositions.some((position) => positionsMatch(position, { x, y }));
+                const isVisualHinted = visualHintPulseId > 0 && visualHintPositions.has(positionKey({ x, y }));
 
-      <div
-        className="game-board"
-        role="grid"
-        aria-label={`${level.name} board`}
-        style={{
-          gridTemplateColumns: `repeat(${level.width}, minmax(0, 1fr))`,
-        }}
-      >
-        {level.grid.map((row, y) =>
-          <div className="board-row" key={y} role="row">
-            {row.map((tile, x) => {
-              const hasPlayer = playerPosition.x === x && playerPosition.y === y;
-              const effectiveTile = getEffectiveTileAt(level, gameState, { x, y }) ?? tile;
-              const renderedTile = getRenderedTile(tile, effectiveTile);
-              const isActive = isActiveTile(level, gameState, x, y, renderedTile);
-              const isOpenedDoor = tile === 'door' && effectiveTile === 'floor';
-              const objectIcon = renderObjectIcon(renderedTile, isActive, isOpenedDoor);
-              const wasKeyCollected =
-                tile === 'key' && gameState.collectedKeyPositions.some((position) => positionsMatch(position, { x, y }));
-              const isVisualHinted = visualHintPulseId > 0 && visualHintPositions.has(positionKey({ x, y }));
-
-              return (
-                <div
-                  aria-label={`${getTileLabel(tile, renderedTile, effectiveTile)} at ${x}, ${y}`}
-                  className={`board-tile tile-${renderedTile}${
-                    objectIcon ? ' tile-object' : ''
-                  }${isActive ? ' tile-active' : ''}${isOpenedDoor ? ' tile-opened' : ''}${
-                    wasKeyCollected ? ' tile-key-collected' : ''
-                  }${isVisualHinted ? ` visual-hint-tile visual-hint-pulse-${visualHintPulseId % 2}` : ''}${
-                    isVisualHinted && reducedMotion ? ' visual-hint-static' : ''
-                  }${renderedTile === 'portal' ? getPortalPairClass(level, x, y) : ''}`}
-                  data-testid="board-tile"
-                  key={`${x}-${y}`}
-                  role="gridcell"
-                >
-                  {objectIcon ? (
-                    <span className="tile-object-icon" data-testid={`${isOpenedDoor ? 'opened-door' : renderedTile}-icon`}>
-                      {objectIcon}
-                    </span>
-                  ) : null}
-                  {hasPlayer ? (
-                    <span
-                      aria-label={`Player at ${x}, ${y}`}
-                      className={`player-avatar${animationClass.includes('player-move') ? ' player-moving' : ''}`}
-                      data-testid="player-avatar"
-                    >
-                      <Compass aria-hidden="true" />
-                    </span>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>,
-        )}
-      </div>
-      {isHintPanelOpen ? (
-        <section className="hint-panel assist-panel" id="hint-panel" aria-label="Puzzle assist">
-          <div className="hint-panel-header">
-            <Lightbulb aria-hidden="true" />
-            <div>
-              <p className="eyebrow">choose your help level</p>
-              <h3>Puzzle Assist</h3>
-            </div>
-            <button type="button" className="icon-button" onClick={onToggleHints} aria-label="Close puzzle assist">
-              <X aria-hidden="true" />
-            </button>
-          </div>
-          <div className="assist-tier-picker" aria-label="Hint tiers">
-            {hintTiers.map((hintTier) => (
-              <button
-                type="button"
-                className="assist-tier-button"
-                disabled={!hintTier.isUnlocked}
-                key={hintTier.number}
-                onClick={() => {
-                  setSelectedHintTier(hintTier.number);
-                  onSelectHintTier(hintTier.number);
-                }}
-                aria-pressed={selectedHintTier === hintTier.number}
-              >
-                <span>Tier {hintTier.number}</span>
-                {hintTier.label}
-                <em>{hintTier.status}</em>
-              </button>
-            ))}
-          </div>
-          {selectedHint ? (
-            <div
-              className="assist-tier-answer"
-              role="status"
-              aria-label={`Tier ${selectedHint.number} ${selectedHint.label} hint. ${selectedHint.text}`}
-              aria-live="polite"
-              aria-atomic="true"
-            >
-              <span>
-                Tier {selectedHint.number} · {selectedHint.label}
-              </span>
-              <p>{selectedHint.text}</p>
-            </div>
-          ) : (
-            <p className="assist-tier-prompt">Start with Direction for a gentle nudge, or jump ahead if you want more help.</p>
+                return (
+                  <div
+                    aria-label={`${getTileLabel(tile, renderedTile, effectiveTile)} at ${x}, ${y}`}
+                    className={`board-tile tile-${renderedTile}${
+                      objectIcon ? ' tile-object' : ''
+                    }${isActive ? ' tile-active' : ''}${isOpenedDoor ? ' tile-opened' : ''}${
+                      wasKeyCollected ? ' tile-key-collected' : ''
+                    }${isVisualHinted ? ` visual-hint-tile visual-hint-pulse-${visualHintPulseId % 2}` : ''}${
+                      isVisualHinted && reducedMotion ? ' visual-hint-static' : ''
+                    }${renderedTile === 'portal' ? getPortalPairClass(level, x, y) : ''}`}
+                    data-testid="board-tile"
+                    key={`${x}-${y}`}
+                    role="gridcell"
+                  >
+                    {objectIcon ? (
+                      <span className="tile-object-icon" data-testid={`${isOpenedDoor ? 'opened-door' : renderedTile}-icon`}>
+                        {objectIcon}
+                      </span>
+                    ) : null}
+                    {hasPlayer ? (
+                      <span
+                        aria-label={`Player at ${x}, ${y}`}
+                        className={`player-avatar${animationClass.includes('player-move') ? ' player-moving' : ''}`}
+                        data-testid="player-avatar"
+                      >
+                        <Compass aria-hidden="true" />
+                      </span>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>,
           )}
-          {hasVisualHints ? (
-            <div className="visual-hint-controls">
-              <button
-                type="button"
-                className="assist-link-button visual-hint-button"
-                onClick={() => {
-                  setVisualHintPulseId((currentValue) => currentValue + 1);
-                  setVisualHintAnnouncement(`${visualHintPositions.size} related puzzle objects highlighted.`);
-                }}
-              >
-                Show visual hint
+        </div>
+        {isHintPanelOpen ? (
+          <section className="hint-panel assist-panel assist-drawer" id="hint-panel" aria-label="Puzzle assist">
+            <div className="hint-panel-header">
+              <Lightbulb aria-hidden="true" />
+              <div>
+                <p className="eyebrow">choose your help level</p>
+                <h3>Puzzle Assist</h3>
+              </div>
+              <button type="button" className="icon-button" onClick={onToggleHints} aria-label="Close puzzle assist">
+                <X aria-hidden="true" />
               </button>
-              <p>Highlights related puzzle objects once, without showing a route.</p>
             </div>
-          ) : null}
-          {visualHintAnnouncement ? (
-            <p
-              className="sr-only"
-              role="status"
-              aria-label={visualHintAnnouncement}
-              aria-live="polite"
-              aria-atomic="true"
-            >
-              {visualHintAnnouncement}
-            </p>
-          ) : null}
-        </section>
-      ) : null}
+            <div className="assist-tier-picker" aria-label="Hint tiers">
+              {hintTiers.map((hintTier) => (
+                <button
+                  type="button"
+                  className="assist-tier-button"
+                  disabled={!hintTier.isUnlocked}
+                  key={hintTier.number}
+                  onClick={() => {
+                    setSelectedHintTier(hintTier.number);
+                    onSelectHintTier(hintTier.number);
+                  }}
+                  aria-pressed={selectedHintTier === hintTier.number}
+                >
+                  <span>Tier {hintTier.number}</span>
+                  {hintTier.label}
+                  <em>{hintTier.status}</em>
+                </button>
+              ))}
+            </div>
+            {selectedHint ? (
+              <div
+                className="assist-tier-answer"
+                role="status"
+                aria-label={`Tier ${selectedHint.number} ${selectedHint.label} hint. ${selectedHint.text}`}
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                <span>
+                  Tier {selectedHint.number} · {selectedHint.label}
+                </span>
+                <p>{selectedHint.text}</p>
+              </div>
+            ) : (
+              <p className="assist-tier-prompt">Start with Direction for a gentle nudge, or jump ahead if you want more help.</p>
+            )}
+            {hasVisualHints ? (
+              <div className="visual-hint-controls">
+                <button
+                  type="button"
+                  className="assist-link-button visual-hint-button"
+                  onClick={() => {
+                    setVisualHintPulseId((currentValue) => currentValue + 1);
+                    setVisualHintAnnouncement(`${visualHintPositions.size} related puzzle objects highlighted.`);
+                  }}
+                >
+                  Show visual hint
+                </button>
+                <p>Highlights related puzzle objects once, without showing a route.</p>
+              </div>
+            ) : null}
+            {visualHintAnnouncement ? (
+              <p
+                className="sr-only"
+                role="status"
+                aria-label={visualHintAnnouncement}
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                {visualHintAnnouncement}
+              </p>
+            ) : null}
+          </section>
+        ) : null}
+      </div>
 
       <nav className="direction-controls" aria-label="Directional controls">
         <button type="button" className="direction-button direction-up" onClick={() => onMove('up')} aria-label="Move up" disabled={isPaused}>

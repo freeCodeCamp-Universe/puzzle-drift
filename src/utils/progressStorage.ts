@@ -77,6 +77,7 @@ export function loadSettings(): GameSettings {
 
   return {
     confirmRestart: storedSettings.confirmRestart ?? DEFAULT_SETTINGS.confirmRestart,
+    focusMode: storedSettings.focusMode ?? DEFAULT_SETTINGS.focusMode,
     highContrast: storedSettings.highContrast ?? DEFAULT_SETTINGS.highContrast,
     hintNudgesEnabled: storedSettings.hintNudgesEnabled ?? DEFAULT_SETTINGS.hintNudgesEnabled,
     reducedMotion: storedSettings.reducedMotion ?? DEFAULT_SETTINGS.reducedMotion,
@@ -86,6 +87,7 @@ export function loadSettings(): GameSettings {
 export function saveSettings(settings: GameSettings) {
   writeStorageValue(SETTINGS_STORAGE_KEY, {
     confirmRestart: settings.confirmRestart,
+    focusMode: settings.focusMode,
     highContrast: settings.highContrast,
     hintNudgesEnabled: settings.hintNudgesEnabled,
     reducedMotion: settings.reducedMotion,

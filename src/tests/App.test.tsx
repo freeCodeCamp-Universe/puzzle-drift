@@ -372,6 +372,7 @@ describe('App', () => {
     expect(screen.getByLabelText(/reduced motion/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/high contrast/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/hint nudges/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/focus mode/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/confirm restart/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /keyboard shortcuts/i })).toBeInTheDocument();
     expect(screen.queryByLabelText(/theme/i)).not.toBeInTheDocument();
@@ -381,9 +382,11 @@ describe('App', () => {
     const gameplaySettings = screen.getByRole('group', { name: /gameplay/i });
     const reducedMotionToggle = within(accessibilitySettings).getByRole('checkbox', { name: /reduced motion/i });
     const hintNudgesToggle = within(gameplaySettings).getByRole('checkbox', { name: /hint nudges/i });
+    const focusModeToggle = within(gameplaySettings).getByRole('checkbox', { name: /focus mode/i });
 
     expect(reducedMotionToggle).toHaveAccessibleDescription(/reduce animated movement/i);
     expect(hintNudgesToggle).toHaveAccessibleDescription(/show gentle hint prompts/i);
+    expect(focusModeToggle).toHaveAccessibleDescription(/hide automatic puzzle assistance and nudges/i);
   });
 
   it('renders the settings modal without a header gear icon', async () => {
@@ -425,18 +428,20 @@ describe('App', () => {
     });
   });
 
-  it('hint nudges and confirm restart settings persist', async () => {
+  it('hint nudges, focus mode, and confirm restart settings persist', async () => {
     const user = userEvent.setup();
     render(<App />);
 
     await user.click(screen.getByRole('button', { name: /settings/i }));
     await user.click(screen.getByLabelText(/hint nudges/i));
+    await user.click(screen.getByLabelText(/focus mode/i));
     await user.click(screen.getByLabelText(/confirm restart/i));
 
     await waitFor(() => {
       const savedSettings = JSON.parse(window.localStorage.getItem('puzzle-drift:settings') ?? '{}');
 
       expect(savedSettings.hintNudgesEnabled).toBe(false);
+      expect(savedSettings.focusMode).toBe(true);
       expect(savedSettings.confirmRestart).toBe(false);
     });
   });
@@ -475,6 +480,7 @@ describe('App', () => {
       'puzzle-drift:settings',
       JSON.stringify({
         confirmRestart: false,
+        focusMode: false,
         highContrast: false,
         hintNudgesEnabled: false,
         musicEnabled: true,
@@ -513,6 +519,7 @@ describe('App', () => {
       'puzzle-drift:settings',
       JSON.stringify({
         confirmRestart: false,
+        focusMode: true,
         highContrast: false,
         hintNudgesEnabled: false,
         reducedMotion: true,
@@ -533,6 +540,7 @@ describe('App', () => {
     expect(screen.getByRole('status', { name: /progress reset\. settings preserved/i })).toBeInTheDocument();
     expect(JSON.parse(window.localStorage.getItem('puzzle-drift:settings') ?? '{}')).toMatchObject({
       confirmRestart: false,
+      focusMode: true,
       hintNudgesEnabled: false,
       reducedMotion: true,
     });
@@ -946,11 +954,11 @@ describe('App', () => {
     });
 
     expect(screen.getByRole('complementary', { name: /puzzle assist nudge/i })).toBeInTheDocument();
-    expect(screen.getByText(/need a hint/i)).toBeInTheDocument();
+    expect(screen.getByText(/need a nudge/i)).toBeInTheDocument();
     expect(screen.getByText(/read the board/i)).toBeInTheDocument();
     expect(screen.queryByText(LEVELS[0].hints[0].text)).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /more help/i }));
+    fireEvent.click(screen.getByRole('button', { name: /view hint/i }));
 
     expect(screen.getByRole('region', { name: /puzzle assist/i })).toBeInTheDocument();
   });
@@ -960,6 +968,7 @@ describe('App', () => {
       'puzzle-drift:settings',
       JSON.stringify({
         confirmRestart: true,
+        focusMode: false,
         highContrast: false,
         hintNudgesEnabled: false,
         reducedMotion: false,
@@ -975,6 +984,33 @@ describe('App', () => {
     });
 
     expect(screen.queryByRole('complementary', { name: /puzzle assist nudge/i })).not.toBeInTheDocument();
+  });
+
+  it('focus mode suppresses automatic nudges while keeping manual puzzle assist available', async () => {
+    window.localStorage.setItem(
+      'puzzle-drift:settings',
+      JSON.stringify({
+        confirmRestart: true,
+        focusMode: true,
+        highContrast: false,
+        hintNudgesEnabled: true,
+        reducedMotion: false,
+      }),
+    );
+    vi.useFakeTimers();
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /new game/i }));
+
+    act(() => {
+      vi.advanceTimersByTime(35000);
+    });
+
+    expect(screen.queryByRole('complementary', { name: /puzzle assist nudge/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /open puzzle assist/i }));
+
+    expect(screen.getByRole('region', { name: /puzzle assist/i })).toBeInTheDocument();
   });
 
   it('detects repeated movement loops before offering puzzle assist', async () => {
@@ -1428,6 +1464,7 @@ describe('App', () => {
       'puzzle-drift:settings',
       JSON.stringify({
         confirmRestart: false,
+        focusMode: false,
         highContrast: false,
         hintNudgesEnabled: true,
         reducedMotion: false,
@@ -1786,6 +1823,7 @@ describe('App', () => {
       'puzzle-drift:settings',
       JSON.stringify({
         highContrast: false,
+        focusMode: false,
         reducedMotion: true,
       }),
     );
@@ -1807,6 +1845,7 @@ describe('App', () => {
       'puzzle-drift:settings',
       JSON.stringify({
         highContrast: false,
+        focusMode: false,
         reducedMotion: true,
       }),
     );
@@ -1830,6 +1869,7 @@ describe('App', () => {
       'puzzle-drift:settings',
       JSON.stringify({
         highContrast: false,
+        focusMode: false,
         reducedMotion: true,
       }),
     );

@@ -1008,7 +1008,7 @@ export function GameScreen({
     positionTrail,
     spikeDeathCount,
   });
-  const activeHintNudge = settings.hintNudgesEnabled ? hintNudge : null;
+  const activeHintNudge = settings.hintNudgesEnabled && !settings.focusMode ? hintNudge : null;
   const isFinalLevel = level.id >= LEVELS.length;
   const completionPrimaryLabel = isFinalLevel ? 'Level Select' : 'Next Level';
   const chapterMilestone = getChapterCompletionMilestone(level.id);

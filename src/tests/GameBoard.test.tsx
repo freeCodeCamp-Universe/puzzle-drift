@@ -1,7 +1,7 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { GameBoard } from '../components/GameBoard';
+import { chooseSafeHintPlacement, GameBoard } from '../components/GameBoard';
 import { LEVELS } from '../data/levels';
 import { createInitialGameState } from '../logic/movement';
 
@@ -13,6 +13,14 @@ const portalPair = LEVELS[15];
 const finalDrift = LEVELS[29];
 const noop = vi.fn();
 const gameState = createInitialGameState(level);
+const rect = (left: number, top: number, width: number, height: number) => ({
+  bottom: top + height,
+  height,
+  left,
+  right: left + width,
+  top,
+  width,
+});
 const renderBoard = (overrides = {}) =>
   render(
     <GameBoard
@@ -55,6 +63,49 @@ const renderLevel = (targetLevel: typeof LEVELS[number], overrides = {}) => {
     ...overrides,
   });
 };
+
+describe('chooseSafeHintPlacement', () => {
+  const containerRect = rect(0, 0, 400, 400);
+  const overlaySize = { height: 100, width: 100 };
+
+  it('prefers the corner furthest from the player', () => {
+    expect(
+      chooseSafeHintPlacement({
+        containerRect,
+        importantRects: [],
+        overlaySize,
+        playerRect: rect(20, 20, 40, 40),
+      }),
+    ).toBe('bottom-right');
+  });
+
+  it('chooses another corner when the preferred corner overlaps a protected tile', () => {
+    expect(
+      chooseSafeHintPlacement({
+        containerRect,
+        importantRects: [rect(280, 280, 80, 80)],
+        overlaySize,
+        playerRect: rect(20, 20, 40, 40),
+      }),
+    ).toBe('top-right');
+  });
+
+  it('falls back to the HUD dock when every corner overlaps protected gameplay', () => {
+    expect(
+      chooseSafeHintPlacement({
+        containerRect,
+        importantRects: [
+          rect(0, 0, 130, 130),
+          rect(270, 0, 130, 130),
+          rect(0, 270, 130, 130),
+          rect(270, 270, 130, 130),
+        ],
+        overlaySize,
+        playerRect: rect(185, 185, 30, 30),
+      }),
+    ).toBe('hud-docked');
+  });
+});
 
 describe('GameBoard', () => {
   it('renders the correct number of tiles', () => {
@@ -127,8 +178,14 @@ describe('GameBoard', () => {
     );
 
     const hints = screen.getByRole('region', { name: /puzzle assist/i });
+    const board = screen.getByRole('grid', { name: `${level.name} board` });
+    const assistLayout = board.parentElement;
 
     expect(within(hints).getByRole('button', { name: /close puzzle assist/i })).toBeInTheDocument();
+    expect(assistLayout).toHaveClass('game-board-assist-layout');
+    expect(assistLayout).toContainElement(hints);
+    expect(hints).toHaveClass('assist-drawer');
+    expect(hints).not.toHaveClass('hint-overlay');
   });
 
   it('renders directional buttons for touch controls', () => {
@@ -379,14 +436,41 @@ describe('GameBoard', () => {
     expect(screen.getByLabelText('Locked door at 3, 3')).toHaveClass('visual-hint-static');
   });
 
+  it('clears visual hint highlighting after a short window', () => {
+    vi.useFakeTimers();
+
+    try {
+      renderKeyline({ isHintPanelOpen: true });
+
+      fireEvent.click(screen.getByRole('button', { name: /show visual hint/i }));
+
+      const lockedDoor = screen.getByLabelText('Locked door at 3, 3');
+
+      expect(lockedDoor).toHaveClass('visual-hint-tile');
+
+      act(() => {
+        vi.advanceTimersByTime(2600);
+      });
+
+      expect(lockedDoor).not.toHaveClass('visual-hint-tile');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('renders a contextual assist nudge without opening the full panel', () => {
     renderBoard({ hintNudge: { message: 'You are circling the same few tiles.' } });
 
-    expect(screen.getByRole('complementary', { name: /puzzle assist nudge/i })).toBeInTheDocument();
-    expect(screen.getByText(/need a hint/i)).toBeInTheDocument();
+    const nudge = screen.getByRole('complementary', { name: /puzzle assist nudge/i });
+    const hud = screen.getByLabelText('Game heads-up display');
+
+    expect(nudge).toBeInTheDocument();
+    expect(hud).toContainElement(nudge);
+    expect(nudge).not.toHaveClass('hint-overlay');
+    expect(screen.getByText(/need a nudge/i)).toBeInTheDocument();
     expect(screen.getByText(/circling the same few tiles/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /more help/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /dismiss assist nudge/i })).toBeInTheDocument();
+    expect(within(nudge).getByRole('button', { name: /view hint/i })).toBeInTheDocument();
+    expect(within(nudge).getByRole('button', { name: /dismiss assist nudge/i })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: /puzzle assist/i })).not.toBeInTheDocument();
   });
 

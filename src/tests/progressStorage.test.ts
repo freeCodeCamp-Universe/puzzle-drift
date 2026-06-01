@@ -99,6 +99,7 @@ describe('progress storage', () => {
   it('saves and loads settings', () => {
     saveSettings({
       confirmRestart: false,
+      focusMode: true,
       highContrast: true,
       hintNudgesEnabled: false,
       reducedMotion: true,
@@ -106,6 +107,7 @@ describe('progress storage', () => {
 
     expect(loadSettings()).toEqual({
       confirmRestart: false,
+      focusMode: true,
       highContrast: true,
       hintNudgesEnabled: false,
       reducedMotion: true,
@@ -126,6 +128,7 @@ describe('progress storage', () => {
 
     expect(loadSettings()).toEqual({
       confirmRestart: true,
+      focusMode: false,
       highContrast: true,
       hintNudgesEnabled: true,
       reducedMotion: true,

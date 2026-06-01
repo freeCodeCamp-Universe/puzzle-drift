@@ -134,5 +134,6 @@ export type GameSettings = {
   reducedMotion: boolean;
   highContrast: boolean;
   hintNudgesEnabled: boolean;
+  focusMode: boolean;
   confirmRestart: boolean;
 };

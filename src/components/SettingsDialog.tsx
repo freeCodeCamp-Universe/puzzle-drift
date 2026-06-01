@@ -155,6 +155,13 @@ export function SettingsDialog({
             onChange={(value) => updateSetting('hintNudgesEnabled', value)}
           />
           <ToggleSetting
+            checked={settings.focusMode}
+            description="Hide automatic puzzle assistance and nudges."
+            icon={<ShieldAlert aria-hidden="true" />}
+            label="Focus Mode"
+            onChange={(value) => updateSetting('focusMode', value)}
+          />
+          <ToggleSetting
             checked={settings.confirmRestart}
             description="Ask before restarting a level."
             icon={<RefreshCcw aria-hidden="true" />}
