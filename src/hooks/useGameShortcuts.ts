@@ -84,6 +84,11 @@ export function useGameShortcuts({
           onRetry();
         }
 
+        if (normalizedKey === 'l') {
+          event.preventDefault();
+          onLevelSelect();
+        }
+
         return;
       }
 

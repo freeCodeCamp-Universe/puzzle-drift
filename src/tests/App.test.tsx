@@ -854,9 +854,12 @@ describe('App', () => {
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     fireEvent.keyDown(window, { key: 'ArrowDown' });
     fireEvent.keyDown(window, { key: 'ArrowDown' });
-    await user.click(within(screen.getByRole('dialog', { name: /level complete/i })).getByRole('button', { name: /^hint journal$/i }));
+    const completion = screen.getByRole('dialog', { name: /level complete/i });
 
-    expect(within(screen.getByRole('dialog', { name: /level complete/i })).getByRole('region', { name: /hint journal/i })).toBeInTheDocument();
+    await user.click(within(completion).getByText(/^hint journal$/i, { selector: 'summary' }));
+    await user.click(within(completion).getByRole('button', { name: /^hint journal$/i }));
+
+    expect(within(completion).getByRole('region', { name: /hint journal/i })).toBeInTheDocument();
   });
 
   it('records local hint analytics and shows the debug report', async () => {
@@ -884,9 +887,13 @@ describe('App', () => {
       tierUses: { 1: 1 },
     });
 
-    await user.click(within(screen.getByRole('dialog', { name: /level complete/i })).getByRole('button', { name: /hint analytics/i }));
+    const completion = screen.getByRole('dialog', { name: /level complete/i });
 
-    const report = within(screen.getByRole('dialog', { name: /level complete/i })).getByRole('region', {
+    expect(within(completion).getByText(/developer tools/i, { selector: 'summary' })).toBeInTheDocument();
+    await user.click(within(completion).getByText(/developer tools/i, { selector: 'summary' }));
+    await user.click(within(completion).getByRole('button', { name: /hint analytics/i }));
+
+    const report = within(completion).getByRole('region', {
       name: /hint analytics report/i,
     });
 
@@ -1125,16 +1132,37 @@ describe('App', () => {
     expect(within(completion).getByRole('heading', { name: /level complete/i })).toBeInTheDocument();
     expect(within(completion).getAllByText('Time').length).toBeGreaterThan(0);
     expect(within(completion).getAllByText('Moves').length).toBeGreaterThan(0);
-    expect(within(completion).getAllByText('Stars Earned').length).toBeGreaterThan(0);
-    expect(within(completion).getAllByText('6 / 10').length).toBeGreaterThan(0);
-    expect(within(completion).getAllByText('0:00 / 0:25').length).toBeGreaterThan(0);
-    expect(within(completion).getByText('Target: 10')).toBeInTheDocument();
-    expect(within(completion).getByText('Target: 0:25')).toBeInTheDocument();
-    expect(within(completion).getAllByText('Met').length).toBeGreaterThanOrEqual(2);
+    expect(within(completion).getAllByLabelText(/3 stars earned/i).length).toBeGreaterThan(0);
+    expect(within(completion).queryByText('Stars')).not.toBeInTheDocument();
+    const nextButton = within(completion).getByRole('button', { name: /^next level$/i });
+    const retryButton = within(completion).getByRole('button', { name: /^retry$/i });
+    const levelSelectButton = within(completion).getByRole('button', { name: /^level select$/i });
+    const actionArea = completion.querySelector('.completion-primary-actions');
+
+    expect(actionArea).not.toBeNull();
+    expect(within(actionArea as HTMLElement).getAllByRole('button')).toHaveLength(3);
+    expect(within(actionArea as HTMLElement).queryByRole('button', { name: /hint analytics/i })).not.toBeInTheDocument();
+    expect(nextButton).toHaveFocus();
+    expect(nextButton).toHaveClass('completion-action');
+    expect(nextButton.querySelector('.action-label')).toHaveTextContent('Next Level');
+    expect(nextButton.querySelector('.action-shortcut')).toHaveTextContent('Press Space');
+    expect(nextButton).toHaveAccessibleName('Next Level');
+    expect(retryButton).toHaveClass('completion-action');
+    expect(retryButton.querySelector('.action-label')).toHaveTextContent('Retry');
+    expect(retryButton.querySelector('.action-shortcut')).toHaveTextContent('Press R');
+    expect(retryButton).toHaveAccessibleName('Retry');
+    expect(levelSelectButton).toHaveClass('completion-action');
+    expect(levelSelectButton).toHaveClass('shortcut-action');
+    expect(levelSelectButton.querySelector('.action-shortcut')).toHaveTextContent('Press L');
+    expect(levelSelectButton).toHaveAccessibleName('Level Select');
+    expect(within(completion).getByText(/performance details/i)).toBeInTheDocument();
+    expect(within(completion).getByText(/performance details/i).closest('details')).not.toHaveAttribute('open');
+    await user.click(within(completion).getByText(/performance details/i));
+    expect(within(completion).getByText(/Perfect run/i)).toBeInTheDocument();
+    expect(within(completion).getByText(/Met move target and time target/i)).toBeInTheDocument();
+    expect(within(completion).getByRole('region', { name: /detailed target analysis/i })).toBeInTheDocument();
     expect(within(completion).getByRole('progressbar', { name: /moves target met/i })).toHaveAttribute('aria-valuenow', '100');
     expect(within(completion).getByRole('progressbar', { name: /time target met/i })).toHaveAttribute('aria-valuenow', '100');
-    expect(within(completion).getByText(/3 Star Clear/i)).toBeInTheDocument();
-    expect(within(completion).getByText(/met both the move and time targets/i)).toBeInTheDocument();
     expect(within(completion).getByText('Personal Best')).toBeInTheDocument();
     expect(within(completion).getByText('Best Moves')).toBeInTheDocument();
     expect(within(completion).getByText('Best Time')).toBeInTheDocument();
@@ -1142,21 +1170,6 @@ describe('App', () => {
     expect(within(completion).getByLabelText('Best Time target met')).toBeInTheDocument();
     expect(within(completion).getByText(/Replay to polish the route or chase speed/i)).toBeInTheDocument();
     expect(within(completion).getAllByText('New Record').length).toBeGreaterThan(0);
-    const nextButton = within(completion).getByRole('button', { name: /next level.*spacebar/i });
-    const retryButton = within(completion).getByRole('button', { name: /retry.*r/i });
-    const levelSelectButton = within(completion).getByRole('button', { name: /^level select$/i });
-
-    expect(nextButton).toHaveFocus();
-    expect(nextButton).toHaveClass('completion-action');
-    expect(nextButton.querySelector('.action-label')).toHaveTextContent('Next Level');
-    expect(nextButton.querySelector('.action-shortcut')).toHaveTextContent('Spacebar');
-    expect(within(nextButton).queryByText('Space')).not.toBeInTheDocument();
-    expect(retryButton).toHaveClass('completion-action');
-    expect(retryButton.querySelector('.action-label')).toHaveTextContent('Retry');
-    expect(retryButton.querySelector('.action-shortcut')).toHaveTextContent('R');
-    expect(levelSelectButton).toHaveClass('completion-action');
-    expect(levelSelectButton).not.toHaveClass('shortcut-action');
-    expect(levelSelectButton.querySelector('.action-shortcut')).not.toBeInTheDocument();
     expect(screen.queryByRole('grid', { name: /first drift board/i })).not.toBeInTheDocument();
     expect(document.querySelector('.game-board-shell')).toHaveAttribute('inert');
     expect(document.querySelector('.game-board-shell')).toHaveAttribute('aria-hidden', 'true');
@@ -1195,14 +1208,14 @@ describe('App', () => {
     const completion = screen.getByRole('dialog', { name: /level complete/i });
 
     expect(within(completion).getAllByText('12').length).toBeGreaterThan(0);
-    expect(within(completion).getAllByText('12 / 10').length).toBeGreaterThan(0);
-    expect(within(completion).getByText('Missed')).toBeInTheDocument();
+    expect(within(completion).getByText(/performance details/i).closest('details')).not.toHaveAttribute('open');
+    await user.click(within(completion).getByText(/performance details/i));
+    expect(within(completion).getByText('Level completed.', { selector: '.performance-summary-heading' })).toBeInTheDocument();
+    expect(within(completion).getByText(/Exceeded move target by 2 moves/i)).toBeInTheDocument();
     expect(within(completion).getByRole('progressbar', { name: /moves target missed/i })).toHaveAttribute('aria-valuenow', '83');
     expect(within(completion).getByLabelText('Best Moves target missed')).toBeInTheDocument();
     expect(within(completion).getByLabelText('Best Time target met')).toBeInTheDocument();
     expect(within(completion).getByText(/Replay to bring your personal best under the remaining target/i)).toBeInTheDocument();
-    expect(within(completion).getByText(/Missed 2 and 3 Stars/i)).toBeInTheDocument();
-    expect(within(completion).getByText(/Reduce your move count by 2/i)).toBeInTheDocument();
   });
 
   it('explains when time blocks the third star', () => {
@@ -1220,11 +1233,11 @@ describe('App', () => {
     const completion = screen.getByRole('dialog', { name: /level complete/i });
 
     expect(within(completion).getAllByText('0:31').length).toBeGreaterThan(0);
-    expect(within(completion).getAllByText('0:31 / 0:25').length).toBeGreaterThan(0);
-    expect(within(completion).getByText('Missed')).toBeInTheDocument();
+    expect(within(completion).getByText(/performance details/i).closest('details')).not.toHaveAttribute('open');
+    fireEvent.click(within(completion).getByText(/performance details/i));
+    expect(within(completion).getByText(/Move target achieved/i)).toBeInTheDocument();
+    expect(within(completion).getByText(/Missed time target by 6 seconds/i)).toBeInTheDocument();
     expect(within(completion).getByRole('progressbar', { name: /time target missed/i })).toHaveAttribute('aria-valuenow', '81');
-    expect(within(completion).getByText(/Missed 3 Stars/i)).toBeInTheDocument();
-    expect(within(completion).getByText(/Reduce your time by 6 seconds/i)).toBeInTheDocument();
   });
 
   it('celebrates near misses when a star threshold is barely missed', () => {
@@ -1241,10 +1254,10 @@ describe('App', () => {
 
     const completion = screen.getByRole('dialog', { name: /level complete/i });
 
-    expect(within(completion).getAllByText('0:27 / 0:25').length).toBeGreaterThan(0);
-    expect(within(completion).getByText(/So Close/i)).toBeInTheDocument();
-    expect(within(completion).getByText(/only 2 seconds away from 3 stars/i)).toBeInTheDocument();
-    expect(within(completion).getByText(/Replay it/i)).toBeInTheDocument();
+    fireEvent.click(within(completion).getByText(/performance details/i));
+    expect(within(completion).getByText(/So close/i)).toBeInTheDocument();
+    expect(within(completion).getByText(/Missed time target by 2 seconds/i)).toBeInTheDocument();
+    expect(within(completion).getByText(/Replay for the third star/i)).toBeInTheDocument();
   });
 
   it('defines chapter completion milestones for campaign gates', () => {
@@ -1364,8 +1377,8 @@ describe('App', () => {
     expect(screen.getByLabelText('Player at 1, 1')).toBeInTheDocument();
 
     solveFirstDrift();
-    const completion = screen.getByRole('dialog', { name: /level complete/i });
-    await user.click(within(completion).getByRole('button', { name: /^level select$/i }));
+    expect(screen.getByRole('dialog', { name: /level complete/i })).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: 'l' });
     expect(screen.getByRole('heading', { name: /level select/i })).toBeInTheDocument();
   });
 

@@ -5,14 +5,12 @@ import {
   BarChart3,
   BookOpen,
   Check,
-  CircleCheck,
   Footprints,
   ListOrdered,
   LockKeyhole,
   Play,
   RotateCcw,
   Settings,
-  Star,
   Timer,
   TriangleAlert,
   X,
@@ -97,47 +95,50 @@ function isNearMiss(overage: number, target: number) {
   return overage > 0 && overage <= Math.ceil(target * 0.1);
 }
 
-function getStarResultExplanation(level: Level, gameState: GameState) {
+function getPerformanceSummary(level: Level, gameState: GameState) {
   const moveOverage = Math.max(0, gameState.moves - level.targetMoves);
   const timeOverage = Math.max(0, gameState.elapsedSeconds - level.targetTimeSeconds);
 
-  if (moveOverage > 0) {
-    if (isNearMiss(moveOverage, level.targetMoves)) {
-      return {
-        heading: 'So Close',
-        message:
-          moveOverage === 1
-            ? 'One fewer move would have earned another star. Replay it and chase the cleaner route.'
-            : `${moveOverage} fewer moves would have earned another star. Replay it and chase the cleaner route.`,
-      };
-    }
-
+  if (moveOverage === 0 && timeOverage === 0) {
     return {
-      heading: 'Missed 2 and 3 Stars',
-      message:
-        timeOverage > 0
-          ? `Reduce your move count by ${moveOverage} and your time by ${pluralize(timeOverage, 'second')}.`
-          : `Reduce your move count by ${moveOverage}.`,
+      heading: 'Perfect run.',
+      message: 'Met move target and time target.',
     };
   }
 
-  if (timeOverage > 0) {
-    if (isNearMiss(timeOverage, level.targetTimeSeconds)) {
+  if (moveOverage === 0) {
+    return {
+      heading: isNearMiss(timeOverage, level.targetTimeSeconds) ? 'So close.' : 'Move target achieved.',
+      message: isNearMiss(timeOverage, level.targetTimeSeconds)
+        ? `Missed time target by ${pluralize(timeOverage, 'second')}. Replay for the third star.`
+        : `Missed time target by ${pluralize(timeOverage, 'second')}.`,
+    };
+  }
+
+  if (timeOverage === 0) {
+    if (isNearMiss(moveOverage, level.targetMoves)) {
       return {
-        heading: 'So Close',
-        message: `You were only ${pluralize(timeOverage, 'second')} away from 3 stars. Replay it and chase the faster clear.`,
+        heading: 'So close.',
+        message: `Exceeded move target by ${pluralize(moveOverage, 'move')}. Replay for another star.`,
       };
     }
 
     return {
-      heading: 'Missed 3 Stars',
-      message: `Reduce your time by ${pluralize(timeOverage, 'second')}.`,
+      heading: 'Level completed.',
+      message: `Exceeded move target by ${pluralize(moveOverage, 'move')}.`,
+    };
+  }
+
+  if (isNearMiss(moveOverage, level.targetMoves) || isNearMiss(timeOverage, level.targetTimeSeconds)) {
+    return {
+      heading: 'So close.',
+      message: `Exceeded move target by ${pluralize(moveOverage, 'move')} and time target by ${pluralize(timeOverage, 'second')}.`,
     };
   }
 
   return {
-    heading: '3 Star Clear',
-    message: 'You met both the move and time targets.',
+    heading: 'Level completed.',
+    message: `Exceeded move target by ${pluralize(moveOverage, 'move')} and time target by ${pluralize(timeOverage, 'second')}.`,
   };
 }
 
@@ -307,7 +308,7 @@ function CompletionStars({
   );
 }
 
-function CompletionStarBreakdown({
+function CompletionPerformanceSummary({
   gameState,
   level,
   starsEarned,
@@ -316,73 +317,65 @@ function CompletionStarBreakdown({
   level: Level;
   starsEarned: number;
 }) {
-  const explanation = getStarResultExplanation(level, gameState);
-  const moveTargetMet = gameState.moves <= level.targetMoves;
-  const timeTargetMet = gameState.elapsedSeconds <= level.targetTimeSeconds;
+  const summary = getPerformanceSummary(level, gameState);
+
+  return (
+    <section
+      className="completion-performance-summary"
+      aria-label={`${starsEarned} stars earned. ${summary.heading} ${summary.message}`}
+    >
+      <p className="performance-summary-heading">{summary.heading}</p>
+      <p className="performance-summary-message">{summary.message}</p>
+    </section>
+  );
+}
+
+function CompletionTargetAnalysis({
+  gameState,
+  level,
+}: {
+  gameState: GameState;
+  level: Level;
+}) {
   const targetRows = [
     {
       actual: gameState.moves.toString(),
-      icon: <Footprints aria-hidden="true" />,
       label: 'Moves',
       progress: getTargetProgress(gameState.moves, level.targetMoves),
       target: level.targetMoves.toString(),
-      targetMet: moveTargetMet,
+      targetMet: gameState.moves <= level.targetMoves,
     },
     {
       actual: formatTime(gameState.elapsedSeconds),
-      icon: <Timer aria-hidden="true" />,
       label: 'Time',
       progress: getTargetProgress(gameState.elapsedSeconds, level.targetTimeSeconds),
       target: formatTime(level.targetTimeSeconds),
-      targetMet: timeTargetMet,
+      targetMet: gameState.elapsedSeconds <= level.targetTimeSeconds,
     },
   ];
 
   return (
-    <section className="completion-star-breakdown" aria-labelledby="completion-star-breakdown-title">
-      <div className="completion-target-grid">
-        {targetRows.map((targetRow) => (
-          <div
-            className={`completion-target-card ${targetRow.targetMet ? 'met' : 'missed'}`}
-            key={targetRow.label}
+    <section className="completion-target-analysis" aria-label="Detailed target analysis">
+      {targetRows.map((targetRow) => (
+        <div className={`target-detail-row${targetRow.targetMet ? ' met' : ' missed'}`} key={targetRow.label}>
+          <span>{targetRow.label}</span>
+          <strong>{`${targetRow.actual} / ${targetRow.target}`}</strong>
+          <em>
+            {targetRow.targetMet ? <Check aria-hidden="true" /> : <X aria-hidden="true" />}
+            {targetRow.targetMet ? 'Met' : 'Missed'}
+          </em>
+          <span
+            className="target-detail-meter"
+            role="progressbar"
+            aria-label={`${targetRow.label} target ${targetRow.targetMet ? 'met' : 'missed'}`}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={targetRow.progress}
           >
-            {targetRow.icon}
-            <span>{targetRow.label}</span>
-            <strong>{`${targetRow.actual} / ${targetRow.target}`}</strong>
-            <em>{`Target: ${targetRow.target}`}</em>
-            <span className="completion-target-result">
-              {targetRow.targetMet ? <Check aria-hidden="true" /> : <X aria-hidden="true" />}
-              {targetRow.targetMet ? 'Met' : 'Missed'}
-            </span>
-            <span
-              className="completion-progress"
-              role="progressbar"
-              aria-label={`${targetRow.label} target ${targetRow.targetMet ? 'met' : 'missed'}`}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={targetRow.progress}
-            >
-              <span style={{ width: `${targetRow.progress}%` }} />
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <div className="completion-star-explanation">
-        <span id="completion-star-breakdown-title">Stars Earned</span>
-        <strong aria-label={`Star breakdown: ${starsEarned} stars`}>
-          {Array.from({ length: 3 }, (_, index) => (
-            <StarTooltip
-              earned={index < starsEarned}
-              key={index}
-              tier={(index + 1) as 1 | 2 | 3}
-            />
-          ))}
-        </strong>
-        <p>
-          <b>{explanation.heading}:</b> {explanation.message}
-        </p>
-      </div>
+            <span style={{ width: `${targetRow.progress}%` }} />
+          </span>
+        </div>
+      ))}
     </section>
   );
 }
@@ -1093,86 +1086,101 @@ export function GameScreen({
               {completionAriaLabel} with {starsEarned} stars, {gameState.moves} moves, and a time of{' '}
               {formatTime(gameState.elapsedSeconds)}.
             </p>
-            <header className="completion-header">
-              <CircleCheck aria-hidden="true" />
-              <div>
-                {chapterMilestone ? <span className="chapter-complete-badge">{chapterMilestone.chapterTitle}</span> : null}
-                <h2 id="completion-title">{completionTitle}</h2>
-                <p>{completionSubtitle}</p>
-              </div>
-            </header>
+            <div className="completion-hero">
+              <CompletionStars count={starsEarned} reducedMotion={reducedMotion} />
 
-            <CompletionStars count={starsEarned} reducedMotion={reducedMotion} />
-            <CompletionStarBreakdown gameState={gameState} level={level} starsEarned={starsEarned} />
-            <PersonalBestComparison
-              bestMoves={bestMovesAfterRun}
-              bestTimeSeconds={bestTimeSecondsAfterRun}
-              level={level}
-            />
+              <header className="completion-header">
+                <div>
+                  {chapterMilestone ? <span className="chapter-complete-badge">{chapterMilestone.chapterTitle}</span> : null}
+                  <h2 id="completion-title">{completionTitle}</h2>
+                  <p>{completionSubtitle}</p>
+                </div>
+              </header>
 
-            <div className="completion-stats">
-              <div className={`stat-card${isTimeRecord ? ' record' : ''}`}>
-                <Timer aria-hidden="true" />
-                <span>Time</span>
-                <strong>{formatTime(gameState.elapsedSeconds)}</strong>
-                {isTimeRecord ? <em>New Record</em> : null}
+              <div className="completion-stats">
+                <div className={`stat-card${isMoveRecord ? ' record' : ''}`}>
+                  <Footprints aria-hidden="true" />
+                  <span>Moves</span>
+                  <strong>{gameState.moves}</strong>
+                  {isMoveRecord ? <em>New Record</em> : null}
+                </div>
+                <div className={`stat-card${isTimeRecord ? ' record' : ''}`}>
+                  <Timer aria-hidden="true" />
+                  <span>Time</span>
+                  <strong>{formatTime(gameState.elapsedSeconds)}</strong>
+                  {isTimeRecord ? <em>New Record</em> : null}
+                </div>
               </div>
-              <div className={`stat-card${isMoveRecord ? ' record' : ''}`}>
-                <Footprints aria-hidden="true" />
-                <span>Moves</span>
-                <strong>{gameState.moves}</strong>
-                {isMoveRecord ? <em>New Record</em> : null}
-              </div>
-              <div className="stat-card">
-                <Star aria-hidden="true" />
-                <span>Stars Earned</span>
-                <strong>{starsEarned}</strong>
+
+              <div className="completion-actions completion-primary-actions">
+                <button
+                  type="button"
+                  className="menu-button shortcut-action completion-action primary"
+                  ref={completionPrimaryActionRef}
+                  onClick={goToCompletionPrimaryAction}
+                >
+                  <span className="action-label">
+                    <span>{completionPrimaryLabel}</span>
+                  </span>
+                  <span className="action-shortcut" aria-hidden="true">Press Space</span>
+                </button>
+                <button type="button" className="menu-button shortcut-action completion-action" onClick={resetLevel}>
+                  <span className="action-label">
+                    <span>Retry</span>
+                  </span>
+                  <span className="action-shortcut" aria-hidden="true">Press R</span>
+                </button>
+                <button type="button" className="menu-button shortcut-action completion-action secondary" onClick={onLevelSelect}>
+                  <span className="action-label">
+                    <span>Level Select</span>
+                  </span>
+                  <span className="action-shortcut" aria-hidden="true">Press L</span>
+                </button>
               </div>
             </div>
 
-            <div className="completion-actions">
-              <button
-                type="button"
-                className="menu-button shortcut-action completion-action primary"
-                ref={completionPrimaryActionRef}
-                onClick={goToCompletionPrimaryAction}
-              >
-                <span className="action-label">
-                  {isFinalLevel ? <ListOrdered aria-hidden="true" /> : <Play aria-hidden="true" />}
-                  <span>{completionPrimaryLabel}</span>
-                </span>
-                <span className="action-shortcut">Spacebar</span>
-              </button>
-              <button type="button" className="menu-button shortcut-action completion-action" onClick={resetLevel}>
-                <span className="action-label">
-                  <RotateCcw aria-hidden="true" />
-                  <span>Retry</span>
-                </span>
-                <span className="action-shortcut">R</span>
-              </button>
-              <button
-                type="button"
-                className="menu-button completion-action"
-                onClick={toggleHintJournal}
-                aria-expanded={isHintJournalOpen}
-              >
-                <BookOpen aria-hidden="true" />
-                <span>Hint Journal</span>
-              </button>
-              <button
-                type="button"
-                className="menu-button completion-action"
-                onClick={toggleHintAnalytics}
-                aria-expanded={isHintAnalyticsOpen}
-              >
-                <BarChart3 aria-hidden="true" />
-                <span>Hint Analytics</span>
-              </button>
-              <button type="button" className="menu-button completion-action" onClick={onLevelSelect}>
-                <ListOrdered aria-hidden="true" />
-                <span>Level Select</span>
-              </button>
-            </div>
+            <details className="completion-detail-group">
+              <summary>Performance Details</summary>
+              <div className="performance-details-stack">
+                <CompletionPerformanceSummary gameState={gameState} level={level} starsEarned={starsEarned} />
+                <CompletionTargetAnalysis gameState={gameState} level={level} />
+              </div>
+              <PersonalBestComparison
+                bestMoves={bestMovesAfterRun}
+                bestTimeSeconds={bestTimeSecondsAfterRun}
+                level={level}
+              />
+            </details>
+
+            <details className="completion-detail-group completion-tools-group">
+              <summary>Hint Journal</summary>
+              <div className="completion-actions completion-tool-actions">
+                <button
+                  type="button"
+                  className="menu-button completion-action"
+                  onClick={toggleHintJournal}
+                  aria-expanded={isHintJournalOpen}
+                >
+                  <BookOpen aria-hidden="true" />
+                  <span>Hint Journal</span>
+                </button>
+              </div>
+            </details>
+
+            <details className="completion-detail-group completion-developer-tools">
+              <summary>Developer Tools</summary>
+              <div className="completion-actions completion-tool-actions">
+                <button
+                  type="button"
+                  className="menu-button completion-action"
+                  onClick={toggleHintAnalytics}
+                  aria-expanded={isHintAnalyticsOpen}
+                >
+                  <BarChart3 aria-hidden="true" />
+                  <span>Hint Analytics</span>
+                </button>
+              </div>
+            </details>
 
             {isHintJournalOpen ? (
               <HintJournal level={level} unlockedHintTiers={unlockedHintTiers} onClose={closeHintJournal} />

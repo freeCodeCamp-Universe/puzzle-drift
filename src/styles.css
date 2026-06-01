@@ -1095,12 +1095,15 @@ h2 {
   z-index: var(--z-modal);
   display: grid;
   width: min(100% - 2rem, 30rem);
-  gap: 0.9rem;
-  border: 1px solid color-mix(in srgb, var(--green) 62%, var(--border));
+  max-height: min(44rem, calc(100dvh - 2rem));
+  gap: 1rem;
+  overflow: auto;
+  border: 1px solid color-mix(in srgb, var(--green) 44%, var(--border));
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--green) 13%, transparent), transparent 48%),
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--yellow) 10%, transparent), transparent 34%),
+    linear-gradient(180deg, color-mix(in srgb, var(--green) 8%, transparent), transparent 46%),
     color-mix(in srgb, var(--surface) 96%, var(--background));
-  padding: clamp(1rem, 3vw, 1.35rem);
+  padding: clamp(1.55rem, 4vw, 2.35rem);
   transform: translate(-50%, -50%);
 }
 
@@ -1144,10 +1147,17 @@ h2 {
   white-space: nowrap;
 }
 
+.completion-hero {
+  display: grid;
+  gap: 1.25rem;
+  justify-items: center;
+  text-align: center;
+}
+
 .completion-header {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
 }
 
 .failure-header {
@@ -1156,19 +1166,10 @@ h2 {
   gap: 0.8rem;
 }
 
-.completion-header > svg,
 .failure-header > svg {
-  width: 2.2rem;
-  height: 2.2rem;
+  width: 2.35rem;
+  height: 2.35rem;
   flex: 0 0 auto;
-}
-
-.completion-header > svg {
-  color: var(--green);
-}
-
-.completion-panel.chapter-complete .completion-header > svg {
-  color: var(--yellow);
 }
 
 .failure-header > svg {
@@ -1177,9 +1178,9 @@ h2 {
 
 .completion-panel h2,
 .failure-panel h2 {
-  margin: 0 0 0.25rem;
-  font-size: clamp(2rem, 6vw, 3rem);
-  line-height: 1;
+  margin: 0;
+  font-size: clamp(2rem, 6vw, 3.1rem);
+  line-height: 0.95;
 }
 
 .chapter-complete-badge {
@@ -1206,17 +1207,17 @@ h2 {
 .completion-stars {
   display: flex;
   justify-content: center;
-  gap: 0.55rem;
+  gap: clamp(0.5rem, 2vw, 0.85rem);
 }
 
 .completion-stars svg {
-  width: 2.25rem;
-  height: 2.25rem;
+  width: clamp(3.1rem, 11vw, 4.45rem);
+  height: clamp(3.1rem, 11vw, 4.45rem);
 }
 
 .completion-stars .star-tooltip-trigger {
-  width: 2.25rem;
-  height: 2.25rem;
+  width: clamp(3.1rem, 11vw, 4.45rem);
+  height: clamp(3.1rem, 11vw, 4.45rem);
 }
 
 .completion-stars .star-earned {
@@ -1231,153 +1232,104 @@ h2 {
   animation: star-pop 420ms ease-out both;
 }
 
-.completion-star-breakdown {
+.completion-performance-summary {
   display: grid;
-  gap: 0.65rem;
-}
-
-.completion-target-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.55rem;
-}
-
-.completion-target-card {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 0.25rem 0.5rem;
-  min-width: 0;
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface-strong) 64%, transparent);
-  padding: 0.65rem;
-}
-
-.completion-target-card.met {
-  border-color: color-mix(in srgb, var(--green) 50%, var(--border));
-  background: color-mix(in srgb, var(--green) 9%, var(--surface-strong));
-}
-
-.completion-target-card.missed {
-  border-color: color-mix(in srgb, var(--red) 48%, var(--border));
-  background: color-mix(in srgb, var(--red) 9%, var(--surface-strong));
-}
-
-.completion-target-card svg {
-  width: 1rem;
-  height: 1rem;
-  color: var(--blue);
-}
-
-.completion-target-card span,
-.completion-target-card em,
-.completion-star-explanation > span {
-  font-family: "Fira Mono", Menlo, Consolas, monospace;
-  font-size: 0.66rem;
-  font-style: normal;
-  font-weight: 800;
-  line-height: 1;
-  text-transform: uppercase;
-}
-
-.completion-target-card span {
-  color: var(--muted);
-}
-
-.completion-target-card strong {
-  grid-column: 1 / -1;
+  gap: 0.25rem;
   color: var(--text);
-  font-size: 1.42rem;
-  line-height: 1.05;
 }
 
-.completion-target-card em {
-  grid-column: 1 / 3;
-  color: var(--yellow);
+.performance-summary-heading {
+  color: var(--text);
+  font-weight: 800;
 }
 
-.completion-target-result {
+.performance-summary-message {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.performance-details-stack {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.completion-target-analysis {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.target-detail-row {
+  display: grid;
+  grid-template-columns: minmax(4rem, 1fr) auto auto;
+  align-items: center;
+  gap: 0.4rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--border) 58%, transparent);
+  background: color-mix(in srgb, var(--surface-strong) 36%, transparent);
+  padding: 0.58rem 0.65rem;
+}
+
+.target-detail-row > span:first-child {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.target-detail-row strong {
+  color: var(--text);
+  font-family: "Fira Mono", Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+}
+
+.target-detail-row em {
   display: inline-flex;
   align-items: center;
-  justify-self: end;
   gap: 0.22rem;
   font-family: "Fira Mono", Menlo, Consolas, monospace;
   font-size: 0.64rem;
+  font-style: normal;
   font-weight: 800;
   text-transform: uppercase;
 }
 
-.completion-target-result svg {
+.target-detail-row em svg {
   width: 0.9rem;
   height: 0.9rem;
 }
 
-.completion-target-card.met .completion-target-result,
-.completion-target-card.met .completion-target-result svg {
+.target-detail-row.met em,
+.target-detail-row.met em svg {
   color: var(--green);
 }
 
-.completion-target-card.missed .completion-target-result,
-.completion-target-card.missed .completion-target-result svg {
+.target-detail-row.missed em,
+.target-detail-row.missed em svg {
   color: var(--red);
 }
 
-.completion-progress {
+.target-detail-meter {
   grid-column: 1 / -1;
   display: block;
-  height: 0.42rem;
+  height: 0.32rem;
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
   background: color-mix(in srgb, var(--background) 82%, transparent);
 }
 
-.completion-progress span {
+.target-detail-meter span {
   display: block;
   height: 100%;
   background: var(--green);
 }
 
-.completion-target-card.missed .completion-progress span {
+.target-detail-row.missed .target-detail-meter span {
   background: var(--red);
-}
-
-.completion-star-explanation {
-  display: grid;
-  gap: 0.35rem;
-  border: 1px solid color-mix(in srgb, var(--yellow) 34%, var(--border));
-  background: color-mix(in srgb, var(--yellow) 8%, var(--background));
-  padding: 0.7rem;
-}
-
-.completion-star-explanation > span {
-  color: var(--yellow);
-}
-
-.completion-star-explanation strong {
-  display: inline-flex;
-  gap: 0.2rem;
-  color: var(--yellow);
-}
-
-.completion-star-explanation strong svg {
-  width: 1.25rem;
-  height: 1.25rem;
-  fill: currentcolor;
-}
-
-.completion-star-explanation .star-empty {
-  color: var(--border-strong);
-}
-
-.completion-star-explanation b {
-  color: var(--text);
 }
 
 .personal-best-comparison {
   display: grid;
   gap: 0.45rem;
-  border: 1px solid color-mix(in srgb, var(--blue) 34%, var(--border));
-  background: color-mix(in srgb, var(--blue) 7%, var(--background));
+  border: 1px solid color-mix(in srgb, var(--blue) 28%, var(--border));
+  background: color-mix(in srgb, var(--blue) 5%, var(--background));
   padding: 0.7rem;
 }
 
@@ -1424,22 +1376,26 @@ h2 {
 
 .completion-stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.55rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(1.25rem, 6vw, 3rem);
+  width: fit-content;
 }
 
 .stat-card {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 1fr;
   align-items: center;
-  gap: 0.2rem 0.5rem;
+  justify-items: center;
+  gap: 0.35rem;
   min-width: 0;
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface-strong) 72%, transparent);
-  padding: 0.65rem;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: center;
 }
 
 .stat-card svg {
+  display: none;
   width: 1rem;
   height: 1rem;
   color: var(--blue);
@@ -1447,21 +1403,19 @@ h2 {
 
 .stat-card span {
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   line-height: 1;
   text-transform: uppercase;
 }
 
 .stat-card strong {
-  grid-column: 1 / -1;
   color: var(--text);
-  font-size: 1.55rem;
+  font-size: clamp(1.45rem, 5vw, 2.05rem);
   line-height: 1.05;
 }
 
 .stat-card.record {
-  border-color: color-mix(in srgb, var(--yellow) 74%, var(--border));
-  background: color-mix(in srgb, var(--yellow) 12%, var(--surface-strong));
+  color: var(--yellow);
 }
 
 .stat-card em {
@@ -1475,8 +1429,68 @@ h2 {
 
 .completion-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.55rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  width: 100%;
+}
+
+.completion-primary-actions {
+  width: min(100%, 22rem);
+  margin-block-start: 0.25rem;
+}
+
+.completion-primary-actions .completion-action.primary {
+  grid-column: span 2;
+  min-height: 3.75rem;
+  font-size: 1rem;
+}
+
+.completion-primary-actions .completion-action:not(.primary) {
+  min-height: 2.65rem;
+  border-color: transparent;
+  background: transparent;
+}
+
+.completion-primary-actions .completion-action.secondary {
+  color: var(--muted);
+}
+
+.completion-detail-group {
+  display: grid;
+  gap: 0.7rem;
+  border-block-start: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  padding-block-start: 0.55rem;
+}
+
+.completion-detail-group summary {
+  color: var(--blue);
+  cursor: pointer;
+  font-family: "Fira Mono", Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.completion-detail-group summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.completion-detail-group[open] summary {
+  margin-block-end: 0.7rem;
+}
+
+.completion-tools-group summary {
+  color: var(--muted);
+}
+
+.completion-developer-tools summary {
+  color: color-mix(in srgb, var(--muted) 82%, var(--red));
+}
+
+.completion-tool-actions {
+  grid-template-columns: 1fr;
 }
 
 .shortcut-action.menu-button {
@@ -1520,6 +1534,47 @@ h2 {
 
 .shortcut-action.primary .action-shortcut {
   background: color-mix(in srgb, var(--background) 14%, transparent);
+}
+
+.completion-primary-actions .shortcut-action.menu-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.38rem;
+  text-align: center;
+}
+
+.completion-primary-actions .action-label {
+  justify-content: center;
+  font-size: 0.98rem;
+  line-height: 1.15;
+  text-align: center;
+  white-space: normal;
+}
+
+.completion-primary-actions .completion-action.primary .action-label {
+  font-size: 1.04rem;
+}
+
+.completion-primary-actions .action-shortcut {
+  display: block;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: color-mix(in srgb, currentColor 58%, var(--muted));
+  padding: 0;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.2;
+  text-transform: none;
+  white-space: normal;
+}
+
+.completion-primary-actions .completion-action.primary .action-shortcut {
+  background: transparent;
+  color: color-mix(in srgb, currentColor 64%, transparent);
 }
 
 @keyframes star-pop {
@@ -3360,10 +3415,13 @@ fieldset.settings-section-card {
     width: min(100% - 1.25rem, 28rem);
   }
 
-  .completion-target-grid,
   .completion-stats,
   .completion-actions {
     grid-template-columns: 1fr;
+  }
+
+  .completion-primary-actions .completion-action.primary {
+    grid-column: auto;
   }
 
   .campaign-chapter-header {
