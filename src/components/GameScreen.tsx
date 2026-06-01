@@ -41,6 +41,7 @@ import {
 import { getChapterCompletionMilestone } from '../utils/chapterMilestones';
 import { isHintTierUnlocked } from '../utils/hints';
 import { GameBoard } from './GameBoard';
+import { StarTooltip } from './StarTooltip';
 
 type CompletionPayload = {
   completedLevelId: number;
@@ -85,6 +86,66 @@ function formatTime(seconds: number) {
   const remainingSeconds = seconds % 60;
 
   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
+
+function pluralize(count: number, singular: string) {
+  return `${count} ${singular}${count === 1 ? '' : 's'}`;
+}
+
+function isNearMiss(overage: number, target: number) {
+  return overage > 0 && overage <= Math.ceil(target * 0.1);
+}
+
+function getStarResultExplanation(level: Level, gameState: GameState) {
+  const moveOverage = Math.max(0, gameState.moves - level.targetMoves);
+  const timeOverage = Math.max(0, gameState.elapsedSeconds - level.targetTimeSeconds);
+
+  if (moveOverage > 0) {
+    if (isNearMiss(moveOverage, level.targetMoves)) {
+      return {
+        heading: 'So Close',
+        message:
+          moveOverage === 1
+            ? 'One fewer move would have earned another star. Replay it and chase the cleaner route.'
+            : `${moveOverage} fewer moves would have earned another star. Replay it and chase the cleaner route.`,
+      };
+    }
+
+    return {
+      heading: 'Missed 2 and 3 Stars',
+      message:
+        timeOverage > 0
+          ? `Reduce your move count by ${moveOverage} and your time by ${pluralize(timeOverage, 'second')}.`
+          : `Reduce your move count by ${moveOverage}.`,
+    };
+  }
+
+  if (timeOverage > 0) {
+    if (isNearMiss(timeOverage, level.targetTimeSeconds)) {
+      return {
+        heading: 'So Close',
+        message: `You were only ${pluralize(timeOverage, 'second')} away from 3 stars. Replay it and chase the faster clear.`,
+      };
+    }
+
+    return {
+      heading: 'Missed 3 Stars',
+      message: `Reduce your time by ${pluralize(timeOverage, 'second')}.`,
+    };
+  }
+
+  return {
+    heading: '3 Star Clear',
+    message: 'You met both the move and time targets.',
+  };
+}
+
+function getTargetProgress(actual: number, target: number) {
+  if (actual <= target) {
+    return 100;
+  }
+
+  return Math.max(8, Math.round((target / actual) * 100));
 }
 
 function positionKey(position: { x: number; y: number }) {
@@ -233,14 +294,130 @@ function CompletionStars({
       aria-label={`${count} stars earned`}
     >
       {[1, 2, 3].map((starNumber) => (
-        <Star
+        <StarTooltip
+          className="completion-star"
+          earned={starNumber <= count}
           key={starNumber}
-          aria-hidden="true"
-          className={starNumber <= count ? 'star-earned' : 'star-empty'}
-          style={{ animationDelay: `${(starNumber - 1) * 140}ms` }}
+          reducedMotion={reducedMotion}
+          tier={starNumber as 1 | 2 | 3}
         />
       ))}
     </div>
+  );
+}
+
+function CompletionStarBreakdown({
+  gameState,
+  level,
+  starsEarned,
+}: {
+  gameState: GameState;
+  level: Level;
+  starsEarned: number;
+}) {
+  const explanation = getStarResultExplanation(level, gameState);
+  const moveTargetMet = gameState.moves <= level.targetMoves;
+  const timeTargetMet = gameState.elapsedSeconds <= level.targetTimeSeconds;
+  const targetRows = [
+    {
+      actual: gameState.moves.toString(),
+      icon: <Footprints aria-hidden="true" />,
+      label: 'Moves',
+      progress: getTargetProgress(gameState.moves, level.targetMoves),
+      target: level.targetMoves.toString(),
+      targetMet: moveTargetMet,
+    },
+    {
+      actual: formatTime(gameState.elapsedSeconds),
+      icon: <Timer aria-hidden="true" />,
+      label: 'Time',
+      progress: getTargetProgress(gameState.elapsedSeconds, level.targetTimeSeconds),
+      target: formatTime(level.targetTimeSeconds),
+      targetMet: timeTargetMet,
+    },
+  ];
+
+  return (
+    <section className="completion-star-breakdown" aria-labelledby="completion-star-breakdown-title">
+      <div className="completion-target-grid">
+        {targetRows.map((targetRow) => (
+          <div
+            className={`completion-target-card ${targetRow.targetMet ? 'met' : 'missed'}`}
+            key={targetRow.label}
+          >
+            {targetRow.icon}
+            <span>{targetRow.label}</span>
+            <strong>{`${targetRow.actual} / ${targetRow.target}`}</strong>
+            <em>{`Target: ${targetRow.target}`}</em>
+            <span className="completion-target-result">
+              {targetRow.targetMet ? <Check aria-hidden="true" /> : <X aria-hidden="true" />}
+              {targetRow.targetMet ? 'Met' : 'Missed'}
+            </span>
+            <span
+              className="completion-progress"
+              role="progressbar"
+              aria-label={`${targetRow.label} target ${targetRow.targetMet ? 'met' : 'missed'}`}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={targetRow.progress}
+            >
+              <span style={{ width: `${targetRow.progress}%` }} />
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <div className="completion-star-explanation">
+        <span id="completion-star-breakdown-title">Stars Earned</span>
+        <strong aria-label={`Star breakdown: ${starsEarned} stars`}>
+          {Array.from({ length: 3 }, (_, index) => (
+            <StarTooltip
+              earned={index < starsEarned}
+              key={index}
+              tier={(index + 1) as 1 | 2 | 3}
+            />
+          ))}
+        </strong>
+        <p>
+          <b>{explanation.heading}:</b> {explanation.message}
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function PersonalBestComparison({
+  bestMoves,
+  bestTimeSeconds,
+  level,
+}: {
+  bestMoves: number;
+  bestTimeSeconds: number;
+  level: Level;
+}) {
+  const moveTargetMet = bestMoves <= level.targetMoves;
+  const timeTargetMet = bestTimeSeconds <= level.targetTimeSeconds;
+  const allTargetsMet = moveTargetMet && timeTargetMet;
+
+  return (
+    <section className="personal-best-comparison" aria-label="Personal best comparison">
+      <span className="personal-best-title">Personal Best</span>
+      <div className={`personal-best-row${moveTargetMet ? ' met' : ' missed'}`}>
+        <span>Best Moves</span>
+        <strong>{bestMoves} / {level.targetMoves}</strong>
+        {moveTargetMet ? <Check aria-label="Best Moves target met" /> : <X aria-label="Best Moves target missed" />}
+      </div>
+      <div className={`personal-best-row${timeTargetMet ? ' met' : ' missed'}`}>
+        <span>Best Time</span>
+        <strong>{formatTime(bestTimeSeconds)} / {formatTime(level.targetTimeSeconds)}</strong>
+        {timeTargetMet ? <Check aria-label="Best Time target met" /> : <X aria-label="Best Time target missed" />}
+      </div>
+      <p>
+        {allTargetsMet
+          ? 'Your best run beats the star targets. Replay to polish the route or chase speed.'
+          : 'Replay to bring your personal best under the remaining target.'}
+      </p>
+    </section>
   );
 }
 
@@ -868,6 +1045,8 @@ export function GameScreen({
   const starsEarned = calculateStars(level, gameState);
   const bestMoves = progress.bestMoves[level.id] ?? gameState.moves;
   const bestTimeSeconds = progress.bestTimeSeconds[level.id] ?? gameState.elapsedSeconds;
+  const bestMovesAfterRun = Math.min(bestMoves, gameState.moves);
+  const bestTimeSecondsAfterRun = Math.min(bestTimeSeconds, gameState.elapsedSeconds);
   const isMoveRecord = gameState.isComplete && gameState.moves <= bestMoves;
   const isTimeRecord = gameState.isComplete && gameState.elapsedSeconds <= bestTimeSeconds;
   const hintNudge = getStuckNudge({
@@ -961,6 +1140,12 @@ export function GameScreen({
             </header>
 
             <CompletionStars count={starsEarned} reducedMotion={reducedMotion} />
+            <CompletionStarBreakdown gameState={gameState} level={level} starsEarned={starsEarned} />
+            <PersonalBestComparison
+              bestMoves={bestMovesAfterRun}
+              bestTimeSeconds={bestTimeSecondsAfterRun}
+              level={level}
+            />
 
             <div className="completion-stats">
               <div className={`stat-card${isTimeRecord ? ' record' : ''}`}>

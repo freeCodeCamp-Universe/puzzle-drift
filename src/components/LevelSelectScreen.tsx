@@ -1,6 +1,7 @@
 import {
   ArrowLeft,
   BarChart3,
+  Check,
   CheckCircle2,
   Footprints,
   KeyRound,
@@ -12,8 +13,9 @@ import {
   Timer,
   Trophy,
   Wand2,
+  X,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { LEVELS } from '../data/levels';
 import type { Level, SaveData, TileType } from '../types/game';
 import { Tooltip } from './Tooltip';
@@ -24,6 +26,7 @@ import {
   isLevelCompleted,
   isLevelUnlocked,
 } from '../utils/progressStorage';
+import { StarTooltip } from './StarTooltip';
 
 type LevelSelectScreenProps = {
   progress: SaveData;
@@ -39,20 +42,10 @@ type CampaignChapter = {
   title: string;
 };
 
-type StatusFilter = 'all' | 'incomplete' | 'completed' | 'locked';
-type MechanicFilter = 'all' | 'key' | 'door' | 'switch' | 'pushBlock' | 'pressurePlate' | 'portal' | 'ice' | 'spike';
-
-type LevelSelectFilters = {
-  mechanic: MechanicFilter;
-  status: StatusFilter;
-};
-
 type AchievementBadge = {
   readonly label: string;
   readonly tooltip: string;
 };
-
-const FILTER_STORAGE_KEY = 'puzzle-drift:level-select-filters';
 
 const CAMPAIGN_CHAPTERS: CampaignChapter[] = [
   {
@@ -78,25 +71,6 @@ const CAMPAIGN_CHAPTERS: CampaignChapter[] = [
   },
 ];
 
-const STATUS_FILTERS: { label: string; value: StatusFilter }[] = [
-  { label: 'All', value: 'all' },
-  { label: 'Incomplete', value: 'incomplete' },
-  { label: 'Completed', value: 'completed' },
-  { label: 'Locked', value: 'locked' },
-];
-
-const MECHANIC_FILTERS: { label: string; value: MechanicFilter }[] = [
-  { label: 'All Mechanics', value: 'all' },
-  { label: 'Keys', value: 'key' },
-  { label: 'Doors', value: 'door' },
-  { label: 'Switches', value: 'switch' },
-  { label: 'Blocks', value: 'pushBlock' },
-  { label: 'Pressure Plates', value: 'pressurePlate' },
-  { label: 'Portals', value: 'portal' },
-  { label: 'Ice', value: 'ice' },
-  { label: 'Spikes', value: 'spike' },
-];
-
 const MECHANIC_LABELS: Record<TileType, string> = {
   cracked: 'Cracked',
   door: 'Doors',
@@ -119,11 +93,6 @@ const MECHANIC_LABELS: Record<TileType, string> = {
 
 const PREVIEW_TILE_TYPES = new Set<TileType>(['door', 'exit', 'key', 'portal', 'spike', 'wall']);
 
-const DEFAULT_FILTERS: LevelSelectFilters = {
-  mechanic: 'all',
-  status: 'all',
-};
-
 const ACHIEVEMENT_BADGES = {
   firstTry: {
     label: 'First Try Clear',
@@ -142,37 +111,6 @@ const ACHIEVEMENT_BADGES = {
     tooltip: 'Earned all three stars on this level.',
   },
 } as const;
-
-function isStatusFilter(value: unknown): value is StatusFilter {
-  return STATUS_FILTERS.some((filter) => filter.value === value);
-}
-
-function isMechanicFilter(value: unknown): value is MechanicFilter {
-  return MECHANIC_FILTERS.some((filter) => filter.value === value);
-}
-
-function loadLevelSelectFilters(): LevelSelectFilters {
-  try {
-    const storedFilters = window.sessionStorage.getItem(FILTER_STORAGE_KEY);
-
-    if (!storedFilters) {
-      return DEFAULT_FILTERS;
-    }
-
-    const parsedFilters = JSON.parse(storedFilters) as Partial<LevelSelectFilters>;
-
-    return {
-      mechanic: isMechanicFilter(parsedFilters.mechanic) ? parsedFilters.mechanic : DEFAULT_FILTERS.mechanic,
-      status: isStatusFilter(parsedFilters.status) ? parsedFilters.status : DEFAULT_FILTERS.status,
-    };
-  } catch {
-    return DEFAULT_FILTERS;
-  }
-}
-
-function saveLevelSelectFilters(filters: LevelSelectFilters) {
-  window.sessionStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filters));
-}
 
 function formatTime(seconds?: number) {
   if (seconds === undefined) {
@@ -201,12 +139,65 @@ function LevelStars({ count }: { count: number }) {
   return (
     <span className="level-stars" aria-label={`${count} stars`} data-testid="level-stars">
       {Array.from({ length: 3 }, (_, index) => (
-        <Star
-          aria-hidden="true"
+        <StarTooltip
           className={index < count ? 'star-filled' : undefined}
+          earned={index < count}
           key={index}
+          tier={(index + 1) as 1 | 2 | 3}
         />
       ))}
+    </span>
+  );
+}
+
+function BestComparisonRow({
+  actual,
+  label,
+  target,
+  targetMet,
+}: {
+  actual?: string | number;
+  label: string;
+  target: string | number;
+  targetMet: boolean;
+}) {
+  return (
+    <span className={`best-comparison-row${targetMet ? ' met' : ' missed'}`}>
+      <span className="best-comparison-label">{label}</span>
+      <span className="best-comparison-value">
+        {actual ?? '--'} / {target}
+      </span>
+      {targetMet ? <Check aria-label={`${label} target met`} /> : <X aria-label={`${label} target missed`} />}
+    </span>
+  );
+}
+
+function StarRequirementIcons({ count }: { count: number }) {
+  return (
+    <span className="star-requirement-icons">
+      {Array.from({ length: count }, (_, index) => (
+        <StarTooltip key={index} tier={(index + 1) as 1 | 2 | 3} />
+      ))}
+    </span>
+  );
+}
+
+function StarRequirements({ level }: { level: Level }) {
+  return (
+    <span className="star-requirements" aria-label="Star requirements">
+      <span className="star-requirements-title">Stars</span>
+      <span className="star-requirement-row">
+        <StarRequirementIcons count={1} />
+        <span>Complete</span>
+      </span>
+      <span className="star-requirement-row">
+        <StarRequirementIcons count={2} />
+        <span>{`<= ${level.targetMoves} moves`}</span>
+      </span>
+      <span className="star-requirement-row">
+        <StarRequirementIcons count={3} />
+        <span>{`<= ${level.targetMoves} moves and <= ${level.targetTimeSeconds} seconds`}</span>
+      </span>
     </span>
   );
 }
@@ -334,6 +325,7 @@ function LevelCard({
       <LevelPreview level={level} />
       {unlocked ? <LevelStars count={stars} /> : null}
       <AchievementBadges badges={achievementBadges} />
+      <StarRequirements level={level} />
 
       <span className="mechanic-list" aria-label={`Mechanics: ${level.mechanics.join(', ')}`}>
         {level.mechanics
@@ -356,14 +348,18 @@ function LevelCard({
 
       {unlocked ? (
         <span className="level-card-stats">
-          <span>
-            <Footprints aria-hidden="true" />
-            {bestMoves ?? '--'}
-          </span>
-          <span>
-            <Timer aria-hidden="true" />
-            {formatTime(bestTimeSeconds)}
-          </span>
+          <BestComparisonRow
+            actual={bestMoves}
+            label="Best Moves"
+            target={level.targetMoves}
+            targetMet={bestMoves !== undefined && bestMoves <= level.targetMoves}
+          />
+          <BestComparisonRow
+            actual={bestTimeSeconds === undefined ? undefined : formatTime(bestTimeSeconds)}
+            label="Best Time"
+            target={formatTime(level.targetTimeSeconds)}
+            targetMet={bestTimeSeconds !== undefined && bestTimeSeconds <= level.targetTimeSeconds}
+          />
         </span>
       ) : null}
     </button>
@@ -416,29 +412,6 @@ function getCampaignSummary(progress: SaveData, currentObjectiveLevel: number) {
     totalPlayTimeSeconds,
     totalStars,
   };
-}
-
-function levelMatchesStatusFilter(level: Level, progress: SaveData, statusFilter: StatusFilter) {
-  const completed = isLevelCompleted(progress, level.id);
-  const unlocked = isLevelUnlocked(progress, level.id);
-
-  if (statusFilter === 'completed') {
-    return completed;
-  }
-
-  if (statusFilter === 'incomplete') {
-    return unlocked && !completed;
-  }
-
-  if (statusFilter === 'locked') {
-    return !unlocked;
-  }
-
-  return true;
-}
-
-function levelMatchesMechanicFilter(level: Level, mechanicFilter: MechanicFilter) {
-  return mechanicFilter === 'all' || level.mechanics.includes(mechanicFilter);
 }
 
 function PuzzleJournal({ isOpen, onToggle, progress }: { isOpen: boolean; onToggle: () => void; progress: SaveData }) {
@@ -525,31 +498,19 @@ function PuzzleJournal({ isOpen, onToggle, progress }: { isOpen: boolean; onTogg
 }
 
 export function LevelSelectScreen({ progress, onBack, onSelectLevel }: LevelSelectScreenProps) {
-  const [filters, setFilters] = useState<LevelSelectFilters>(() => loadLevelSelectFilters());
   const [isPuzzleJournalOpen, setIsPuzzleJournalOpen] = useState(false);
   const currentObjectiveLevel = getCurrentObjectiveLevel(progress);
   const campaignSummary = getCampaignSummary(progress, currentObjectiveLevel);
   const levelsByChapter = CAMPAIGN_CHAPTERS.map((chapter) => {
     const levels = LEVELS.filter((level) => level.id >= chapter.startLevel && level.id <= chapter.endLevel);
-    const filteredLevels = levels.filter(
-      (level) =>
-        levelMatchesStatusFilter(level, progress, filters.status) &&
-        levelMatchesMechanicFilter(level, filters.mechanic),
-    );
     const completedCount = levels.filter((level) => isLevelCompleted(progress, level.id)).length;
 
     return {
       ...chapter,
       completedCount,
-      filteredLevels,
       levels,
     };
   });
-  const visibleLevelCount = levelsByChapter.reduce((levelCount, chapter) => levelCount + chapter.filteredLevels.length, 0);
-
-  useEffect(() => {
-    saveLevelSelectFilters(filters);
-  }, [filters]);
 
   return (
     <section className="screen level-screen" aria-labelledby="level-select-title">
@@ -610,42 +571,6 @@ export function LevelSelectScreen({ progress, onBack, onSelectLevel }: LevelSele
             </div>
           </section>
 
-          <section className="level-filter-panel" aria-label="Level filters">
-            <div className="filter-group" aria-label="Progress filters">
-              <span className="filter-label">Progress</span>
-              <div className="filter-chip-row">
-                {STATUS_FILTERS.map((filter) => (
-                  <button
-                    type="button"
-                    className={`filter-chip${filters.status === filter.value ? ' active' : ''}`}
-                    aria-pressed={filters.status === filter.value}
-                    key={filter.value}
-                    onClick={() => setFilters((currentFilters) => ({ ...currentFilters, status: filter.value }))}
-                  >
-                    {filter.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="filter-group" aria-label="Mechanic filters">
-              <span className="filter-label">Mechanic</span>
-              <div className="filter-chip-row">
-                {MECHANIC_FILTERS.map((filter) => (
-                  <button
-                    type="button"
-                    className={`filter-chip${filters.mechanic === filter.value ? ' active' : ''}`}
-                    aria-pressed={filters.mechanic === filter.value}
-                    key={filter.value}
-                    onClick={() => setFilters((currentFilters) => ({ ...currentFilters, mechanic: filter.value }))}
-                  >
-                    {filter.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </section>
-
           <PuzzleJournal
             isOpen={isPuzzleJournalOpen}
             onToggle={() => setIsPuzzleJournalOpen((currentValue) => !currentValue)}
@@ -654,10 +579,6 @@ export function LevelSelectScreen({ progress, onBack, onSelectLevel }: LevelSele
 
           <div className="campaign-chapter-list" aria-label="Campaign chapters">
             {levelsByChapter.map((chapter, chapterIndex) => {
-              if (chapter.filteredLevels.length === 0) {
-                return null;
-              }
-
               const totalLevels = chapter.levels.length;
               const progressPercent = totalLevels === 0 ? 0 : Math.round((chapter.completedCount / totalLevels) * 100);
 
@@ -688,7 +609,7 @@ export function LevelSelectScreen({ progress, onBack, onSelectLevel }: LevelSele
                   </header>
 
                   <div className="level-card-grid" aria-label={`${chapter.title} levels`}>
-                    {chapter.filteredLevels.map((level) => (
+                    {chapter.levels.map((level) => (
                       <LevelCard
                         key={level.id}
                         chapterTitle={chapter.title}
@@ -703,13 +624,6 @@ export function LevelSelectScreen({ progress, onBack, onSelectLevel }: LevelSele
               );
             })}
           </div>
-          {visibleLevelCount === 0 ? (
-            <section className="empty-state" aria-label="No levels match filters">
-              <ListOrdered aria-hidden="true" />
-              <h3>No matching levels</h3>
-              <p>Try a different progress or mechanic filter.</p>
-            </section>
-          ) : null}
         </>
       ) : (
         <section className="empty-state" aria-label="No levels available">

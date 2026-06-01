@@ -15,7 +15,7 @@ type TooltipPlacement = 'top';
 
 type TooltipProps = {
   children: ReactNode;
-  content: string;
+  content: ReactNode;
   disabled?: boolean;
   placement?: TooltipPlacement;
   reducedMotion?: boolean;

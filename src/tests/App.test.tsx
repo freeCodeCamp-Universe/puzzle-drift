@@ -219,6 +219,14 @@ describe('App', () => {
     expect(within(summary).getByText('1:00')).toBeInTheDocument();
     expect(within(summary).getByText('Current Chapter')).toBeInTheDocument();
     expect(within(summary).getByText('Training Grid')).toBeInTheDocument();
+
+    expect(screen.queryByRole('region', { name: /star breakdown/i })).not.toBeInTheDocument();
+    expect(within(summary).queryByRole('heading', { name: /star breakdown/i })).not.toBeInTheDocument();
+    expect(within(summary).queryByText('Total Stars')).not.toBeInTheDocument();
+    expect(within(summary).queryByText('Levels with 3 Stars')).not.toBeInTheDocument();
+    expect(within(summary).queryByText('Levels with 2 Stars')).not.toBeInTheDocument();
+    expect(within(summary).queryByText('Levels with 1 Star')).not.toBeInTheDocument();
+    expect(within(summary).queryByText('Levels Uncompleted')).not.toBeInTheDocument();
   });
 
   it('shows puzzle journal history from saved progress', async () => {
@@ -260,44 +268,16 @@ describe('App', () => {
     expect(within(firstDriftEntry).getByText('Portals 0')).toBeInTheDocument();
   });
 
-  it('filters level select by mechanic', async () => {
+  it('shows all campaign levels without filter controls', async () => {
     const user = userEvent.setup();
     render(<App />);
 
     await user.click(screen.getByRole('button', { name: /level select/i }));
-    await user.click(screen.getByRole('button', { name: 'Portals' }));
 
+    expect(screen.queryByRole('region', { name: /level filters/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Portals' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Level 1: First Drift' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Level 17: Portal Lock locked' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Level 1: First Drift' })).not.toBeInTheDocument();
-  });
-
-  it('combines progress and mechanic filters', async () => {
-    const user = userEvent.setup();
-
-    unlockThroughLevel(11);
-    render(<App />);
-
-    await user.click(screen.getByRole('button', { name: /level select/i }));
-    await user.click(screen.getByRole('button', { name: 'Incomplete' }));
-    await user.click(screen.getByRole('button', { name: 'Spikes' }));
-
-    expect(screen.getByRole('button', { name: 'Level 11: Spike Lane' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Level 24: Spike Switch locked' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Level 1: First Drift' })).not.toBeInTheDocument();
-  });
-
-  it('persists level select filters during the browser session', async () => {
-    const user = userEvent.setup();
-    render(<App />);
-
-    await user.click(screen.getByRole('button', { name: /level select/i }));
-    await user.click(screen.getByRole('button', { name: 'Portals' }));
-    await user.click(screen.getByRole('button', { name: /back to start/i }));
-    await user.click(screen.getByRole('button', { name: /level select/i }));
-
-    expect(screen.getByRole('button', { name: 'Portals' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: 'Level 17: Portal Lock locked' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Level 1: First Drift' })).not.toBeInTheDocument();
   });
 
   it('highlights the highest unlocked incomplete level as the current objective', async () => {
@@ -561,6 +541,79 @@ describe('App', () => {
     expect(within(levelCard).getByText('Completed')).toBeInTheDocument();
     expect(within(levelCard).getByLabelText('3 stars')).toBeInTheDocument();
     expect(within(levelCard).getAllByTestId('level-stars')[0].querySelectorAll('.star-filled')).toHaveLength(3);
+    expect(within(levelCard).getByText('Best Moves')).toBeInTheDocument();
+    expect(within(levelCard).getByText('6 / 10')).toBeInTheDocument();
+    expect(within(levelCard).getByLabelText('Best Moves target met')).toBeInTheDocument();
+    expect(within(levelCard).getByText('Best Time')).toBeInTheDocument();
+    expect(within(levelCard).getByText('0:12 / 0:25')).toBeInTheDocument();
+    expect(within(levelCard).getByLabelText('Best Time target met')).toBeInTheDocument();
+  });
+
+  it('level cards show when personal bests miss level targets', async () => {
+    const user = userEvent.setup();
+    const progress = completeLevel(createInitialSaveData(), 1, {
+      moves: 12,
+      stars: 1,
+      timeSeconds: 31,
+    });
+
+    window.localStorage.setItem('puzzle-drift:save', JSON.stringify(progress));
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /level select/i }));
+
+    const levelCard = screen.getByRole('button', { name: 'Level 1: First Drift' });
+
+    expect(within(levelCard).getByText('12 / 10')).toBeInTheDocument();
+    expect(within(levelCard).getByLabelText('Best Moves target missed')).toBeInTheDocument();
+    expect(within(levelCard).getByText('0:31 / 0:25')).toBeInTheDocument();
+    expect(within(levelCard).getByLabelText('Best Time target missed')).toBeInTheDocument();
+  });
+
+  it('level cards show star requirements before entering a level', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /level select/i }));
+
+    const levelCard = screen.getByRole('button', { name: 'Level 1: First Drift' });
+    const starRequirements = within(levelCard).getByLabelText('Star requirements');
+
+    expect(within(starRequirements).getByText('Stars')).toBeInTheDocument();
+    expect(within(starRequirements).getByText('Complete')).toBeInTheDocument();
+    expect(within(starRequirements).getByText('<= 10 moves')).toBeInTheDocument();
+    expect(within(starRequirements).getByText('<= 10 moves and <= 25 seconds')).toBeInTheDocument();
+  });
+
+  it('level select stars explain star requirements on hover and keyboard focus', async () => {
+    const user = userEvent.setup();
+    const progress = completeLevel(createInitialSaveData(), 1, {
+      moves: 6,
+      stars: 3,
+      timeSeconds: 12,
+    });
+
+    window.localStorage.setItem('puzzle-drift:save', JSON.stringify(progress));
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /level select/i }));
+
+    const levelCard = screen.getByRole('button', { name: 'Level 1: First Drift' });
+    const twoStarTrigger = within(levelCard).getAllByLabelText(/2 Stars: Complete within target moves/i)[0];
+    const threeStarTrigger = within(levelCard).getAllByLabelText(/3 Stars: Complete within target moves and target time/i)[0];
+
+    await user.hover(twoStarTrigger);
+
+    expect(screen.getByRole('tooltip', { name: /2 Stars\s+Complete within target moves/i })).toBeInTheDocument();
+
+    await user.unhover(twoStarTrigger);
+    act(() => {
+      threeStarTrigger.focus();
+    });
+
+    expect(
+      await screen.findByRole('tooltip', { name: /3 Stars\s+Complete within target moves and target time/i }),
+    ).toBeInTheDocument();
   });
 
   it('completed levels show earned achievement badges with tooltips', async () => {
@@ -615,7 +668,10 @@ describe('App', () => {
     expect(within(lockedLevel).getByText('Complete Level 14 to unlock')).toBeInTheDocument();
     expect(within(lockedLevel).getByText('Crystal Labyrinth')).toBeInTheDocument();
     expect(within(lockedLevel).getByText('Ice')).toBeInTheDocument();
-    expect(within(lockedLevel).queryByLabelText(/stars/i)).not.toBeInTheDocument();
+    expect(within(lockedLevel).getByLabelText('Star requirements')).toBeInTheDocument();
+    expect(within(lockedLevel).getByText('<= 10 moves')).toBeInTheDocument();
+    expect(within(lockedLevel).getByText('<= 45 seconds', { exact: false })).toBeInTheDocument();
+    expect(within(lockedLevel).queryByTestId('level-stars')).not.toBeInTheDocument();
     expect(lockedLevel.querySelector('.level-card-stats')).not.toBeInTheDocument();
   });
 
@@ -1017,11 +1073,24 @@ describe('App', () => {
     const completion = screen.getByRole('status', { name: /level completed/i });
 
     expect(within(completion).getByRole('heading', { name: /level complete/i })).toBeInTheDocument();
-    expect(within(completion).getByText('Time')).toBeInTheDocument();
-    expect(within(completion).getByText('Moves')).toBeInTheDocument();
-    expect(within(completion).getByText('Stars Earned')).toBeInTheDocument();
-    expect(within(completion).queryByText('Best Moves')).not.toBeInTheDocument();
-    expect(within(completion).queryByText('Best Time')).not.toBeInTheDocument();
+    expect(within(completion).getAllByText('Time').length).toBeGreaterThan(0);
+    expect(within(completion).getAllByText('Moves').length).toBeGreaterThan(0);
+    expect(within(completion).getAllByText('Stars Earned').length).toBeGreaterThan(0);
+    expect(within(completion).getAllByText('6 / 10').length).toBeGreaterThan(0);
+    expect(within(completion).getAllByText('0:00 / 0:25').length).toBeGreaterThan(0);
+    expect(within(completion).getByText('Target: 10')).toBeInTheDocument();
+    expect(within(completion).getByText('Target: 0:25')).toBeInTheDocument();
+    expect(within(completion).getAllByText('Met').length).toBeGreaterThanOrEqual(2);
+    expect(within(completion).getByRole('progressbar', { name: /moves target met/i })).toHaveAttribute('aria-valuenow', '100');
+    expect(within(completion).getByRole('progressbar', { name: /time target met/i })).toHaveAttribute('aria-valuenow', '100');
+    expect(within(completion).getByText(/3 Star Clear/i)).toBeInTheDocument();
+    expect(within(completion).getByText(/met both the move and time targets/i)).toBeInTheDocument();
+    expect(within(completion).getByText('Personal Best')).toBeInTheDocument();
+    expect(within(completion).getByText('Best Moves')).toBeInTheDocument();
+    expect(within(completion).getByText('Best Time')).toBeInTheDocument();
+    expect(within(completion).getByLabelText('Best Moves target met')).toBeInTheDocument();
+    expect(within(completion).getByLabelText('Best Time target met')).toBeInTheDocument();
+    expect(within(completion).getByText(/Replay to polish the route or chase speed/i)).toBeInTheDocument();
     expect(within(completion).getAllByText('New Record').length).toBeGreaterThan(0);
     const nextButton = within(completion).getByRole('button', { name: /next level.*spacebar/i });
     const retryButton = within(completion).getByRole('button', { name: /retry.*r/i });
@@ -1039,6 +1108,91 @@ describe('App', () => {
     expect(levelSelectButton.querySelector('.action-label')).toHaveTextContent('Level Select');
     expect(levelSelectButton.querySelector('.action-shortcut')).toHaveTextContent('L');
     expect(screen.getByRole('grid', { name: /first drift board/i })).toBeInTheDocument();
+  });
+
+  it('completion stars explain star requirements on keyboard focus', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    solveFirstDrift();
+
+    const completion = screen.getByRole('status', { name: /level completed/i });
+    const oneStarTrigger = within(completion).getAllByLabelText(/1 Star: Complete the level/i)[0];
+
+    act(() => {
+      oneStarTrigger.focus();
+    });
+
+    expect(await screen.findByRole('tooltip', { name: /1 Star\s+Complete the level/i })).toBeInTheDocument();
+  });
+
+  it('explains when move count blocks higher star ratings', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowUp' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowUp' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    fireEvent.keyDown(window, { key: 'ArrowUp' });
+    solveFirstDrift();
+
+    const completion = screen.getByRole('status', { name: /level completed/i });
+
+    expect(within(completion).getAllByText('12').length).toBeGreaterThan(0);
+    expect(within(completion).getAllByText('12 / 10').length).toBeGreaterThan(0);
+    expect(within(completion).getByText('Missed')).toBeInTheDocument();
+    expect(within(completion).getByRole('progressbar', { name: /moves target missed/i })).toHaveAttribute('aria-valuenow', '83');
+    expect(within(completion).getByLabelText('Best Moves target missed')).toBeInTheDocument();
+    expect(within(completion).getByLabelText('Best Time target met')).toBeInTheDocument();
+    expect(within(completion).getByText(/Replay to bring your personal best under the remaining target/i)).toBeInTheDocument();
+    expect(within(completion).getByText(/Missed 2 and 3 Stars/i)).toBeInTheDocument();
+    expect(within(completion).getByText(/Reduce your move count by 2/i)).toBeInTheDocument();
+  });
+
+  it('explains when time blocks the third star', () => {
+    vi.useFakeTimers();
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /new game/i }));
+
+    act(() => {
+      vi.advanceTimersByTime(31000);
+    });
+
+    solveFirstDrift();
+
+    const completion = screen.getByRole('status', { name: /level completed/i });
+
+    expect(within(completion).getAllByText('0:31').length).toBeGreaterThan(0);
+    expect(within(completion).getAllByText('0:31 / 0:25').length).toBeGreaterThan(0);
+    expect(within(completion).getByText('Missed')).toBeInTheDocument();
+    expect(within(completion).getByRole('progressbar', { name: /time target missed/i })).toHaveAttribute('aria-valuenow', '81');
+    expect(within(completion).getByText(/Missed 3 Stars/i)).toBeInTheDocument();
+    expect(within(completion).getByText(/Reduce your time by 6 seconds/i)).toBeInTheDocument();
+  });
+
+  it('celebrates near misses when a star threshold is barely missed', () => {
+    vi.useFakeTimers();
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /new game/i }));
+
+    act(() => {
+      vi.advanceTimersByTime(27000);
+    });
+
+    solveFirstDrift();
+
+    const completion = screen.getByRole('status', { name: /level completed/i });
+
+    expect(within(completion).getAllByText('0:27 / 0:25').length).toBeGreaterThan(0);
+    expect(within(completion).getByText(/So Close/i)).toBeInTheDocument();
+    expect(within(completion).getByText(/only 2 seconds away from 3 stars/i)).toBeInTheDocument();
+    expect(within(completion).getByText(/Replay it/i)).toBeInTheDocument();
   });
 
   it('defines chapter completion milestones for campaign gates', () => {
