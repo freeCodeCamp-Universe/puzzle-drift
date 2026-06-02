@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import type { TouchEvent } from 'react';
 import {
   ArrowDown,
   ArrowLeft,
@@ -25,7 +26,7 @@ import {
   X,
 } from 'lucide-react';
 import { getEffectiveTileAt } from '../logic/movement';
-import type { Direction, GameState, Level, Position, TileType } from '../types/game';
+import type { ControlStyle, Direction, GameState, Level, Position, TileType } from '../types/game';
 import { getHintTierStatus, isHintTierUnlocked } from '../utils/hints';
 import { Tooltip } from './Tooltip';
 
@@ -44,6 +45,7 @@ type GameBoardProps = {
   isPaused?: boolean;
   reducedMotion: boolean;
   animationClass?: string;
+  controlStyle: ControlStyle;
   playerPosition: Position;
   onLevelSelect: () => void;
   onDismissHintNudge?: () => void;
@@ -105,6 +107,8 @@ const TILE_LABELS: Record<TileType, string> = {
 const SAFE_HINT_PADDING = 12;
 const HINT_OVERLAY_CORNERS: HintOverlayCandidate[] = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
 const VISUAL_HINT_DURATION_MS = 2600;
+const SWIPE_MIN_DISTANCE = 36;
+const SWIPE_AXIS_DOMINANCE = 1.55;
 
 function rectsOverlap(first: SafeRect, second: SafeRect, padding = 0) {
   return !(
@@ -344,6 +348,7 @@ export function GameBoard({
   isPaused = false,
   reducedMotion,
   animationClass = '',
+  controlStyle,
   playerPosition,
   onLevelSelect,
   onDismissHintNudge,
@@ -358,7 +363,11 @@ export function GameBoard({
   const [selectedHintTier, setSelectedHintTier] = useState<number | null>(null);
   const [visualHintPulseId, setVisualHintPulseId] = useState(0);
   const [visualHintAnnouncement, setVisualHintAnnouncement] = useState('');
+  const swipeDescriptionId = useId();
+  const touchStartRef = useRef<Position | null>(null);
   const shouldShowKeys = level.mechanics.includes('key') || gameState.collectedKeys > 0;
+  const canSwipe = controlStyle === 'swipe' || controlStyle === 'both';
+  const canUseButtons = controlStyle === 'buttons' || controlStyle === 'both';
   const visualHintPositions = useMemo(() => getVisualHintPositions(level), [level]);
   const hasVisualHints = visualHintPositions.size > 0;
   const hintTiers = level.hints.map((hint, hintIndex) => ({
@@ -390,6 +399,53 @@ export function GameBoard({
       window.clearTimeout(timeoutId);
     };
   }, [visualHintPulseId]);
+
+  const handleSwipeStart = (event: TouchEvent<HTMLDivElement>) => {
+    if (!canSwipe || isPaused || gameState.isComplete || gameState.isFailed) {
+      touchStartRef.current = null;
+
+      return;
+    }
+
+    const touch = event.touches[0];
+
+    touchStartRef.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
+  };
+
+  const handleSwipeEnd = (event: TouchEvent<HTMLDivElement>) => {
+    const start = touchStartRef.current;
+
+    touchStartRef.current = null;
+
+    if (!start || !canSwipe || isPaused || gameState.isComplete || gameState.isFailed) {
+      return;
+    }
+
+    const touch = event.changedTouches[0];
+
+    if (!touch) {
+      return;
+    }
+
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    const absoluteX = Math.abs(deltaX);
+    const absoluteY = Math.abs(deltaY);
+
+    if (Math.max(absoluteX, absoluteY) < SWIPE_MIN_DISTANCE) {
+      return;
+    }
+
+    if (absoluteX >= absoluteY * SWIPE_AXIS_DOMINANCE) {
+      onMove(deltaX > 0 ? 'right' : 'left');
+
+      return;
+    }
+
+    if (absoluteY >= absoluteX * SWIPE_AXIS_DOMINANCE) {
+      onMove(deltaY > 0 ? 'down' : 'up');
+    }
+  };
 
   return (
     <section
@@ -435,12 +491,24 @@ export function GameBoard({
 
         <nav className="hud-actions" aria-label="Game controls">
           <Tooltip content="Undo Move" disabled={isPaused} reducedMotion={reducedMotion}>
-            <button type="button" className="icon-button" onClick={onUndo} aria-label="Undo move" disabled={isPaused}>
+            <button
+              type="button"
+              className="icon-button hud-undo-action"
+              onClick={onUndo}
+              aria-label="Undo move"
+              disabled={isPaused}
+            >
               <Undo2 aria-hidden="true" />
             </button>
           </Tooltip>
           <Tooltip content="Restart Level" disabled={isPaused} reducedMotion={reducedMotion}>
-            <button type="button" className="icon-button" onClick={onReset} aria-label="Reset level" disabled={isPaused}>
+            <button
+              type="button"
+              className="icon-button hud-reset-action"
+              onClick={onReset}
+              aria-label="Reset level"
+              disabled={isPaused}
+            >
               <RotateCcw aria-hidden="true" />
             </button>
           </Tooltip>
@@ -452,7 +520,7 @@ export function GameBoard({
           <Tooltip content="Level Select" disabled={isPaused} reducedMotion={reducedMotion}>
             <button
               type="button"
-              className="icon-button"
+              className="icon-button hud-level-select-action"
               onClick={onLevelSelect}
               aria-label="Open level select"
               disabled={isPaused}
@@ -463,7 +531,7 @@ export function GameBoard({
           <Tooltip content="Hint Journal" disabled={isPaused} reducedMotion={reducedMotion}>
             <button
               type="button"
-              className="icon-button"
+              className="icon-button hud-hint-journal-action"
               onClick={onOpenHintJournal}
               aria-label="Open hint journal"
               disabled={isPaused}
@@ -519,10 +587,18 @@ export function GameBoard({
       </section>
 
       <div className={`game-board-assist-layout${isHintPanelOpen ? ' assist-drawer-open' : ''}`}>
+        {canSwipe ? (
+          <p className="sr-only" id={swipeDescriptionId}>
+            Swipe across the board to move. Diagonal swipes are ignored.
+          </p>
+        ) : null}
         <div
-          className="game-board"
+          className={`game-board${canSwipe ? ' swipe-enabled' : ''}`}
           role="grid"
           aria-label={`${level.name} board`}
+          aria-describedby={canSwipe ? swipeDescriptionId : undefined}
+          onTouchStart={handleSwipeStart}
+          onTouchEnd={handleSwipeEnd}
           style={{
             gridTemplateColumns: `repeat(${level.width}, minmax(0, 1fr))`,
           }}
@@ -651,20 +727,33 @@ export function GameBoard({
         ) : null}
       </div>
 
-      <nav className="direction-controls" aria-label="Directional controls">
-        <button type="button" className="direction-button direction-up" onClick={() => onMove('up')} aria-label="Move up" disabled={isPaused}>
-          <ArrowUp aria-hidden="true" />
-        </button>
-        <button type="button" className="direction-button direction-left" onClick={() => onMove('left')} aria-label="Move left" disabled={isPaused}>
-          <ArrowLeft aria-hidden="true" />
-        </button>
-        <button type="button" className="direction-button direction-right" onClick={() => onMove('right')} aria-label="Move right" disabled={isPaused}>
-          <ArrowRight aria-hidden="true" />
-        </button>
-        <button type="button" className="direction-button direction-down" onClick={() => onMove('down')} aria-label="Move down" disabled={isPaused}>
-          <ArrowDown aria-hidden="true" />
-        </button>
-      </nav>
+      <div className={`mobile-control-dock${canUseButtons ? '' : ' buttons-hidden'}`}>
+        <nav className="direction-controls" aria-label="Directional controls">
+          <button type="button" className="direction-button direction-up" onClick={() => onMove('up')} aria-label="Move up" disabled={isPaused}>
+            <ArrowUp aria-hidden="true" />
+          </button>
+          <button type="button" className="direction-button direction-left" onClick={() => onMove('left')} aria-label="Move left" disabled={isPaused}>
+            <ArrowLeft aria-hidden="true" />
+          </button>
+          <button type="button" className="direction-button direction-right" onClick={() => onMove('right')} aria-label="Move right" disabled={isPaused}>
+            <ArrowRight aria-hidden="true" />
+          </button>
+          <button type="button" className="direction-button direction-down" onClick={() => onMove('down')} aria-label="Move down" disabled={isPaused}>
+            <ArrowDown aria-hidden="true" />
+          </button>
+        </nav>
+
+        <nav className="mobile-quick-actions" aria-label="Quick attempt controls">
+          <button type="button" className="mobile-quick-action" onClick={onUndo} aria-label="Undo last move" disabled={isPaused}>
+            <Undo2 aria-hidden="true" />
+            <span>Undo</span>
+          </button>
+          <button type="button" className="mobile-quick-action" onClick={onReset} aria-label="Restart level" disabled={isPaused}>
+            <RotateCcw aria-hidden="true" />
+            <span>Restart</span>
+          </button>
+        </nav>
+      </div>
     </section>
   );
 }

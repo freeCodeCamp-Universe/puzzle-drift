@@ -24,6 +24,7 @@ const rect = (left: number, top: number, width: number, height: number) => ({
 const renderBoard = (overrides = {}) =>
   render(
     <GameBoard
+      controlStyle="both"
       elapsedSeconds={0}
       gameState={gameState}
       hazardFlash={false}
@@ -160,6 +161,7 @@ describe('GameBoard', () => {
 
     rerender(
       <GameBoard
+        controlStyle="both"
         elapsedSeconds={0}
         gameState={gameState}
         hazardFlash={false}
@@ -195,6 +197,75 @@ describe('GameBoard', () => {
     expect(screen.getByRole('button', { name: /move down/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /move left/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /move right/i })).toBeInTheDocument();
+  });
+
+  it('renders mobile quick actions near directional controls', async () => {
+    const user = userEvent.setup();
+    const onReset = vi.fn();
+    const onUndo = vi.fn();
+
+    renderBoard({ onReset, onUndo });
+
+    const quickControls = screen.getByRole('navigation', { name: /quick attempt controls/i });
+
+    await user.click(within(quickControls).getByRole('button', { name: /undo last move/i }));
+    await user.click(within(quickControls).getByRole('button', { name: /restart level/i }));
+
+    expect(onUndo).toHaveBeenCalledTimes(1);
+    expect(onReset).toHaveBeenCalledTimes(1);
+  });
+
+  it('moves with clear swipe gestures when swipe controls are enabled', () => {
+    const onMove = vi.fn();
+
+    renderBoard({ onMove });
+
+    const board = screen.getByRole('grid', { name: `${level.name} board` });
+
+    fireEvent.touchStart(board, { touches: [{ clientX: 120, clientY: 120 }] });
+    fireEvent.touchEnd(board, { changedTouches: [{ clientX: 188, clientY: 126 }] });
+
+    fireEvent.touchStart(board, { touches: [{ clientX: 120, clientY: 120 }] });
+    fireEvent.touchEnd(board, { changedTouches: [{ clientX: 114, clientY: 52 }] });
+
+    expect(onMove).toHaveBeenNthCalledWith(1, 'right');
+    expect(onMove).toHaveBeenNthCalledWith(2, 'up');
+  });
+
+  it('ignores short and diagonal swipe gestures', () => {
+    const onMove = vi.fn();
+
+    renderBoard({ onMove });
+
+    const board = screen.getByRole('grid', { name: `${level.name} board` });
+
+    fireEvent.touchStart(board, { touches: [{ clientX: 120, clientY: 120 }] });
+    fireEvent.touchEnd(board, { changedTouches: [{ clientX: 140, clientY: 122 }] });
+
+    fireEvent.touchStart(board, { touches: [{ clientX: 120, clientY: 120 }] });
+    fireEvent.touchEnd(board, { changedTouches: [{ clientX: 170, clientY: 160 }] });
+
+    expect(onMove).not.toHaveBeenCalled();
+  });
+
+  it('disables board swipes in button-only control mode', () => {
+    const onMove = vi.fn();
+
+    renderBoard({ controlStyle: 'buttons', onMove });
+
+    const board = screen.getByRole('grid', { name: `${level.name} board` });
+
+    fireEvent.touchStart(board, { touches: [{ clientX: 120, clientY: 120 }] });
+    fireEvent.touchEnd(board, { changedTouches: [{ clientX: 188, clientY: 126 }] });
+
+    expect(onMove).not.toHaveBeenCalled();
+    expect(board).not.toHaveClass('swipe-enabled');
+  });
+
+  it('marks the mobile button dock hidden in swipe-only mode', () => {
+    renderBoard({ controlStyle: 'swipe' });
+
+    expect(document.querySelector('.mobile-control-dock')).toHaveClass('buttons-hidden');
   });
 
   it('icon buttons have aria labels', () => {
@@ -251,6 +322,7 @@ describe('GameBoard', () => {
     await user.unhover(screen.getByRole('button', { name: /open puzzle assist/i }));
     rerender(
       <GameBoard
+        controlStyle="both"
         elapsedSeconds={0}
         gameState={gameState}
         hazardFlash={false}
@@ -304,6 +376,7 @@ describe('GameBoard', () => {
 
     rerender(
       <GameBoard
+        controlStyle="both"
         elapsedSeconds={60}
         failedAttemptCount={1}
         gameState={gameState}
@@ -330,6 +403,7 @@ describe('GameBoard', () => {
 
     rerender(
       <GameBoard
+        controlStyle="both"
         elapsedSeconds={0}
         failedAttemptCount={5}
         gameState={gameState}
@@ -364,6 +438,7 @@ describe('GameBoard', () => {
 
     rerender(
       <GameBoard
+        controlStyle="both"
         elapsedSeconds={180}
         failedAttemptCount={7}
         gameState={createInitialGameState(finalDrift)}

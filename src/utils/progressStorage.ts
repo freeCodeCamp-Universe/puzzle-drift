@@ -1,7 +1,7 @@
 import { DEFAULT_SETTINGS } from '../data/defaultSettings';
 import { INITIAL_SAVE } from '../data/initialSave';
 import { LEVELS } from '../data/levels';
-import type { GameSettings, SaveData } from '../types/game';
+import type { ControlStyle, GameSettings, SaveData } from '../types/game';
 import { readStorageValue, removeStorageValue, writeStorageValue } from './storage';
 
 const PROGRESS_STORAGE_KEY = 'puzzle-drift:save';
@@ -30,6 +30,12 @@ function normalizeUnlockedHints(unlockedHints: SaveData['unlockedHints'] = {}) {
   return Object.fromEntries(
     Object.entries(unlockedHints).map(([levelId, tiers]) => [levelId, uniqueSortedHintTiers(tiers)]),
   );
+}
+
+function normalizeControlStyle(controlStyle: unknown): ControlStyle {
+  return controlStyle === 'buttons' || controlStyle === 'swipe' || controlStyle === 'both'
+    ? controlStyle
+    : DEFAULT_SETTINGS.controlStyle;
 }
 
 export function createInitialSaveData(): SaveData {
@@ -77,6 +83,7 @@ export function loadSettings(): GameSettings {
 
   return {
     confirmRestart: storedSettings.confirmRestart ?? DEFAULT_SETTINGS.confirmRestart,
+    controlStyle: normalizeControlStyle(storedSettings.controlStyle),
     focusMode: storedSettings.focusMode ?? DEFAULT_SETTINGS.focusMode,
     highContrast: storedSettings.highContrast ?? DEFAULT_SETTINGS.highContrast,
     hintNudgesEnabled: storedSettings.hintNudgesEnabled ?? DEFAULT_SETTINGS.hintNudgesEnabled,
@@ -87,6 +94,7 @@ export function loadSettings(): GameSettings {
 export function saveSettings(settings: GameSettings) {
   writeStorageValue(SETTINGS_STORAGE_KEY, {
     confirmRestart: settings.confirmRestart,
+    controlStyle: normalizeControlStyle(settings.controlStyle),
     focusMode: settings.focusMode,
     highContrast: settings.highContrast,
     hintNudgesEnabled: settings.hintNudgesEnabled,

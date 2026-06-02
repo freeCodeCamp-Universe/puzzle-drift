@@ -376,6 +376,10 @@ describe('App', () => {
     expect(screen.getByLabelText(/hint nudges/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/focus mode/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/confirm restart/i)).toBeInTheDocument();
+    expect(screen.getByRole('radiogroup', { name: /control style/i })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /^buttons use the on-screen directional pad/i })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /^swipe move by swiping across the board/i })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /^both keep buttons visible and allow swipes/i })).toBeChecked();
     expect(screen.getByRole('button', { name: /keyboard shortcuts/i })).toBeInTheDocument();
     expect(screen.queryByLabelText(/theme/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^theme$/i)).not.toBeInTheDocument();
@@ -445,6 +449,20 @@ describe('App', () => {
       expect(savedSettings.hintNudgesEnabled).toBe(false);
       expect(savedSettings.focusMode).toBe(true);
       expect(savedSettings.confirmRestart).toBe(false);
+    });
+  });
+
+  it('control style setting persists', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: /settings/i }));
+    await user.click(screen.getByRole('radio', { name: /^swipe move by swiping across the board/i }));
+
+    await waitFor(() => {
+      const savedSettings = JSON.parse(window.localStorage.getItem('puzzle-drift:settings') ?? '{}');
+
+      expect(savedSettings.controlStyle).toBe('swipe');
     });
   });
 

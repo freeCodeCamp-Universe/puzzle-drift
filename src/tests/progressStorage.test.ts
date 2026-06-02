@@ -99,6 +99,7 @@ describe('progress storage', () => {
   it('saves and loads settings', () => {
     saveSettings({
       confirmRestart: false,
+      controlStyle: 'swipe',
       focusMode: true,
       highContrast: true,
       hintNudgesEnabled: false,
@@ -107,6 +108,7 @@ describe('progress storage', () => {
 
     expect(loadSettings()).toEqual({
       confirmRestart: false,
+      controlStyle: 'swipe',
       focusMode: true,
       highContrast: true,
       hintNudgesEnabled: false,
@@ -128,11 +130,23 @@ describe('progress storage', () => {
 
     expect(loadSettings()).toEqual({
       confirmRestart: true,
+      controlStyle: 'both',
       focusMode: false,
       highContrast: true,
       hintNudgesEnabled: true,
       reducedMotion: true,
     });
+  });
+
+  it('normalizes invalid control style settings', () => {
+    window.localStorage.setItem(
+      'puzzle-drift:settings',
+      JSON.stringify({
+        controlStyle: 'joystick',
+      }),
+    );
+
+    expect(loadSettings().controlStyle).toBe('both');
   });
 
   it('does not overwrite best moves with a worse move count', () => {

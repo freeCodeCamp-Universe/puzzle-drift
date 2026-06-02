@@ -4,6 +4,7 @@ import {
   Eye,
   Keyboard,
   Lightbulb,
+  Move,
   RefreshCcw,
   RotateCcw,
   ShieldAlert,
@@ -13,7 +14,7 @@ import {
 import { useEffect, useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useModalAccessibility } from '../hooks/useModalAccessibility';
-import type { GameSettings } from '../types/game';
+import type { ControlStyle, GameSettings } from '../types/game';
 
 type SettingsDialogProps = {
   isOpen: boolean;
@@ -60,6 +61,28 @@ function ToggleSetting<Key extends keyof GameSettings>({
   );
 }
 
+const CONTROL_STYLE_OPTIONS: Array<{
+  description: string;
+  label: string;
+  value: ControlStyle;
+}> = [
+  {
+    description: 'Use the on-screen directional pad.',
+    label: 'Buttons',
+    value: 'buttons',
+  },
+  {
+    description: 'Move by swiping across the board.',
+    label: 'Swipe',
+    value: 'swipe',
+  },
+  {
+    description: 'Keep buttons visible and allow swipes.',
+    label: 'Both',
+    value: 'both',
+  },
+];
+
 export function SettingsDialog({
   isOpen,
   settings,
@@ -69,6 +92,8 @@ export function SettingsDialog({
 }: SettingsDialogProps) {
   const [isConfirmingReset, setIsConfirmingReset] = useState(false);
   const [isShortcutListOpen, setIsShortcutListOpen] = useState(false);
+  const controlStyleHeadingId = useId();
+  const controlStyleDescriptionId = useId();
   const dialogRef = useRef<HTMLDialogElement | null>(null);
 
   useModalAccessibility({ dialogRef, isOpen, onEscape: onClose });
@@ -166,6 +191,37 @@ export function SettingsDialog({
             label="Confirm restart"
             onChange={(value) => updateSetting('confirmRestart', value)}
           />
+          <div
+            className="settings-control-style"
+            role="radiogroup"
+            aria-labelledby={controlStyleHeadingId}
+            aria-describedby={controlStyleDescriptionId}
+          >
+            <div className="settings-section-heading">
+              <Move aria-hidden="true" />
+              <div>
+                <h3 id={controlStyleHeadingId}>Control Style</h3>
+                <p id={controlStyleDescriptionId}>Choose how touch movement works during a run.</p>
+              </div>
+            </div>
+            <div className="control-style-options">
+              {CONTROL_STYLE_OPTIONS.map((option) => (
+                <label className="control-style-option" key={option.value}>
+                  <input
+                    type="radio"
+                    name="control-style"
+                    value={option.value}
+                    checked={settings.controlStyle === option.value}
+                    onChange={() => updateSetting('controlStyle', option.value)}
+                  />
+                  <span>
+                    <strong>{option.label}</strong>
+                    <em>{option.description}</em>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
         </fieldset>
 
         <div className="settings-section-card" aria-label="Keyboard shortcuts">

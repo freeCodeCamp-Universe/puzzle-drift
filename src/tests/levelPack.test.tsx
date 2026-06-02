@@ -1311,6 +1311,7 @@ describe('level pack', () => {
 
       render(
         <GameBoard
+          controlStyle="both"
           elapsedSeconds={0}
           gameState={state}
           hazardFlash={false}

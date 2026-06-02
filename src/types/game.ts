@@ -25,6 +25,7 @@ export type Position = {
 };
 
 export type Direction = 'up' | 'right' | 'down' | 'left';
+export type ControlStyle = 'buttons' | 'swipe' | 'both';
 
 export type CampaignMechanic =
   | 'keys'
@@ -161,4 +162,5 @@ export type GameSettings = {
   hintNudgesEnabled: boolean;
   focusMode: boolean;
   confirmRestart: boolean;
+  controlStyle: ControlStyle;
 };

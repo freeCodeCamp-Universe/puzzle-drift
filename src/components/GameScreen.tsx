@@ -1035,6 +1035,7 @@ export function GameScreen({
           elapsedSeconds={gameState.elapsedSeconds}
           failedAttemptCount={failedResetCount}
           animationClass={boardAnimationClass}
+          controlStyle={settings.controlStyle}
           gameState={gameState}
           hazardFlash={hazardFlashCount > 0 && !reducedMotion}
           hintNudge={activeHintNudge}
