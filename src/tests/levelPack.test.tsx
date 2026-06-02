@@ -1193,12 +1193,15 @@ describe('level pack', () => {
     expect(riftCore.filter((level) => level.completionRequirements).length).toBe(10);
   });
 
-  it('Ice Cut uses a stopping pocket before the exit slide', () => {
+  it('Ice Cut introduces ice as a bridge into a stopping pocket', () => {
     const iceCut = LEVELS.find((level) => level.id === 13);
     const completedState = getCompletedState(13);
 
-    expect(iceCut?.signature).toBe('The useful slide starts after the first stopping point.');
-    expect(findSolutionLength(13)).toBeLessThanOrEqual(iceCut?.targetMoves ?? 0);
+    expect(iceCut?.signature).toBe('The slide carries you into a space you cannot walk to.');
+    expect(iceCut?.targetMoves).toBe(7);
+    expect(iceCut?.targetTimeSeconds).toBe(24);
+    expect(iceCut?.completionRequirements?.requiredIceTilesTraversed).toBe(1);
+    expect(findSolutionLength(13)).toBe(7);
     expect(completedState?.iceTilesTraversedThisAttempt).toBeGreaterThanOrEqual(1);
     expect(completedState?.isComplete).toBe(true);
   });

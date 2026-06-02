@@ -142,9 +142,9 @@ const LEVEL_HINTS: Record<number, LevelHint[]> = {
     'The clean route climbs beside the hazards instead of cutting through them.',
   ]),
   13: composeLevelHints([
-    'The ice is useful only if you know where it stops.',
-    'Use the side pocket to line up the exit slide.',
-    'Slide horizontally after reaching the lower stopping point.',
+    'Look for where the ice lane stops.',
+    'The slide crosses into a space you cannot walk to directly.',
+    'Use the ice bridge to reach the right-side pocket, then climb to the exit.',
   ]),
   14: composeLevelHints([
     'The key is easy to see, but the approach angle matters.',
@@ -474,18 +474,18 @@ const LEVEL_DEFINITIONS: Level[] = [
   defineLevel({
     id: 13,
     name: 'Ice Cut',
-    description: 'Use the stopping pocket before sliding into the exit approach.',
-    signature: 'The useful slide starts after the first stopping point.',
+    description: 'Slide across the ice bridge into the catch pocket.',
+    signature: 'The slide carries you into a space you cannot walk to.',
     width: 10,
     height: 8,
-    grid: ['##########', '#......E.#', '#.######.#', '#..I.....#', '#.######.#', '#...III..#', '#........#', '##########'],
+    grid: ['##########', '#.....#E##', '#.###.#.##', '#.#...#.##', '#.#.###.##', '#...III.##', '###....###', '##########'],
     completionRequirements: {
       requiresIceTraversal: true,
       requiredIceTilesTraversed: 1,
     },
-    playerStart: position(1, 6),
-    targetMoves: 11,
-    targetTimeSeconds: 32,
+    playerStart: position(1, 5),
+    targetMoves: 7,
+    targetTimeSeconds: 24,
     mechanics: ['floor', 'wall', 'exit', 'ice'],
   }),
   defineLevel({
