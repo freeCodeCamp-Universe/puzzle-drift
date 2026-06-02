@@ -1,0 +1,13 @@
+site: puzzle-drift
+
+build:
+  command: npm run build
+  output: dist
+
+deploy:
+  preview: true
+  ignore:
+    - '*.map'
+    - 'node_modules/**'
+    - '.git/**'
+    - '.env*'
