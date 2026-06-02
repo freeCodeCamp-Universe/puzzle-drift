@@ -409,7 +409,7 @@ describe('GameBoard', () => {
     await user.click(screen.getByRole('button', { name: /show visual hint/i }));
 
     expect(screen.getByLabelText('Portal at 3, 1')).toHaveClass('visual-hint-tile');
-    expect(screen.getByLabelText('Portal at 5, 5')).toHaveClass('visual-hint-tile');
+    expect(screen.getByLabelText('Portal at 6, 5')).toHaveClass('visual-hint-tile');
     expect(screen.getByLabelText('Floor at 2, 1')).not.toHaveClass('visual-hint-tile');
   });
 

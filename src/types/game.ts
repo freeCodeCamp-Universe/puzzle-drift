@@ -26,10 +26,35 @@ export type Position = {
 
 export type Direction = 'up' | 'right' | 'down' | 'left';
 
+export type CampaignMechanic =
+  | 'keys'
+  | 'switches'
+  | 'pushBlocks'
+  | 'pressurePlates'
+  | 'portals'
+  | 'ice'
+  | 'spikes';
+
+export type MechanicCallbackStage = 'introduction' | 'reinforcement' | 'subversion' | 'mastery';
+
+export type MechanicCallback = {
+  mechanic: CampaignMechanic;
+  introduction: MechanicCallbackEntry;
+  reinforcement: MechanicCallbackEntry;
+  subversion: MechanicCallbackEntry;
+  mastery: MechanicCallbackEntry;
+};
+
+export type MechanicCallbackEntry = {
+  levelId: number;
+  note: string;
+};
+
 export type Level = {
   id: number;
   name: string;
   description: string;
+  signature?: string;
   width: number;
   height: number;
   grid: TileType[][];

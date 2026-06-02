@@ -51,12 +51,11 @@ function findSolutionPath(levelId: number) {
       'right',
       'right',
       'right',
+      'down',
+      'down',
+      'down',
       'right',
-      'up',
-      'down',
-      'down',
-      'down',
-      'down',
+      'right',
       'right',
       'right',
       'right',
@@ -365,6 +364,30 @@ function getSpikePositions(level: (typeof LEVELS)[number]) {
   return level.grid.flatMap((row, y) =>
     row.flatMap((tile, x) => (tile === 'spike' ? [{ x, y }] : [])),
   );
+}
+
+function countBranchingTiles(level: (typeof LEVELS)[number]) {
+  const walkableTiles = new Set(['floor', 'exit', 'key', 'portal', 'pressurePlate', 'switch', 'ice']);
+
+  return level.grid.reduce((branchCount, row, y) => {
+    return (
+      branchCount +
+      row.filter((tile, x) => {
+        if (!walkableTiles.has(tile)) {
+          return false;
+        }
+
+        const openNeighborCount = [
+          { x: x + 1, y },
+          { x: x - 1, y },
+          { x, y: y + 1 },
+          { x, y: y - 1 },
+        ].filter((position) => walkableTiles.has(level.grid[position.y]?.[position.x])).length;
+
+        return openNeighborCount >= 3;
+      }).length
+    );
+  }, 0);
 }
 
 function isExitReachableWithDoorsBlocked(levelId: number) {
@@ -1092,12 +1115,11 @@ describe('level pack', () => {
       'right',
       'right',
       'right',
+      'down',
+      'down',
+      'down',
       'right',
-      'up',
-      'down',
-      'down',
-      'down',
-      'down',
+      'right',
       'right',
       'right',
       'right',
@@ -1113,6 +1135,8 @@ describe('level pack', () => {
     expect(completedState?.isComplete).toBe(true);
     expect(completedState?.blocksPushedThisAttempt).toBeGreaterThanOrEqual(1);
     expect(completedState?.pressurePlatesActivatedThisAttempt).toBeGreaterThanOrEqual(1);
+    expect(completedState?.activePressurePlateIds).toContain('plate-a');
+    expect(completedState?.pushBlocks).toContainEqual({ x: 5, y: 4 });
     expect(completedState?.linkedDoorsOpenedThisAttempt).toBeGreaterThanOrEqual(2);
     expect(completedState?.portalsUsedThisAttempt).toBeGreaterThanOrEqual(1);
     expect(completedState?.iceTilesTraversedThisAttempt).toBeGreaterThanOrEqual(1);
@@ -1123,12 +1147,12 @@ describe('level pack', () => {
   it('every spike level has meaningful hazard routing and calibrated par', () => {
     const expectedSolutionLengths = new Map([
       [11, 17],
-      [12, 18],
+      [12, 11],
       [15, 10],
       [24, 27],
       [26, 13],
       [28, 14],
-      [30, 24],
+      [30, 23],
     ]);
 
     const spikeLevels = LEVELS.filter((level) => level.mechanics.includes('spike'));
@@ -1148,6 +1172,97 @@ describe('level pack', () => {
       expect(level.targetMoves).toBeLessThanOrEqual((solutionLength ?? 0) + 4);
       expect(solutionTouchesHazardPressure).toBe(true);
     });
+  });
+
+  it('redesigned corridor-heavy layouts expose branching decision spaces', () => {
+    expect(countBranchingTiles(LEVELS[11])).toBeGreaterThanOrEqual(5);
+    expect(countBranchingTiles(LEVELS[16])).toBeGreaterThanOrEqual(5);
+    expect(countBranchingTiles(LEVELS[20])).toBeGreaterThanOrEqual(5);
+  });
+
+  it('chapters have distinct puzzle-solving identities', () => {
+    const trainingGrid = LEVELS.slice(0, 10);
+    const crystalLabyrinth = LEVELS.slice(10, 20);
+    const riftCore = LEVELS.slice(20, 30);
+
+    expect(trainingGrid.every((level) => level.mechanics.length <= 7)).toBe(true);
+    expect(trainingGrid.filter((level) => level.targetMoves <= 18).length).toBeGreaterThanOrEqual(8);
+    expect(crystalLabyrinth.filter((level) => countBranchingTiles(level) >= 5).length).toBeGreaterThanOrEqual(4);
+    expect(crystalLabyrinth.filter((level) => level.mechanics.includes('portal')).length).toBeGreaterThanOrEqual(5);
+    expect(riftCore.filter((level) => level.mechanics.length >= 6).length).toBeGreaterThanOrEqual(8);
+    expect(riftCore.filter((level) => level.completionRequirements).length).toBe(10);
+  });
+
+  it('Ice Cut uses a stopping pocket before the exit slide', () => {
+    const iceCut = LEVELS.find((level) => level.id === 13);
+    const completedState = getCompletedState(13);
+
+    expect(iceCut?.signature).toBe('The useful slide starts after the first stopping point.');
+    expect(findSolutionLength(13)).toBeLessThanOrEqual(iceCut?.targetMoves ?? 0);
+    expect(completedState?.iceTilesTraversedThisAttempt).toBeGreaterThanOrEqual(1);
+    expect(completedState?.isComplete).toBe(true);
+  });
+
+  it('Frozen Key makes the key pickup depend on the approach angle', () => {
+    const frozenKey = LEVELS.find((level) => level.id === 14);
+    const completedState = getCompletedState(14);
+
+    expect(frozenKey?.signature).toBe('The key is not the goal; the stopping point after it is.');
+    expect(findSolutionLength(14)).toBeLessThanOrEqual(frozenKey?.targetMoves ?? 0);
+    expect(completedState?.keysCollectedThisAttempt).toBe(1);
+    expect(completedState?.doorsOpenedThisAttempt).toBe(1);
+    expect(completedState?.iceTilesTraversedThisAttempt).toBeGreaterThanOrEqual(1);
+  });
+
+  it('Portal Pair waits until the key route makes the portal useful', () => {
+    const portalPair = LEVELS.find((level) => level.id === 16);
+    const completedState = getCompletedState(16);
+
+    expect(portalPair?.signature).toBe('The portal is visible early but useful only after the key.');
+    expect(findSolutionLength(16)).toBeLessThanOrEqual(portalPair?.targetMoves ?? 0);
+    expect(completedState?.keysCollectedThisAttempt).toBe(1);
+    expect(completedState?.portalsUsedThisAttempt).toBe(1);
+    expect(completedState?.doorsOpenedThisAttempt).toBe(1);
+  });
+
+  it('Key Freeze makes the ice lane useful only after collecting the key', () => {
+    const keyFreeze = LEVELS.find((level) => level.id === 22);
+    const prematureIceState = movePath(22, ['up', 'up', 'up', 'up', 'up', 'up', 'right', 'right']);
+    const completedState = getCompletedState(22);
+
+    expect(keyFreeze?.targetMoves).toBe(24);
+    expect(findSolutionLength(22)).toBeLessThanOrEqual(keyFreeze?.targetMoves ?? 0);
+    expect(prematureIceState?.iceTilesTraversedThisAttempt).toBeGreaterThanOrEqual(1);
+    expect(prematureIceState?.keysCollectedThisAttempt).toBe(0);
+    expect(prematureIceState?.isComplete).toBe(false);
+    expect(completedState?.keysCollectedThisAttempt).toBe(1);
+    expect(completedState?.doorsOpenedThisAttempt).toBe(1);
+    expect(completedState?.iceTilesTraversedThisAttempt).toBeGreaterThanOrEqual(1);
+  });
+
+  it('Hazard Warp makes the portal the exit approach after the key', () => {
+    const hazardWarp = LEVELS.find((level) => level.id === 28);
+    const prematurePortalState = movePath(28, [
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+      'right',
+      'up',
+    ]);
+    const completedState = getCompletedState(28);
+
+    expect(findSolutionLength(28)).toBeLessThanOrEqual(hazardWarp?.targetMoves ?? 0);
+    expect(prematurePortalState?.portalsUsedThisAttempt).toBe(1);
+    expect(prematurePortalState?.keysCollectedThisAttempt).toBe(0);
+    expect(prematurePortalState?.isComplete).toBe(false);
+    expect(completedState?.keysCollectedThisAttempt).toBe(1);
+    expect(completedState?.portalsUsedThisAttempt).toBe(1);
+    expect(completedState?.doorsOpenedThisAttempt).toBe(1);
   });
 
   it('spike levels expose actual failed moves from reachable states', () => {
